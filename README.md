@@ -28,8 +28,7 @@ ta-news-rec/
 │   │   └── hybrid/          # Weighted hybrid
 │   ├── evaluation/       # Metrics: P@K, R@K, MAP@K, NDCG@K
 │   └── api/              # FastAPI server
-├── requirements.txt
-└── CLAUDE.md / AGENTS.md # Project context for Hermes
+└── requirements.txt
 ```
 
 ## Quick Start
