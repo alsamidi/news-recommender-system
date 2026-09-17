@@ -1,0 +1,37 @@
+# ALS Collaborative Filtering Config (implicit feedback)
+model:
+  type: "als"
+  factors: 128
+  regularization: 0.01
+  alpha: 40.0  # confidence scaling for implicit feedback
+  iterations: 20
+  use_gpu: false
+  num_threads: 4
+
+# Data (locked: MINDsmall_train behaviors -> interactions; join teks ID via nid)
+# Catatan: train/eval dibaca dari `split` di bawah (file-based, DATASET_LOCK.md),
+# bukan dari satu file interactions.
+data:
+  user_col: "user_id"  # format asli MIND: Uxxxxx
+  item_col: "nid"  # join key ke xMIND news.tsv
+  weight_col: "weight"  # implicit: 1=click, >1=multiple clicks/dwell
+  min_user_interactions: 5
+  min_item_interactions: 3
+
+# Train/Val split (file-based temporal Sesuai DATASET_LOCK.md)
+split:
+  train_interactions: "data/processed/interactions_train.parquet"  # < 2019-11-15
+  dev_interactions: "data/processed/interactions_dev.parquet"  # = 2019-11-15, eval only
+  temporal_cutoff: "2019-11-15"
+
+# Evaluation
+eval:
+  metrics: ["precision_at_k", "recall_at_k", "map_at_k", "ndcg_at_k"]
+  k_values: [5, 10, 20]
+  filter_already_liked: true
+
+# Output
+output:
+  model_path: "models/als_model.pkl"
+  user_factors_path: "models/als_user_factors.npy"
+  item_factors_path: "models/als_item_factors.npy"

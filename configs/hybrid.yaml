@@ -1,0 +1,36 @@
+# Hybrid Model Config (Content + CF) - Weighted Hybrid (no LightFM)
+model:
+  type: "weighted_hybrid"
+  content_weight: 0.4   # alpha: content-based contribution
+  cf_weight: 0.6        # 1-alpha: collaborative filtering contribution
+
+# Component model paths
+components:
+  content_model_path: "models/tfidf_baseline.pkl"
+  content_embeddings_path: "models/tfidf_embeddings.npz"
+  cf_model_path: "models/als_model.pkl"
+  cf_user_factors_path: "models/als_user_factors.npy"
+  cf_item_factors_path: "models/als_item_factors.npy"
+
+# Test interactions (dev split, eval only)
+data:
+  test_interactions_path: "data/processed/interactions_dev.parquet"
+
+# Training (for tuning alpha)
+train:
+  temporal_split_date: "2019-11-15"  # train=file *_train, eval=file *_dev (DATASET_LOCK.md)
+  alpha_search: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+  validation_metric: "ndcg@10"
+
+# Evaluation
+eval:
+  metrics: ["precision_at_k", "recall_at_k", "map_at_k", "ndcg_at_k", "coverage", "diversity"]
+  k_values: [5, 10, 20]
+  cold_start:
+    new_items: true
+    new_users: true
+
+# Output
+output:
+  model_path: "models/weighted_hybrid.pkl"
+  best_alpha_path: "models/best_alpha.json"

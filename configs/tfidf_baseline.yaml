@@ -1,0 +1,28 @@
+# TF-IDF Content-Based Baseline Config
+model:
+  type: "tfidf"
+  vectorizer:
+    ngram_range: [1, 2]
+    max_features: 50000
+    min_df: 2
+    max_df: 0.95
+    sublinear_tf: true
+    norm: "l2"
+  similarity: "cosine"  # cosine, dot_product
+
+# Training
+train:
+  temporal_split_date: "2019-11-15"  # train=file *_train, eval=file *_dev (DATASET_LOCK.md)
+  target_column: "category"  # untuk evaluasi content-based
+
+# Evaluation
+eval:
+  metrics: ["precision_at_k", "recall_at_k", "map_at_k", "ndcg_at_k"]
+  k_values: [5, 10, 20]
+  cold_start_simulation: true
+
+# Output
+output:
+  model_path: "models/tfidf_baseline.pkl"
+  embeddings_path: "models/tfidf_embeddings.npz"
+  vectorizer_path: "models/tfidf_vectorizer.pkl"

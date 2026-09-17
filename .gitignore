@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Virtual environment (buat ulang: python -m venv venv && pip install -r requirements.txt)
+venv/
+.venv/
+
+# Dataset mentah MIND + xMIND (download manual, lihat README; ~1.7 GB, jangan commit)
+MIND*/
+xMIND*/
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Artifacts model terlatih (regenerate via src/models/*/train.py; hanya JSON kecil yang di-commit)
+models/*.pkl
+models/*.npy
+models/*.npz
+
+# Experiment tracking & outputs
+mlruns/
+outputs/
+.hydra/
+multirun/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Secrets & OS
+.env
+*.pem
+*.key
+.DS_Store
+Thumbs.db

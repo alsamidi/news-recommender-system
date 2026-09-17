@@ -1,0 +1,23 @@
+# Preprocessing Configuration (locked to DATASET_LOCK.md: xMINDsmall ID + MINDsmall EN)
+raw_data_path: "xMINDsmall_train/news.tsv"
+mind_news_path: "MINDsmall_train/news.tsv"  # join via nid for category/entities
+processed_data_path: "data/processed/news_processed.parquet"
+
+# Text processing
+stemmer: "sastrawi"  # sastrawi only option for Indonesian
+stopwords_path: "configs/stopwords_id.txt"  # custom Indonesian stopwords
+normalize_alay: true
+alay_dict_path: "configs/alay_dict.csv"  # optional: kata tidak baku -> baku
+
+# Tokenization
+min_token_length: 2
+max_token_length: 50
+remove_numbers: true
+remove_punctuation: true
+
+# Output columns (xMIND: nid/title/abstract; category joined from MIND via nid)
+text_column: "abstract"
+title_column: "title"
+category_column: "category"
+date_column: "publish_date"
+id_column: "nid"  # join key MIND<->xMIND, title+abstract digabung sebelum process
