@@ -69,6 +69,78 @@ def seeded_sample(users: list, max_users: int, seed: int = 42) -> list:
     return order[:max_users]
 
 
+def load_all():
+    """Load frozen artifacts; build full-catalog TF-IDF (transform-only).
+
+    Scores are stored float32 (plan risk note: 2GB free RAM; float64 for
+    2000 users x 93698 items would exhaust memory, ranking unchanged).
+    """
+    import pickle
+    import pandas as pd
+
+    news = pd.read_parquet("data/processed/news_processed.parquet").reset_index(drop=True)
+    assert len(news) == 93698, f"catalog rows {len(news)} != 93698"
+    full_nids = news["nid"].tolist()
+    nid_to_full = {n: i for i, n in enumerate(full_nids)}
+    full_texts = news["processed_text"].fillna("").tolist()
+    assert all(isinstance(t, str) for t in full_texts)
+
+    with open("models/tfidf_baseline.pkl", "rb") as f:
+        tfidf_art = pickle.load(f)
+    vectorizer = tfidf_art["vectorizer"]
+    train_matrix = tfidf_art["train_matrix"].tocsr()
+    n_train_news = int((news["split"] == "train").sum())
+    assert train_matrix.shape[0] == n_train_news == 51282, (
+        train_matrix.shape, n_train_news)
+    vocab_size = len(vectorizer.vocabulary_)
+
+    # TRANSFORM ONLY — the vectorizer is frozen (fit on train). Never fit here.
+    full_tfidf = vectorizer.transform(full_texts).tocsr()
+    assert full_tfidf.shape == (93698, train_matrix.shape[1]), full_tfidf.shape
+    assert len(vectorizer.vocabulary_) == vocab_size, "vocabulary changed: LEAKAGE"
+
+    with open("models/als_model.pkl", "rb") as f:
+        als = pickle.load(f)
+    user_map, item_map = als["user_map"], als["item_map"]
+    als_train = als["train_matrix"].tocsr()
+    user_factors = np.load("models/als_user_factors.npy").astype(np.float32)
+    item_factors = np.load("models/als_item_factors.npy").astype(np.float32)
+    assert user_factors.shape[0] == len(user_map) and item_factors.shape[0] == len(item_map)
+
+    inv_item = [None] * len(item_map)
+    for nid, idx in item_map.items():
+        inv_item[idx] = nid
+    assert all(n in nid_to_full for n in inv_item), "ALS nid missing from catalog"
+    als_full_pos = np.array([nid_to_full[n] for n in inv_item])
+    assert len(item_map) == 3394, f"ALS items {len(item_map)} != 3394"
+
+    tr = pd.read_parquet("data/processed/interactions_train.parquet")
+    dv = pd.read_parquet("data/processed/interactions_dev.parquet")
+
+    # Full train-clicked full-indices per warm user (ALL train nids, incl. out-of-ALS).
+    tr = tr[tr["user_id"].isin(user_map)]
+    missing_tr = set(tr["nid"].unique()) - set(nid_to_full)
+    assert not missing_tr, f"{len(missing_tr)} train nids lack catalog text"
+    tr["full_idx"] = tr["nid"].map(nid_to_full)
+    train_full = tr.groupby("user_id")["full_idx"].apply(set).to_dict()
+
+    # Full dev-relevant full-indices per warm user (KEEP out-of-ALS items).
+    dv = dv[dv["user_id"].isin(user_map)]
+    missing_dv = set(dv["nid"].unique()) - set(nid_to_full)
+    assert not missing_dv, f"{len(missing_dv)} dev nids lack catalog text"
+    dv["full_idx"] = dv["nid"].map(nid_to_full)
+    dev_full = dv.groupby("user_id")["full_idx"].apply(set).to_dict()
+
+    return {
+        "news": news, "full_nids": full_nids, "nid_to_full": nid_to_full,
+        "full_tfidf": full_tfidf, "vocab_size": vocab_size,
+        "user_map": user_map, "item_map": item_map, "inv_item": inv_item,
+        "als_full_pos": als_full_pos, "als_train": als_train,
+        "user_factors": user_factors, "item_factors": item_factors,
+        "train_full": train_full, "dev_full": dev_full,
+    }
+
+
 def main():
     raise NotImplementedError
 
