@@ -205,6 +205,55 @@ def sweep_table_b(eval_users: list, data: dict, scores: dict,
     return rows
 
 
+def sweep_table_a(eval_users: list, data: dict, scores: dict,
+                  k_values=(5, 10, 20), alphas=(0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)):
+    """Restricted ALS-space sweep (3,394 items). Same users, same formulas.
+
+    Content vectors are the full-catalog norms sliced to ALS positions and
+    RE-min-maxed over the restricted space (mirrors old protocol where
+    min-max ran over the candidate space actually ranked). Relevant =
+    in-ALS dev items minus in-ALS train items. Users with empty in-space
+    relevant are skipped (reported via n_eval).
+    """
+    n_als = len(data["item_map"])
+    als_pos = data["als_full_pos"]
+    train_full, dev_full = data["train_full"], data["dev_full"]
+    full_to_als = {f: a for a, f in enumerate(als_pos.tolist())}
+    kmax = max(k_values)
+    rows = []
+    for alpha in alphas:
+        acc = {f"{m}@{k}": [] for m in ("precision", "recall", "map", "ndcg") for k in k_values}
+        rec_union, hit_users, n_eval = set(), 0, 0
+        for uid in eval_users:
+            rel_full = dev_full[uid] - train_full[uid]
+            rel = {full_to_als[f] for f in rel_full if f in full_to_als}
+            ti_full = train_full[uid]
+            ti = {full_to_als[f] for f in ti_full if f in full_to_als}
+            if not rel or not ti:
+                continue
+            n_eval += 1
+            c_norm_full, cf_norm = scores[uid]
+            c_als = _minmax(c_norm_full[als_pos])
+            s = alpha * c_als + (1 - alpha) * cf_norm
+            s[list(ti)] = -np.inf
+            rec = _topk_sorted(s, kmax)
+            if kmax >= 10:
+                rec_union.update(rec[:10])
+                if set(rec[:10]) & rel:
+                    hit_users += 1
+            acc_row = _metrics_at_ks(rec, rel, list(k_values))
+            for k_, v_ in acc_row.items():
+                acc[k_].append(v_)
+        row = {"alpha": alpha, "n_eval": n_eval,
+               "coverage@10": len(rec_union) / n_als,
+               "distinct_items@10": len(rec_union),
+               "hit_rate@10": (hit_users / n_eval) if n_eval else 0.0}
+        for m_, vs_ in acc.items():
+            row[m_] = float(np.mean(vs_)) if vs_ else 0.0
+        rows.append(row)
+    return rows
+
+
 def main():
     raise NotImplementedError
 
