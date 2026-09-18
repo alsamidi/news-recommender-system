@@ -1,0 +1,40 @@
+{
+  "protocol": "same-as-hybrid: als-item-space, dev-via-train-maps, mask-train, first-2000-test-users, skip-empty-train/relevant",
+  "k_values": [
+    5,
+    10,
+    20
+  ],
+  "n_users_train_space": 15608,
+  "n_sampled_test_users": 1660,
+  "n_eval_content": 1652,
+  "n_eval_popularity": 1652,
+  "content_based_tfidf": {
+    "precision@5": 0.0029055690072639227,
+    "precision@10": 0.003813559322033899,
+    "precision@20": 0.00423728813559322,
+    "recall@5": 0.009579297820823245,
+    "recall@10": 0.023320217917675544,
+    "recall@20": 0.050051164533610054,
+    "map@5": 0.003941350551520043,
+    "map@10": 0.005675115620636202,
+    "map@20": 0.007542313223506252,
+    "ndcg@5": 0.0058431484850811075,
+    "ndcg@10": 0.010818537044208381,
+    "ndcg@20": 0.01848411994028321
+  },
+  "popularity_train_count": {
+    "precision@5": 0.0,
+    "precision@10": 0.00024213075060532688,
+    "precision@20": 0.00021186440677966104,
+    "recall@5": 0.0,
+    "recall@10": 0.0008885333794534763,
+    "recall@20": 0.0019478554133517813,
+    "map@5": 0.0,
+    "map@10": 0.0001042035559179281,
+    "map@20": 0.00017914878824814833,
+    "ndcg@5": 0.0,
+    "ndcg@10": 0.0003507524884373225,
+    "ndcg@20": 0.0006597676105231402
+  }
+}

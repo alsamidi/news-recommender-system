@@ -1,0 +1,10 @@
+{
+  "model": "firqaaa/indo-sentence-bert-base",
+  "n_news": 93698,
+  "dim": 768,
+  "dtype": "float32",
+  "l2_normalized": true,
+  "text_source": "title + abstract MENTAH",
+  "row_order": "sejajar news_processed.parquet (reset_index)",
+  "size_MB": 287.8
+}

@@ -76,6 +76,23 @@ python -m src.models.hybrid.train --config configs/hybrid.yaml
 python -m src.evaluation.run --model hybrid --config configs/hybrid.yaml
 ```
 
+### 5b. Baseline standalone, alpha sweep, error coverage, IndoBERT
+```bash
+# Baseline standalone (TF-IDF content + popularity, protokol identik hybrid)
+python src/evaluation/eval_standalone.py        # -> models/standalone_baselines.json
+
+# Alpha sweep penuh 0.0 (pure CF) -> 1.0 (pure content)
+python src/evaluation/alpha_sweep.py            # -> models/alpha_sweep.json
+python src/evaluation/plot_alpha_sweep.py       # -> models/alpha_sweep_curve.png
+
+# Error/coverage: mengapa content menang (unseen items, cold-start, coverage@10)
+python src/evaluation/error_coverage.py         # -> models/error_coverage.json
+
+# Eksperimen 2 IndoBERT (butuh models/indobert_embeddings.npy 288 MB;
+# generate via notebooks/indobert_encode_colab.ipynb di Colab GPU, file .npy TIDAK di-commit)
+python src/evaluation/indobert_eval.py          # -> models/indobert_eval.json
+```
+
 ### 6. Run API
 ```bash
 uvicorn src.api.main:app --reload --port 8000
