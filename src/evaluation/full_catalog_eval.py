@@ -255,7 +255,61 @@ def sweep_table_a(eval_users: list, data: dict, scores: dict,
 
 
 def main():
-    raise NotImplementedError
+    import json
+    SEED, MAX_USERS = 42, 2000
+    K_VALUES = [5, 10, 20]
+    ALPHAS = [round(a * 0.1, 1) for a in range(0, 11)]
+    print("loading...", flush=True)
+    data = load_all()
+    eligible = [u for u in data["train_full"]
+                if u in data["dev_full"] and (data["dev_full"][u] - data["train_full"][u])]
+    print(f"eligible warm users: {len(eligible)}", flush=True)
+    eval_users = seeded_sample(sorted(eligible), MAX_USERS, seed=SEED)
+    print(f"sampled: {len(eval_users)} (seed={SEED})", flush=True)
+    print("precomputing scores...", flush=True)
+    scores = precompute_user_scores(eval_users, data)
+    print("Table B (full catalog)...", flush=True)
+    table_b = sweep_table_b(eval_users, data, scores, K_VALUES, ALPHAS)
+    for r in table_b:
+        print(f"  B alpha={r['alpha']:.1f} ndcg@10={r['ndcg@10']:.5f} map@10={r['map@10']:.5f} hit@10={r['hit_rate@10']:.4f}", flush=True)
+    print("Table A (restricted)...", flush=True)
+    table_a = sweep_table_a(eval_users, data, scores, K_VALUES, ALPHAS)
+    for r in table_a:
+        print(f"  A alpha={r['alpha']:.1f} ndcg@10={r['ndcg@10']:.5f} map@10={r['map@10']:.5f} hit@10={r['hit_rate@10']:.4f}", flush=True)
+    out = {
+        "meta": {
+            "seed": SEED, "max_users": MAX_USERS, "k_values": K_VALUES,
+            "alphas": ALPHAS, "n_catalog_full": len(data["full_nids"]),
+            "n_als_items": len(data["item_map"]), "n_warm_users": len(data["user_map"]),
+            "n_eligible_warm": len(eligible), "n_sampled": len(eval_users),
+            "vocab_size": data["vocab_size"],
+            "leakage_guard": "vectorizer loaded frozen (fit on train only); transform() only on full catalog",
+            "protocol": "warm users only; full train history for mask+profile; Table A candidates=ALS space, Table B candidates=full catalog; pure CF (a=0) masks unknown items",
+        },
+        "table_a_restricted": table_a,
+        "table_b_full_catalog": table_b,
+    }
+    with open("models/full_catalog_eval.json", "w") as f:
+        json.dump(out, f, indent=2)
+    lines = ["# Full-catalog evaluation: Table A (restricted) vs Table B (full catalog)",
+             "", f"seed=42, sampled={len(eval_users)}, eligible={len(eligible)}", ""]
+    for name, rows, denom in (("Table A — Restricted CF Item Space (3,394 items)",
+                               table_a, 3394),
+                              ("Table B — Full Catalog / Cold-Start Items (93,698 items)",
+                               table_b, 93698)):
+        lines += [f"## {name}", "",
+                  "| alpha | P@10 | R@10 | MAP@10 | NDCG@10 | P@20 | R@20 | MAP@20 | NDCG@20 | cov@10 | hit@10 | n |",
+                  "|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+        for r in rows:
+            lines.append(
+                f"| {r['alpha']:.1f} | {r['precision@10']:.5f} | {r['recall@10']:.5f} | "
+                f"{r['map@10']:.5f} | {r['ndcg@10']:.5f} | {r['precision@20']:.5f} | "
+                f"{r['recall@20']:.5f} | {r['map@20']:.5f} | {r['ndcg@20']:.5f} | "
+                f"{r['coverage@10']:.4f} | {r['hit_rate@10']:.4f} | {r['n_eval']} |")
+        lines += ["", f"coverage denominator = {denom}", ""]
+    with open("models/full_catalog_tables.md", "w") as f:
+        f.write("\n".join(lines) + "\n")
+    print("wrote models/full_catalog_eval.json + models/full_catalog_tables.md", flush=True)
 
 
 if __name__ == "__main__":
