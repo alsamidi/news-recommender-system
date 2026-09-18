@@ -61,6 +61,14 @@ def expand_cf_scores(cf_norm_known: np.ndarray, als_full_pos: np.ndarray,
     return full
 
 
+def seeded_sample(users: list, max_users: int, seed: int = 42) -> list:
+    """Deterministic sample: shuffle a copy with seed, take first max_users."""
+    rng = np.random.default_rng(seed)
+    order = list(users)
+    rng.shuffle(order)
+    return order[:max_users]
+
+
 def main():
     raise NotImplementedError
 

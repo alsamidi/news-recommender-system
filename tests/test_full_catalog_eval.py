@@ -53,3 +53,15 @@ def test_expand_cf_unknown_zero_and_alpha0_masks():
     pure = expand_cf_scores(cf_norm_known, als_pos, n_full=5, alpha=0.0)
     assert np.isneginf(pure[0]) and np.isneginf(pure[2]) and np.isneginf(pure[4])
     assert pure[1] == 0.2 and pure[3] == 0.8
+
+
+def test_seeded_sample_reproducible_and_bounded():
+    from evaluation.full_catalog_eval import seeded_sample
+    users = [f"u{i}" for i in range(100)]
+    a = seeded_sample(users, 20, seed=42)
+    b = seeded_sample(users, 20, seed=42)
+    c = seeded_sample(users, 20, seed=7)
+    assert a == b and len(a) == 20 and len(set(a)) == 20
+    assert set(a) != set(c)  # different seed -> different set (overwhelmingly likely)
+    assert seeded_sample(users[:5], 20, seed=42) == seeded_sample(users[:5], 20, seed=42)
+    assert len(seeded_sample(users[:5], 20, seed=42)) == 5  # capped, no crash
