@@ -166,6 +166,45 @@ def precompute_user_scores(eval_users: list, data: dict):
     return out
 
 
+def sweep_table_b(eval_users: list, data: dict, scores: dict,
+                  k_values=(5, 10, 20), alphas=(0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)):
+    """Full-catalog sweep. Returns list of row dicts (one per alpha)."""
+    n_full = len(data["full_nids"])
+    als_pos = data["als_full_pos"]
+    train_full, dev_full = data["train_full"], data["dev_full"]
+    kmax = max(k_values)
+    rows = []
+    for alpha in alphas:
+        acc = {f"{m}@{k}": [] for m in ("precision", "recall", "map", "ndcg") for k in k_values}
+        rec_union, hit_users, n_eval = set(), 0, 0
+        for uid in eval_users:
+            ti = train_full[uid]
+            rel = dev_full[uid] - ti
+            if not rel:
+                continue
+            n_eval += 1
+            c_norm, cf_norm = scores[uid]
+            cf_full = expand_cf_scores(cf_norm, als_pos, n_full, alpha)
+            s = alpha * c_norm + (1 - alpha) * cf_full
+            s[list(ti)] = -np.inf
+            rec = _topk_sorted(s, kmax)
+            if kmax >= 10:
+                rec_union.update(rec[:10])
+                if set(rec[:10]) & rel:
+                    hit_users += 1
+            acc_row = _metrics_at_ks(rec, rel, list(k_values))
+            for k_, v_ in acc_row.items():
+                acc[k_].append(v_)
+        row = {"alpha": alpha, "n_eval": n_eval,
+               "coverage@10": len(rec_union) / n_full,
+               "distinct_items@10": len(rec_union),
+               "hit_rate@10": (hit_users / n_eval) if n_eval else 0.0}
+        for m_, vs_ in acc.items():
+            row[m_] = float(np.mean(vs_)) if vs_ else 0.0
+        rows.append(row)
+    return rows
+
+
 def main():
     raise NotImplementedError
 
