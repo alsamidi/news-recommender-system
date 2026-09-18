@@ -141,6 +141,31 @@ def load_all():
     }
 
 
+def precompute_user_scores(eval_users: list, data: dict):
+    """Return dict user_id -> (content_norm_full32, cf_norm_known32).
+
+    content profile = mean TF-IDF rows of the user's FULL train set
+    (dot = cosine since rows are L2-normalized); min-maxed per user.
+    cf = user factor dot item factors; min-maxed per user over ALS space.
+    float32: 2000 users x 93698 items = ~750MB (float64 would be ~1.5GB).
+    Ranking unaffected (monotone cast, top-k identical).
+    """
+    full_tfidf = data["full_tfidf"]
+    uf, itf = data["user_factors"], data["item_factors"]
+    user_map = data["user_map"]
+    train_full = data["train_full"]
+    out = {}
+    for uid in eval_users:
+        ti = sorted(train_full[uid])
+        prof = full_tfidf[ti].mean(axis=0)
+        content_raw = np.asarray(prof @ full_tfidf.T).ravel()
+        u_idx = user_map[uid]
+        cf_raw = uf[u_idx] @ itf.T
+        out[uid] = (_minmax(content_raw).astype(np.float32),
+                    _minmax(cf_raw).astype(np.float32))
+    return out
+
+
 def main():
     raise NotImplementedError
 
