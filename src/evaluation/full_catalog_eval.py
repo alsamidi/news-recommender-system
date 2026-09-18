@@ -44,6 +44,23 @@ def _metrics_at_ks(recommended: list, relevant: set, k_values: list) -> dict:
     return out
 
 
+def expand_cf_scores(cf_norm_known: np.ndarray, als_full_pos: np.ndarray,
+                     n_full: int, alpha: float) -> np.ndarray:
+    """Expand ALS-space CF scores to full-catalog length.
+
+    Known slots get their min-maxed CF value; unknown slots get 0.0 so the
+    hybrid can still rank them via content. At exactly alpha == 0.0 (pure
+    CF) unknown slots are -inf so CF recommends only ALS-known items.
+    """
+    full = np.zeros(n_full, dtype=float)
+    full[np.asarray(als_full_pos)] = np.asarray(cf_norm_known, dtype=float)
+    if alpha == 0.0:
+        mask = np.ones(n_full, dtype=bool)
+        mask[np.asarray(als_full_pos)] = False
+        full[mask] = -np.inf
+    return full
+
+
 def main():
     raise NotImplementedError
 
