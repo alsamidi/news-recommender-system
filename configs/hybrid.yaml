@@ -1,8 +1,8 @@
 # Hybrid Model Config (Content + CF) - Weighted Hybrid (no LightFM)
 model:
   type: "weighted_hybrid"
-  content_weight: 0.4   # alpha: content-based contribution
-  cf_weight: 0.6        # 1-alpha: collaborative filtering contribution
+  content_weight: 0.8   # tuned alpha on hybrid-only sweep (0.1-0.9)
+  cf_weight: 0.2       # 1-alpha
 
 # Component model paths
 components:
