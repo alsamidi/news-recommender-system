@@ -1,0 +1,147 @@
+{
+  "meta": {
+    "seed": 42,
+    "max_users": 2000,
+    "k_values": [
+      10
+    ],
+    "n_catalog_full": 93698,
+    "warm_protocol": "identik Table B full_catalog_eval: full catalog, mask train, profil mean TF-IDF train",
+    "warm_sampled": 2000,
+    "warm_eligible": 2858,
+    "cold_protocol": "user tanpa interaksi train; session leave-last-out dalam dev (klik diurut waktu, history = semua kecuali terakhir, relevant = terakhir); profil TF-IDF dari history session; CF diproksi pseudo-user factor (mean item factors ALS item session), fallback popularity; hybrid = alpha*content + (1-alpha)*cf_pseudo, full catalog, mask session",
+    "cold_sampled": 2000,
+    "cold_usable_sessions": 22703,
+    "leakage_guard": "vectorizer frozen; cold user tidak punya user factor ALS (tidak pernah lihat data train)"
+  },
+  "table_c_warm": [
+    {
+      "method": "cf",
+      "alpha": 0.0,
+      "n_eval": 2000,
+      "coverage@10": 0.012134730730645265,
+      "distinct_items@10": 1137,
+      "hit_rate@10": 0.0085,
+      "precision@10": 0.0008500000000000001,
+      "recall@10": 0.0029720238095238094,
+      "map@10": 0.0011658234126984128,
+      "ndcg@10": 0.0020044235755508682
+    },
+    {
+      "method": "content",
+      "alpha": 1.0,
+      "n_eval": 2000,
+      "coverage@10": 0.046479113748425796,
+      "distinct_items@10": 4355,
+      "hit_rate@10": 0.0005,
+      "precision@10": 5e-05,
+      "recall@10": 0.0001,
+      "map@10": 2.5e-05,
+      "ndcg@10": 7.303417492135322e-05
+    },
+    {
+      "method": "hybrid",
+      "alpha": 0.4,
+      "n_eval": 2000,
+      "coverage@10": 0.0216119874490384,
+      "distinct_items@10": 2025,
+      "hit_rate@10": 0.009,
+      "precision@10": 0.00095,
+      "recall@10": 0.0030537301587301585,
+      "map@10": 0.0012016534391534393,
+      "ndcg@10": 0.0020800621845832906
+    },
+    {
+      "method": "hybrid",
+      "alpha": 0.8,
+      "n_eval": 2000,
+      "coverage@10": 0.04464342888855685,
+      "distinct_items@10": 4183,
+      "hit_rate@10": 0.002,
+      "precision@10": 0.0002,
+      "recall@10": 0.0006,
+      "map@10": 0.00010729166666666667,
+      "ndcg@10": 0.00032082442799658505
+    }
+  ],
+  "table_d_cold": [
+    {
+      "method": "content",
+      "alpha": 1.0,
+      "n_eval": 2000,
+      "coverage@10": 0.035358278725266284,
+      "distinct_items@10": 3313,
+      "hit_rate@10": 0.0035,
+      "precision@10": 0.00035000000000000005,
+      "recall@10": 0.0035,
+      "map@10": 0.0007603174603174602,
+      "ndcg@10": 0.0013923906357309944,
+      "note": "users_without_pseudo_cf=836"
+    },
+    {
+      "method": "hybrid_pseudo_cf",
+      "alpha": 0.0,
+      "n_eval": 1164,
+      "coverage@10": 0.006595658391854682,
+      "distinct_items@10": 618,
+      "hit_rate@10": 0.011168384879725086,
+      "precision@10": 0.0011168384879725085,
+      "recall@10": 0.011168384879725086,
+      "map@10": 0.004985204276441389,
+      "ndcg@10": 0.006450401358393239,
+      "note": "users_without_pseudo_cf=836"
+    },
+    {
+      "method": "hybrid_pseudo_cf",
+      "alpha": 0.4,
+      "n_eval": 1164,
+      "coverage@10": 0.011718499861256377,
+      "distinct_items@10": 1098,
+      "hit_rate@10": 0.01632302405498282,
+      "precision@10": 0.0016323024054982818,
+      "recall@10": 0.01632302405498282,
+      "map@10": 0.007062401134566084,
+      "ndcg@10": 0.009205525259434789,
+      "note": "users_without_pseudo_cf=836"
+    },
+    {
+      "method": "hybrid_pseudo_cf",
+      "alpha": 0.8,
+      "n_eval": 1164,
+      "coverage@10": 0.022551175051762046,
+      "distinct_items@10": 2113,
+      "hit_rate@10": 0.010309278350515464,
+      "precision@10": 0.0010309278350515466,
+      "recall@10": 0.010309278350515464,
+      "map@10": 0.0019268532155130094,
+      "ndcg@10": 0.003822690466990483,
+      "note": "users_without_pseudo_cf=836"
+    },
+    {
+      "method": "hybrid_pseudo_cf",
+      "alpha": 1.0,
+      "n_eval": 1164,
+      "coverage@10": 0.023308928685777712,
+      "distinct_items@10": 2184,
+      "hit_rate@10": 0.005154639175257732,
+      "precision@10": 0.0005154639175257732,
+      "recall@10": 0.005154639175257732,
+      "map@10": 0.0012204767359406533,
+      "ndcg@10": 0.0021440862930791247,
+      "note": "users_without_pseudo_cf=836"
+    },
+    {
+      "method": "popularity",
+      "alpha": null,
+      "n_eval": 2000,
+      "coverage@10": 0.00011739845034045551,
+      "distinct_items@10": 11,
+      "hit_rate@10": 0.0,
+      "precision@10": 0.0,
+      "recall@10": 0.0,
+      "map@10": 0.0,
+      "ndcg@10": 0.0,
+      "note": "users_without_pseudo_cf=836"
+    }
+  ]
+}
