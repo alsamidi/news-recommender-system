@@ -69,7 +69,7 @@ Pertanyaan Bab IV: bagaimana perilaku sistem saat informasi user tersedia vs tid
 
 - Protokol: user tanpa interaksi train. Session-based leave-last-out dalam dev (klik diurut waktu; history = semua kecuali terakhir; relevant = klik terakhir). Profil TF-IDF dari history session; CF diproksi pseudo-user factor = mean ALS item-factors dari item session yang ada di ALS; fallback non-personalized = popularity train; full catalog, mask session. Sampel 2.000/22.703 session usable.
 - Hasil: **α=0,4 menghasilkan NDCG@10 tertinggi (0,00921; MAP@10 0,00706; hit@10 0,0163) pada subset yang memiliki setidaknya satu item session di ruang ALS (n=1.164)**. Pure content pada n=2.000 penuh hanya 0,00139; popularity 0,00000.
-- **Keterbatasan eksplisit: 836/2.000 session cold tidak memiliki item ALS, sehingga CF tidak dapat dibentuk untuk subset itu.** Baris `hybrid_pseudo_cf` (α=0/0,4/0,8/1,0) hanya dievaluasi pada n=1.164 yang memiliki pseudo-CF; baris `content` dan `popularity` dievaluasi pada n=2.000 penuh. Perbandingan antar-baris Table D karena itu tidak apple-to-apple tanpa memperhatikan kolom n.
+- **Keterbatasan eksplisit: 836/2.000 session cold tidak memiliki item ALS, sehingga CF tidak dapat dibentuk untuk subset itu.** Baris `hybrid_pseudo_cf` (α=0/0,4/0,8/1,0) hanya dievaluasi pada n=1.164 yang memiliki pseudo-CF; baris `content` dan `popularity` dievaluasi pada n=2.000 penuh. Perbandingan antar-baris Table D karena itu **tidak dapat dibandingkan secara langsung** tanpa memperhatikan kolom n.
 
 ## Reproducibility
 
