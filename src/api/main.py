@@ -31,6 +31,7 @@ class ArticleResponse(BaseModel):
     nid: str
     title: Optional[str] = None
     category: Optional[str] = None
+    subcategory: Optional[str] = None
     score: float
 
 

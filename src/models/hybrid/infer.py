@@ -56,6 +56,7 @@ class HybridRecommender:
         news = data["news"]
         self._titles = news["title"].tolist()
         self._categories = news["category"].tolist()
+        self._subcategories = news["subcategory"].tolist()
         pos: dict = {}
         for i, n in enumerate(data["full_nids"]):
             pos.setdefault(n, []).append(i)
@@ -113,8 +114,10 @@ class HybridRecommender:
         return out
 
     def _decorate(self, rec: list, scores: np.ndarray) -> list:
-        nids, titles, cats = self._d["full_nids"], self._titles, self._categories
-        return [{"nid": nids[i], "title": titles[i], "category": cats[i],
+        nids = self._d["full_nids"]
+        return [{"nid": nids[i], "title": self._titles[i],
+                 "category": self._categories[i],
+                 "subcategory": self._subcategories[i],
                  "score": float(scores[i])} for i in rec]
 
     # -- public API -------------------------------------------------------

@@ -154,6 +154,8 @@ def test_api_recommend_warm(client, recommender):
     assert r.status_code == 200
     body = r.json()
     assert body["mode"] == "warm" and body["alpha"] == ALPHA
+    assert all({"nid", "title", "category", "subcategory", "score"} <= set(a)
+               for a in body["recommendations"]), "metadata incomplete"
     assert [a["nid"] for a in body["recommendations"]] == \
         [a["nid"] for a in recommender.recommend_user(uid, top_k=5)]
 

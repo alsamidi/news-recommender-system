@@ -96,6 +96,8 @@ pytest
 uvicorn src.api.main:app --port 8000
 #    POST /recommend {"user_id": ...} (warm) atau {"history": [nid,...]} (cold)
 #    GET /article/{nid}, GET /similar/{nid}, GET /health
+# 6b. Bukti serve satu command (pytest + API live: warm/cold/fallback/similar)
+bash scripts/smoke_demo.sh
 ```
 
 ## Current Results
