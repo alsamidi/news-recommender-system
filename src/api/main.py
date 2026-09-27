@@ -12,20 +12,50 @@ from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # src/
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from models.hybrid.infer import HybridRecommender, UnknownUserError
 
+templates = Jinja2Templates(
+    directory=str(Path(__file__).resolve().parent / "templates"))
+
 rec: HybridRecommender | None = None
+demo_presets: dict | None = None
+
+
+def resolve_presets(data: dict) -> dict:
+    """Deterministic demo fixtures from frozen artifacts (P3.2).
+
+    Same selection rule as scripts/smoke_demo.sh: first eligible warm user,
+    first usable cold session (with pseudo-CF), first catalog nids outside
+    ALS space (content-only fallback case).
+    """
+    import pandas as pd
+
+    elig = sorted(u for u in data["train_full"]
+                  if u in data["dev_full"] and (data["dev_full"][u] - data["train_full"][u]))
+    dv = pd.read_parquet("data/processed/interactions_dev.parquet")
+    dv = dv.sort_values(["user_id", "time"])
+    cold = dv[~dv["user_id"].isin(set(data["user_map"]))]
+    sess = next(nids[:-1] for _, g in cold.groupby("user_id")
+                for nids in [g["nid"].tolist()]
+                if len(nids) >= 2 and nids[-1] in data["nid_to_full"]
+                and any(n in data["item_map"] for n in nids[:-1]))
+    noals = [n for n in data["full_nids"] if n not in data["item_map"]][:3]
+    return {"warm_user": elig[0], "cold_session": sess, "fallback_session": noals}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global rec
+    global rec, demo_presets
     rec = HybridRecommender.load()
+    demo_presets = resolve_presets(rec._d)
     yield
     rec = None
+    demo_presets = None
 
 
 app = FastAPI(title="TA News Recommendation API", version="1.0.0",
@@ -129,6 +159,22 @@ async def article(nid: str):
         return r.article(nid)
     except KeyError as e:
         raise HTTPException(404, str(e))
+
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+async def demo_ui(request: Request):
+    """Demo viewer (P3.2). Explicitly outside the versioned API contract:
+    thin page over /recommend, presets injected from frozen artifacts."""
+    r = get_rec()
+    if demo_presets is None:
+        raise HTTPException(503, "demo presets not resolved")
+    import json
+    return templates.TemplateResponse(request, "demo.html", {
+        "alpha": r.alpha,
+        "catalog_size": len(r._d["full_nids"]),
+        "presets": demo_presets,
+        "presets_json": json.dumps(demo_presets),
+    })
 
 
 if __name__ == "__main__":

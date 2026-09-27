@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indonesian News Recommender — Demo</title>
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+         max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .meta { color: #666; font-size: 0.85rem; margin-bottom: 1.2rem; }
+  .tabs button { padding: 0.5rem 1rem; margin-right: 0.4rem; cursor: pointer;
+                 border: 1px solid #999; background: #f4f4f4; border-radius: 4px; }
+  .tabs button.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+  .panel { border: 1px solid #ccc; border-radius: 6px; padding: 1rem; margin-top: 1rem; }
+  label { display: block; font-weight: 600; margin: 0.6rem 0 0.3rem; }
+  input[type=text], textarea { width: 100%; box-sizing: border-box; padding: 0.5rem;
+                               font-family: monospace; font-size: 0.85rem; }
+  textarea { min-height: 4.5rem; }
+  .row { margin-top: 0.8rem; display: flex; gap: 0.6rem; align-items: center; }
+  button.primary { background: #1a73e8; color: #fff; border: none; border-radius: 4px;
+                   padding: 0.6rem 1.4rem; font-size: 1rem; cursor: pointer; }
+  button.preset { background: #fff; border: 1px solid #1a73e8; color: #1a73e8;
+                  border-radius: 4px; padding: 0.3rem 0.7rem; cursor: pointer; font-size: 0.8rem; }
+  .note { font-size: 0.82rem; color: #555; margin-top: 0.5rem; }
+  #status { margin-top: 0.8rem; font-size: 0.9rem; }
+  #status.error { color: #b00020; }
+  ol#results { padding-left: 1.4rem; }
+  ol#results li { margin-bottom: 0.55rem; }
+  .title { font-weight: 600; }
+  .sub { font-size: 0.82rem; color: #555; }
+  .score { font-family: monospace; font-size: 0.82rem; color: #1a73e8; }
+</style>
+</head>
+<body>
+<h1>Indonesian News Recommender</h1>
+<div class="meta">Hybrid TF-IDF + ALS &middot; full catalog {{ catalog_size }} artikel
+  &middot; &alpha; = {{ alpha }} (Table B) &middot; mode: <span id="modeLabel"></span></div>
+
+<div class="tabs">
+  <button data-mode="warm" class="active">Warm</button>
+  <button data-mode="cold">Cold</button>
+  <button data-mode="fallback">Fallback</button>
+</div>
+
+<div class="panel">
+  <div id="inputWarm">
+    <label for="userId">user_id (punya train history)</label>
+    <input type="text" id="userId" value="{{ presets.warm_user }}">
+  </div>
+  <div id="inputSession" style="display:none">
+    <label for="session">session nids (satu per baris)</label>
+    <textarea id="session"></textarea>
+  </div>
+  <div class="row">
+    <button class="primary" id="go">Recommend</button>
+    <button class="preset" id="preset">Isi preset demo</button>
+  </div>
+  <div class="note" id="modeNote"></div>
+  <div id="status"></div>
+</div>
+
+<div class="panel">
+  <strong>Recommendations</strong>
+  <ol id="results"></ol>
+</div>
+
+<script>
+const PRESETS = {{ presets_json | safe }};
+const MODES = {
+  warm:     { label: "Warm — history train → TF-IDF + ALS → Top-10",
+              note: "User punya train history; personalisasi ALS aktif (hybrid α=0,4)." },
+  cold:     { label: "Cold — session → TF-IDF + pseudo-CF → Top-10",
+              note: "User tanpa train history; CF diproksi dari item session (hybrid α=0,4)." },
+  fallback: { label: "Fallback — session tanpa item ALS → content-only → Top-10",
+              note: "Tidak ada item session di ruang ALS; sistem jatuh ke pure content." }
+};
+let mode = "warm";
+const tabs = document.querySelectorAll(".tabs button");
+const statusEl = document.getElementById("status");
+const resultsEl = document.getElementById("results");
+
+function setMode(m) {
+  mode = m;
+  tabs.forEach(b => b.classList.toggle("active", b.dataset.mode === m));
+  document.getElementById("modeLabel").textContent = MODES[m].label;
+  document.getElementById("modeNote").textContent = MODES[m].note;
+  document.getElementById("inputWarm").style.display = m === "warm" ? "" : "none";
+  document.getElementById("inputSession").style.display = m === "warm" ? "none" : "";
+  fillPreset();
+}
+function fillPreset() {
+  if (mode === "warm") document.getElementById("userId").value = PRESETS.warm_user;
+  else if (mode === "cold") document.getElementById("session").value = PRESETS.cold_session.join("\n");
+  else document.getElementById("session").value = PRESETS.fallback_session.join("\n");
+}
+tabs.forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
+document.getElementById("preset").addEventListener("click", fillPreset);
+
+document.getElementById("go").addEventListener("click", async () => {
+  statusEl.className = ""; statusEl.textContent = "Memuat…"; resultsEl.innerHTML = "";
+  let body = { top_k: 10 };
+  if (mode === "warm") body.user_id = document.getElementById("userId").value.trim();
+  else body.history = document.getElementById("session").value.split("\n").map(s => s.trim()).filter(Boolean);
+  try {
+    const r = await fetch("/recommend", { method: "POST",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!r.ok) { const e = await r.json().catch(() => ({}));
+      throw new Error(e.detail || ("HTTP " + r.status)); }
+    const data = await r.json();
+    statusEl.textContent = `OK — mode ${data.mode}, α=${data.alpha}, ${data.recommendations.length} artikel.`;
+    data.recommendations.forEach((a, i) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="title"></span><br><span class="sub"></span> <span class="score"></span>`;
+      li.querySelector(".title").textContent = `${a.title || a.nid}`;
+      li.querySelector(".sub").textContent = `${a.nid} · ${a.category || "-"}${a.subcategory ? " / " + a.subcategory : ""}`;
+      li.querySelector(".score").textContent = a.score.toFixed(4);
+      resultsEl.appendChild(li);
+    });
+  } catch (err) {
+    statusEl.className = "error"; statusEl.textContent = "Gagal: " + err.message;
+  }
+});
+setMode("warm");
+</script>
+</body>
+</html>

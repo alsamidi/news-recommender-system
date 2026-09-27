@@ -73,6 +73,7 @@ curl -sf -X POST "localhost:$PORT/recommend" -H 'Content-Type: application/json'
   -d "{\"history\":$NOALS,\"top_k\":10}" > "$OUT/fallback.json"
 curl -sf "localhost:$PORT/similar/$TOP1?top_k=5" > "$OUT/similar.json"
 curl -sf "localhost:$PORT/article/$TOP1" > "$OUT/article.json"
+curl -sf "localhost:$PORT/" > "$OUT/index.html"
 
 WARM="$WARM" SESS="$SESS" NOALS="$NOALS" TRAIN="$TRAIN" TOP1="$TOP1" OUT="$OUT" \
 python - <<'EOF'
@@ -101,6 +102,8 @@ c = check_top10(cold, "cold-session")
 f = check_top10(fb, "cold-session")  # content-only fallback, same contract
 assert len(sim["similar"]) == 5 and top1 not in {r["nid"] for r in sim["similar"]}
 assert art["nid"] == top1 and art["title"] and art["category"]
+html = open(f"{out}/index.html").read()
+assert "Indonesian News Recommender" in html and os.environ["WARM"] in html, "demo UI broken"
 
 def table(name, recs):
     print(f"--- {name} ---")

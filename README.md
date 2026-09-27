@@ -96,9 +96,10 @@ pytest
 uvicorn src.api.main:app --port 8000
 #    POST /recommend {"user_id": ...} (warm) atau {"history": [nid,...]} (cold)
 #    GET /article/{nid}, GET /similar/{nid}, GET /health
-# 6b. Bukti serve satu command (pytest + API live: warm/cold/fallback/similar)
+# 6b. Bukti serve satu command (pytest + API live: warm/cold/fallback/similar + UI)
 bash scripts/smoke_demo.sh
 # Kontrak API frozen: docs/API_CONTRACT.md (+ docs/openapi.json)
+# Demo UI (viewer atas /recommend): buka http://localhost:8000/ saat API jalan
 ```
 
 ## Current Results

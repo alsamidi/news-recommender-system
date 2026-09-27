@@ -205,3 +205,26 @@ def test_openapi_contract_surface():
     req_props = spec["components"]["schemas"]["RecommendRequest"]["properties"]
     assert "alpha" not in req_props, "per-request alpha override breaks the freeze"
     assert req_props["top_k"]["maximum"] == 100
+    assert "/" not in spec["paths"], "demo viewer must stay out of the API schema"
+
+
+def test_demo_presets_from_frozen_artifacts(recommender):
+    import api.main as api_main
+    p = api_main.resolve_presets(recommender._d)
+    d = recommender._d
+    assert p["warm_user"] in d["user_map"]
+    assert len(p["cold_session"]) >= 2
+    assert any(n in d["item_map"] for n in p["cold_session"])
+    assert len(p["fallback_session"]) == 3
+    assert all(n in d["nid_to_full"] and n not in d["item_map"]
+               for n in p["fallback_session"])
+
+
+def test_demo_ui_serves_presets(client, recommender):
+    import api.main as api_main
+    api_main.demo_presets = api_main.resolve_presets(recommender._d)
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "Indonesian News Recommender" in r.text
+    assert api_main.demo_presets["warm_user"] in r.text
+    assert 'fetch("/recommend"' in r.text

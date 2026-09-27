@@ -87,3 +87,8 @@ Data + artifacts required (frozen, never retrained at serve time):
 This contract changes only with a version bump (`1.0.0` → next), a regenerated
 `docs/openapi.json`, and an updated parity/smoke proof. New behavior belongs
 behind a new route or version, never silent drift.
+
+Out of contract (viewer, not API): `GET /` serves the P3.2 demo page
+(`src/api/templates/demo.html`, `include_in_schema=False`) — thin viewer over
+`/recommend` with server-injected presets from frozen artifacts. It never
+appears in `docs/openapi.json` (asserted by `test_openapi_contract_surface`).
