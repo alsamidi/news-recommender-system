@@ -89,7 +89,14 @@ def build_interactions(split: str) -> pd.DataFrame:
     return df
 
 
-def main():
+def main(argv=None):
+    import sys
+    argv = sys.argv[1:] if argv is None else argv
+    if "-h" in argv or "--help" in argv:
+        print("usage: python -m src.preprocessing.build_locked  "
+              "(no options; reads configs/preprocessing.yaml, "
+              "writes data/processed/*.parquet)")
+        return
     cfg = yaml.safe_load(open(BASE / "configs/preprocessing.yaml"))
     news = pd.concat([load_news("train"), load_news("dev")], ignore_index=True)
     raw = (news["title"].fillna("") + " " + news["abstract"].fillna("")).str.strip()

@@ -17,7 +17,7 @@ File `*_tables.md` hanya bacaan manusia (di-generate); **sumber resmi = file JSO
 
 Protokol bersama: seed 42, metrik frozen identik (`_metrics_at_ks`, min-max per user, top-k terurut),
 kandidat train/session selalu di-mask. Status verifikasi: seluruh baris `*_tables.md` cocok dengan
-JSON (cek per seksi), `2000 − 1164 = 836` konsisten, `pytest` 12 passed.
+JSON (cek per seksi), `2000 − 1164 = 836` konsisten, `pytest` 26 passed.
 
 ## Nilai yang diloloskan ke laporan (NDCG@10)
 

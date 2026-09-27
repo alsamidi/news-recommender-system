@@ -36,8 +36,11 @@ Pipeline Indonesia (`configs/preprocessing.yaml`, `src/preprocessing/build_locke
 | CF ALS implicit | factors 128, reg 0.01, alpha 40, 20 iterasi, min 5 interaksi/user, min 3/item (`configs/als.yaml`) | `models/als_model.pkl`, `als_user/item_factors.npy` (ruang ALS: 3.394 item) |
 | Hybrid terbobot | skor = α·content + (1−α)·CF, min-max per user (`configs/hybrid.yaml`) | `models/weighted_hybrid.pkl` |
 
-Catatan alpha: `configs/hybrid.yaml` mencatat `content_weight: 0.8` dari sweep lama (ruang ALS).
-Pada protokol full-catalog Day 4/5 (Katalog 93.698 item) nilai tertinggi yang terukur adalah **α=0,4** (lihat Evaluation).
+Catatan alpha: `configs/hybrid.yaml` final `content_weight: 0.4` — pemenang
+protokol full-catalog Day 4/5 (Katalog 93.698 item, NDCG@10 0,00208; lihat
+Evaluation). Nilai 0,8 dari sweep lama (ruang ALS saja) tersisa hanya sebagai
+catatan historis di `models/best_alpha.json` / `weighted_hybrid.pkl` dan tidak
+dipakai serving maupun angka laporan.
 
 ## Evaluation
 
