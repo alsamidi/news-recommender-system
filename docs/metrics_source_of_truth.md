@@ -108,5 +108,10 @@ user; keunggulannya kecil saat history kaya (warm) dan besar saat history absen
 2. 836/2.000 session cold tanpa item ALS tidak mendapat skor CF.
 3. Sweep α rapat (0,0–1,0 step 0,1) hanya ada di Tabel A/B; Tabel C/D hanya di
    titik 0,0/0,4/0,8/1,0.
-4. `configs/hybrid.yaml` masih mencatat `content_weight: 0.8` dari sweep lama
-   (ruang ALS); angka laporan memakai α=0,4 dari protokol full-catalog Day 4/5.
+4. Serving memakai α=0,4 dari `configs/hybrid.yaml` (`content_weight`, selaras
+   Table B Day 4/5). `models/best_alpha.json` / `models/weighted_hybrid.pkl`
+   (α=0,8) adalah catatan historis sweep ruang-ALS saja, tidak dipakai serving.
+   Paritas serving vs evaluator dibuktikan `tests/test_hybrid_inference.py`.
+   Perbedaan serving yang disengaja dan terdokumentasi di
+   `src/models/hybrid/infer.py`: mask per-nid (already-liked filtering) dan
+   dedupe presentasi (katalog menumpuk baris train+dev, 28.460 nid ganda).

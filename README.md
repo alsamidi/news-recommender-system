@@ -90,8 +90,12 @@ python src/evaluation/full_catalog_eval.py
 # 4. Evaluasi Day 5 (Table C + Table D)
 python src/evaluation/stratified_eval.py
 #    -> models/stratified_eval.json + models/stratified_tables.md
-# 5. Tes
+# 5. Tes (termasuk paritas inference vs evaluator)
 pytest
+# 6. Serve full-catalog hybrid (α=0,4 dari configs/hybrid.yaml, Day 6)
+uvicorn src.api.main:app --port 8000
+#    POST /recommend {"user_id": ...} (warm) atau {"history": [nid,...]} (cold)
+#    GET /article/{nid}, GET /similar/{nid}, GET /health
 ```
 
 ## Current Results
