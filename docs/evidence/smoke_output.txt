@@ -1,0 +1,50 @@
+=== [setup] venv: venv + demo fixtures (frozen artifacts) ===
+warm=U10045 session_items=9 top1=N62318
+=== [1] start server (port 8000) ===
+=== [2] GET / (demo UI) ===
+=== [3] /health ===
+{
+    "status": "ok",
+    "alpha": 0.4,
+    "catalog_size": 93698,
+    "als_items": 3394
+}
+=== [4] warm /recommend | [5] cold | [6] fallback | [7] similar | [8] article ===
+--- WARM Top-10 (user history -> TF-IDF + ALS) ---
+ 1. N62318   [tv          ] 0.4806  WWE Wrestler Jordan Myles Mengundurkan Diri dalam Rant Expletive-diisi
+ 2. N57081   [autos       ] 0.4577  Seorang Pria dan Shelby GT 350-nya 51 Tahun Lalu
+ 3. N59673   [music       ] 0.4513  Selena Gomez dan Julia Michaels Berciuman Sebelum Mendapatkan Tato Arr
+ 4. N23414   [travel      ] 0.4383  FAA mengancam untuk mendaratkan 38 jet Southwest Airlines atas masalah
+ 5. N15719   [autos       ] 0.3934  2020 Ford Mustang Shelby GT350 vs GT500: Mana Mobil Olahraga yang Lebi
+ 6. N61768   [sports      ] 0.3811  Josh Gordon Mengakui Keputusan Patriot Untuk Menghindarinya Sangat Men
+ 7. N6477    [finance     ] 0.3758  Walmart merilis iklan Black Friday dengan Apple Watch seharga $ 129, p
+ 8. N27258   [sports      ] 0.3710  Saquon Barkley menolak untuk ditutup untuk musim meskipun cedera
+ 9. N61740   [sports      ] 0.3660  Browns memotong WR Antonio Callaway beberapa jam sebelum kickoff di te
+10. N47229   [autos       ] 0.3653  Ini adalah Harley-Davidson Motorcycle Terbaik Anda Dapatkan untuk Mura
+--- COLD Top-10 (session -> TF-IDF + pseudo-CF) ---
+ 1. N43073   [sports      ] 0.6129  Pac-12 menangguhkan wasit setelah kesalahan mengerikan selama Washingt
+ 2. N40725   [news        ] 0.5966  Pengacara Gabbard Minta Clinton Mundur dari Komentar 'Menghina' Aset R
+ 3. N30071   [news        ] 0.5845  Trump menyulap negara dan impeachment pada hari bersejarah
+ 4. N26952   [news        ] 0.5799  Top Jenderal AS mengatakan 500-600 pasukan Amerika untuk tinggal di Su
+ 5. N39149   [news        ] 0.5790  Sumber AP: 2 pejabat AS mendengar panggilan Trump dengan Sondland
+ 6. N45375   [sports      ] 0.5594  Memprediksi Peringkat Sepak Bola Perguruan Tinggi untuk Minggu 12: Min
+ 7. N3380    [news        ] 0.5564  3 hal yang harus diperhatikan dalam sidang impeachment Trump hari Juma
+ 8. N29839   [lifestyle   ] 0.5487  Solusi Sederhana untuk Membantu Anda Membuang Semut Secara Permanen
+ 9. N44616   [news        ] 0.5469  Demokrat merancang beberapa kesempatan untuk membuat kasus untuk pemak
+10. N13801   [finance     ] 0.5374  60+ Restoran Dimana Veteran Makan Gratis di Hari Veteran Tahun Ini
+--- COLD FALLBACK Top-10 (no ALS item -> content-only) ---
+ 1. N47331   [health      ] 0.5063  Kecewa Karena Berusaha Menurunkan Lemak Perut dan Gagal? Dapatkan Kebe
+ 2. N56301   [health      ] 0.4620  10 Cara Membakar Lemak Perut Dalam 10 Menit
+ 3. N16912   [health      ] 0.4531  Mendayung Dapat Membantu Anda Membakar Lemak Perut, Tetapi Anda Perlu 
+ 4. N62949   [health      ] 0.4407  15 Kebiasaan Sarapan Terbaik Untuk Menurunkan 10 Pound
+ 5. N60172   [health      ] 0.4394  Pria Sehat: Pria dan Lemak Perut: Kombinasi yang Buruk
+ 6. N16032   [health      ] 0.4175  Jika Anda Memiliki Metabolisme yang Lambat, Berikut adalah 5 Cara yang
+ 7. N9056    [lifestyle   ] 0.4170  Inilah yang dilakukan Ratu Elizabeth tentang perseteruan Pangeran Will
+ 8. N60584   [health      ] 0.4050  Latihan-latihan mengerikan itu Mungkin Tidak Membantu Anda Menghilangk
+ 9. N63823   [lifestyle   ] 0.3967  Pangeran Charles Terkena Salah Satu Penipuan Seni Paling Luar Biasa da
+10. N26581   [health      ] 0.3799  Jika Anda Tampaknya Tidak Bisa Menghilangkan Lemak Perut, Para Pakar M
+ALL SMOKE CHECKS PASSED
+=== [9] shutdown + [10] port closed ===
+port 8000 closed
+=== [11] pytest ===
+26 passed, 1 warning in 9.59s

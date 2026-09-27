@@ -1,23 +1,21 @@
 #!/usr/bin/env bash
-# P2 final smoke test (one command): pytest + live API demo.
+# P3.3 final application validation (one command).
 #
-#   bash scripts/smoke_demo.sh
+#   bash scripts/smoke_demo.sh [VENV_DIR=path/to/venv]
 #
-# Proof produced: unit/parity tests green, then a booted server answering
-# /health, /recommend warm (Top-10), /recommend cold (Top-10),
-# /recommend cold-no-ALS (content-only fallback), /similar, /article.
+# Checklist order: fixtures -> start server -> GET / -> /health ->
+# warm /recommend -> cold /recommend -> fallback /recommend ->
+# /similar -> /article -> shutdown -> port closed -> pytest.
 # Fails non-zero on any broken step. Server is always cleaned up (trap).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PORT=8000
 OUT=/tmp/opencode/smoke_demo
+VENV_DIR="${VENV_DIR:-venv}"
 mkdir -p "$OUT"
 
-echo "=== [1/4] pytest ==="
-source venv/bin/activate
-python -m pytest -q 2>&1 | tail -1
-
-echo "=== [2/4] resolve demo fixtures (frozen artifacts, deterministic) ==="
+echo "=== [setup] venv: $VENV_DIR + demo fixtures (frozen artifacts) ==="
+source "$VENV_DIR/bin/activate"
 eval "$(python - <<'EOF'
 import sys; sys.path.insert(0, 'src')
 import json
@@ -48,7 +46,7 @@ EOF
 )"
 echo "warm=$WARM session_items=$(python -c "import json;print(len(json.loads('$SESS')))") top1=$TOP1"
 
-echo "=== [3/4] boot API (port $PORT) ==="
+echo "=== [1] start server (port $PORT) ==="
 uvicorn src.api.main:app --port "$PORT" > "$OUT/uvicorn.log" 2>&1 &
 SERVER_PID=$!
 cleanup() {
@@ -62,9 +60,14 @@ trap cleanup EXIT
 for _ in $(seq 1 40); do
   curl -sf "localhost:$PORT/health" > "$OUT/health.json" && break || sleep 2
 done
+
+echo "=== [2] GET / (demo UI) ==="
+curl -sf "localhost:$PORT/" > "$OUT/index.html"
+
+echo "=== [3] /health ==="
 python -m json.tool "$OUT/health.json"
 
-echo "=== [4/4] demo requests ==="
+echo "=== [4] warm /recommend | [5] cold | [6] fallback | [7] similar | [8] article ==="
 curl -sf -X POST "localhost:$PORT/recommend" -H 'Content-Type: application/json' \
   -d "{\"user_id\":\"$WARM\",\"top_k\":10}" > "$OUT/warm.json"
 curl -sf -X POST "localhost:$PORT/recommend" -H 'Content-Type: application/json' \
@@ -73,7 +76,6 @@ curl -sf -X POST "localhost:$PORT/recommend" -H 'Content-Type: application/json'
   -d "{\"history\":$NOALS,\"top_k\":10}" > "$OUT/fallback.json"
 curl -sf "localhost:$PORT/similar/$TOP1?top_k=5" > "$OUT/similar.json"
 curl -sf "localhost:$PORT/article/$TOP1" > "$OUT/article.json"
-curl -sf "localhost:$PORT/" > "$OUT/index.html"
 
 WARM="$WARM" SESS="$SESS" NOALS="$NOALS" TRAIN="$TRAIN" TOP1="$TOP1" OUT="$OUT" \
 python - <<'EOF'
@@ -114,3 +116,14 @@ table("COLD Top-10 (session -> TF-IDF + pseudo-CF)", c)
 table("COLD FALLBACK Top-10 (no ALS item -> content-only)", f)
 print("ALL SMOKE CHECKS PASSED")
 EOF
+
+echo "=== [9] shutdown + [10] port closed ==="
+trap - EXIT
+cleanup
+if curl -sf --max-time 2 "localhost:$PORT/health" >/dev/null 2>&1; then
+  echo "FATAL: port $PORT still open after shutdown"; exit 1
+fi
+echo "port $PORT closed"
+
+echo "=== [11] pytest ==="
+python -m pytest -q 2>&1 | tail -1

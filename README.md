@@ -123,5 +123,5 @@ Keterbatasan yang dibawa ke Bab IV: (1) skor absolut kecil — task ranking 93.6
 - [x] Hybrid evaluation
 - [x] Full-catalog evaluation
 - [x] Warm/cold stratified evaluation
-- [ ] Final system/application layer
+- [x] Final system/application layer (API v1.0.0 frozen + demo UI, bukti: `docs/evidence/`)
 - [ ] Final thesis documentation
