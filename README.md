@@ -98,6 +98,7 @@ uvicorn src.api.main:app --port 8000
 #    GET /article/{nid}, GET /similar/{nid}, GET /health
 # 6b. Bukti serve satu command (pytest + API live: warm/cold/fallback/similar)
 bash scripts/smoke_demo.sh
+# Kontrak API frozen: docs/API_CONTRACT.md (+ docs/openapi.json)
 ```
 
 ## Current Results

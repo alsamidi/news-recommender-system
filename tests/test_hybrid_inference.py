@@ -35,6 +35,14 @@ def test_serving_alpha_is_final_04(recommender):
     assert serving_alpha() == ALPHA == recommender.alpha
 
 
+def test_serving_alpha_matches_table_b_winner():
+    """Serving alpha must equal the evaluated full-catalog winner (P3.1)."""
+    import json
+    rows = json.load(open("models/full_catalog_eval.json"))["table_b_full_catalog"]
+    winner = max(rows, key=lambda r: r["ndcg@10"])["alpha"]
+    assert serving_alpha() == winner == ALPHA
+
+
 def dedupe_positions(d, rec, top_k=TOP_K):
     """Presentation rule shared with HybridRecommender._select (test copy)."""
     seen, out = set(), []
@@ -110,6 +118,7 @@ def test_cold_parity_topk(recommender):
     assert [a["nid"] for a in got] == [d["full_nids"][i] for i in expected_idx]
     assert len({a["nid"] for a in got}) == TOP_K, "duplicate nids served"
     assert np.allclose([a["score"] for a in got], [s[i] for i in expected_idx])
+    assert not ({a["nid"] for a in got} & set(hist)), "session items leaked"
 
 
 def test_cold_fallback_no_als_item_is_pure_content(recommender):
@@ -166,6 +175,10 @@ def test_api_recommend_cold_and_errors(client, recommender):
     assert r.status_code == 200 and r.json()["mode"] == "cold-session"
     assert client.post("/recommend", json={"user_id": "U000000_nope"}).status_code == 404
     assert client.post("/recommend", json={"top_k": 5}).status_code == 400
+    hist = cold_session(recommender._d)
+    uid = eligible_users(recommender._d, n=1)[0]
+    r = client.post("/recommend", json={"user_id": uid, "history": hist})
+    assert r.status_code == 400, "ambiguous warm+cold input must be rejected"
 
 
 def test_similar_excludes_self_and_ranks_desc(recommender):
@@ -176,3 +189,19 @@ def test_similar_excludes_self_and_ranks_desc(recommender):
     scores = [a["score"] for a in got]
     assert all(b <= a for a, b in zip(scores, scores[1:]))
     assert recommender.article(nid)["nid"] == nid
+
+
+def test_openapi_contract_surface():
+    """Frozen contract surface (P3.1): exactly these 4 routes, these schemas."""
+    import api.main as api_main
+    spec = api_main.app.openapi()
+    assert set(spec["paths"]) == {"/health", "/recommend",
+                                  "/similar/{nid}", "/article/{nid}"}
+    assert spec["paths"]["/recommend"]["post"]["requestBody"]["content"] \
+        ["application/json"]["schema"]["$ref"] == "#/components/schemas/RecommendRequest"
+    for name in ("RecommendRequest", "RecommendResponse", "ArticleResponse",
+                 "HealthResponse", "SimilarResponse", "ArticleDetailResponse"):
+        assert name in spec["components"]["schemas"], name
+    req_props = spec["components"]["schemas"]["RecommendRequest"]["properties"]
+    assert "alpha" not in req_props, "per-request alpha override breaks the freeze"
+    assert req_props["top_k"]["maximum"] == 100

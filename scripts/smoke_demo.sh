@@ -51,7 +51,14 @@ echo "warm=$WARM session_items=$(python -c "import json;print(len(json.loads('$S
 echo "=== [3/4] boot API (port $PORT) ==="
 uvicorn src.api.main:app --port "$PORT" > "$OUT/uvicorn.log" 2>&1 &
 SERVER_PID=$!
-trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+cleanup() {
+  kill "$SERVER_PID" 2>/dev/null || true
+  for _ in $(seq 1 20); do
+    curl -sf --max-time 1 "localhost:$PORT/health" >/dev/null 2>&1 || return 0
+    sleep 1
+  done
+}
+trap cleanup EXIT
 for _ in $(seq 1 40); do
   curl -sf "localhost:$PORT/health" > "$OUT/health.json" && break || sleep 2
 done
