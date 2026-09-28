@@ -1,8 +1,12 @@
 # Hybrid Model Config (Content + CF) - Weighted Hybrid (no LightFM)
 model:
   type: "weighted_hybrid"
-  content_weight: 0.8   # tuned alpha on hybrid-only sweep (0.1-0.9)
-  cf_weight: 0.2       # 1-alpha
+  # Final serving alpha: winner of the full-catalog Day 4/5 evaluation
+  # (Table B NDCG@10 0.00208 at alpha=0.4, models/full_catalog_eval.json).
+  # The previous 0.8 came from an ALS-item-space-only sweep and is kept only
+  # as a historical record in models/best_alpha.json / weighted_hybrid.pkl.
+  content_weight: 0.4   # alpha: weight of TF-IDF content scores
+  cf_weight: 0.6        # 1-alpha: weight of ALS-CF scores
 
 # Component model paths
 components:
