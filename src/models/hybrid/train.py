@@ -77,8 +77,9 @@ def evaluate_hybrid(
 ) -> dict:
     """Weighted hybrid per user: alpha * content + (1-alpha) * cf.
 
-    Content = cosine profil user (mean vektor TF-IDF item train yang diklik)
-    terhadap semua item. Item train di-mask agar tidak direkomendasikan ulang.
+    Content = cosine profile user (mean TF-IDF item train that was clicked)
+    against all items in the ALS item space. Train items are masked so they
+    are not recommended again.
     """
     n_users, n_items = test_matrix.shape
     results = {f"{metric}@{k}": [] for metric in ["precision", "recall", "map", "ndcg"] for k in k_values}
@@ -92,7 +93,6 @@ def evaluate_hybrid(
         if not relevant:
             continue
 
-        # Content: profil user = mean TF-IDF item train (vektor sudah L2 -> dot = cosine)
         profile = tfidf_items[list(train_items)].mean(axis=0)
         content_scores = np.asarray(profile @ tfidf_items.T).ravel()
         cf_scores = user_factors[u_idx] @ item_factors.T
@@ -100,7 +100,8 @@ def evaluate_hybrid(
         hybrid_scores[list(train_items)] = -np.inf
 
         kmax = max(k_values)
-        top = np.argpartition(-hybrid_scores, kmax)[:kmax]
+        # kth is zero-based; use kmax-1 when selecting exactly kmax candidates.
+        top = np.argpartition(-hybrid_scores, kmax - 1)[:kmax]
         top = top[np.argsort(-hybrid_scores[top])]
         recommended = top.tolist()
 
@@ -110,7 +111,6 @@ def evaluate_hybrid(
             prec = hits / k if k > 0 else 0
             rec = hits / len(relevant) if relevant else 0
 
-            # AP
             ap = 0
             hit_count = 0
             for i, r in enumerate(rec_k):
@@ -119,10 +119,10 @@ def evaluate_hybrid(
                     ap += hit_count / (i + 1)
             ap = ap / min(len(relevant), k) if relevant else 0
 
-            # NDCG
             def dcg(rels):
                 return sum(r / np.log2(i + 2) for i, r in enumerate(rels))
-            ideal = sorted([1] * len(relevant) + [0] * (k - len(relevant)), reverse=True)
+
+            ideal = sorted([1] * min(len(relevant), k) + [0] * max(0, k - len(relevant)), reverse=True)
             actual = [1 if r in relevant else 0 for r in rec_k]
             ndcg = dcg(actual) / dcg(ideal) if dcg(ideal) > 0 else 0
 
@@ -172,7 +172,6 @@ def train_hybrid(config: dict):
     print(f"User factors: {user_factors.shape}, Item factors: {item_factors.shape}")
     print(f"Train matrix: {als_train_matrix.shape}, Test matrix: {test_matrix.shape}")
 
-    # Grid search alpha
     best_alpha = mcfg["content_weight"]
     best_score = -1
     best_results = None
@@ -183,7 +182,7 @@ def train_hybrid(config: dict):
             tfidf_items, user_factors, item_factors, als_train_matrix,
             test_matrix, alpha, ecfg["k_values"]
         )
-        metric_key = f"{tcfg['validation_metric']}"
+        metric_key = tcfg["validation_metric"]
         score = results.get(metric_key, 0)
         print(f"  {metric_key}: {score:.4f}")
 
@@ -197,7 +196,6 @@ def train_hybrid(config: dict):
     for k, v in best_results.items():
         print(f"  {k}: {v:.4f}")
 
-    # Save best alpha and config
     out = config["output"]
     Path(out["model_path"]).parent.mkdir(parents=True, exist_ok=True)
 

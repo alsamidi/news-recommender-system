@@ -1,0 +1,103 @@
+{
+  "full": {
+    "train_rows": 234468,
+    "dev_rows": 110745,
+    "train_users": 50000,
+    "dev_users": 50000,
+    "dev_users_with_train_history": 5943,
+    "dev_users_without_train_history": 44057,
+    "pct_dev_users_without_train_history": 0.88114,
+    "train_distinct_click_items": 7713,
+    "dev_distinct_relevant_items": 2212,
+    "dev_relevant_items_unseen_in_train_interactions": 1387,
+    "pct_dev_relevant_items_unseen_in_train_interactions": 0.6270343580470162,
+    "dev_rows_item_unseen_in_train": 0.51398257257664,
+    "dev_news_count": 42416,
+    "train_news_count": 51282,
+    "dev_news_unseen_in_train_catalog": 13956,
+    "pct_dev_news_unseen_in_train_catalog": 0.3290267823462844,
+    "dev_rows_per_user_mean": 2.2149,
+    "dev_rows_per_user_median": 1.0,
+    "relevant_per_user_p25_p50_p75_p90": [
+      1.0,
+      1.0,
+      3.0,
+      4.0
+    ]
+  },
+  "candidate_reach": {
+    "als_item_space": 3394,
+    "dev_relevant_in_cf_space": 600,
+    "pct_dev_relevant_in_cf_space": 0.27124773960216997,
+    "pct_dev_relevant_only_content": 0.72875226039783,
+    "dev_rows_in_cf_space": 0.3627342092193778,
+    "dev_rows_user_in_cf_space": 0.07440516501873674,
+    "dev_rows_both_in_cf_space": 0.02610501602781164,
+    "content_reach_note": "content TF-IDF bisa merepresentasikan SEMUA news berteks (train+dev catalog), CF hanya 3394 item ALS"
+  },
+  "eval": {
+    "n_users_train_space": 15608,
+    "n_items_cf_space": 3394,
+    "sampled_test_users": 1660,
+    "n_eval_users": 1652,
+    "relevant_per_eval_user_mean": 1.7391041162227603,
+    "relevant_per_eval_user_median": 1.0,
+    "relevant_per_eval_user_p90": 3.0,
+    "relevant_per_eval_user_eq1": 0.589588377723971
+  },
+  "coverage_at_10": {
+    "cf": {
+      "distinct_items": 1092,
+      "catalog_coverage": 0.3217442545668827
+    },
+    "content": {
+      "distinct_items": 1988,
+      "catalog_coverage": 0.5857395403653506
+    },
+    "hybrid": {
+      "distinct_items": 1986,
+      "catalog_coverage": 0.5851502651738362
+    },
+    "only_content_items": 104,
+    "overlap_all_three": 697
+  },
+  "user_hit_at_10": {
+    "cf": {
+      "users_with_ge1_hit": 27,
+      "pct": 0.016343825665859565
+    },
+    "content": {
+      "users_with_ge1_hit": 63,
+      "pct": 0.038135593220338986
+    },
+    "hybrid": {
+      "users_with_ge1_hit": 56,
+      "pct": 0.03389830508474576
+    }
+  },
+  "relevant_item_hit_coverage": {
+    "cf": {
+      "distinct_relevant_items_hit": 20,
+      "pct_of_union_relevant": 0.07042253521126761
+    },
+    "content": {
+      "distinct_relevant_items_hit": 22,
+      "pct_of_union_relevant": 0.07746478873239436
+    },
+    "hybrid": {
+      "distinct_relevant_items_hit": 22,
+      "pct_of_union_relevant": 0.07746478873239436
+    }
+  },
+  "user_hit_split_content_vs_cf": {
+    "content_only": 60,
+    "cf_only": 24,
+    "both": 3,
+    "neither": 1565,
+    "pct_content_only": 0.03631961259079903,
+    "pct_cf_only": 0.014527845036319613,
+    "pct_both": 0.0018159806295399517,
+    "pct_neither": 0.9473365617433414
+  },
+  "union_relevant_eval": 284
+}
