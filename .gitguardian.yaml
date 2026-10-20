@@ -8,6 +8,9 @@
 #
 # Whitelisting these paths makes the scanner report real leaks only. It does
 # NOT suppress findings in application code.
+#
+# This file must live on the default branch: GitGuardian reads its config from
+# develop, not from the PR branch, so a copy only in a feature branch is ignored.
 version: 2
 secret:
   ignored_paths:
