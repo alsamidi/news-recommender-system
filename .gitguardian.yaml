@@ -1,0 +1,17 @@
+# GitGuardian configuration.
+#
+# Every credential in this repository is synthetic:
+#   - tests use a labelled constant (TEST_PASSWORD)
+#   - scripts/smoke_web.sh generates throwaway values per run
+#   - .env.example keeps values intentionally empty
+#   - the API is unauthenticated and reads only frozen local artifacts
+#
+# Whitelisting these paths makes the scanner report real leaks only. It does
+# NOT suppress findings in application code.
+version: 2
+secret:
+  ignored_paths:
+    - "tests/**"
+    - "scripts/smoke_web.sh"
+    - "docs/**"
+    - ".env.example"

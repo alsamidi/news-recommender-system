@@ -1,0 +1,56 @@
+/* Design tokens transcribed from docs/web/DESIGN.md front matter.
+   This is the ONLY file allowed to contain raw hex values (TEST-AC-201/202). */
+
+:root {
+  /* color — brand */
+  --color-primary: #181d26;
+  --color-primary-active: #0d1218;
+
+  /* color — text */
+  --color-ink: #181d26;
+  --color-body: #333840;
+  --color-muted: #41454d;
+
+  /* color — surface */
+  --color-canvas: #ffffff;
+  --color-surface-soft: #f8fafc;
+  --color-surface-strong: #e0e2e6;
+  --color-signature-cream: #f5e9d4;
+  --color-signature-coral: #aa2d00;
+
+  /* color — semantic */
+  --color-link: #1b61c9;
+  --color-link-active: #1a3866;
+  --color-info-border: #458fff;
+  --color-border-strong: #9297a0;
+
+  /* D25: error color is an alias, not a new hue. */
+  --color-error: var(--color-signature-coral);
+  --color-on-primary: #ffffff;
+
+  /* radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+
+  /* spacing (4px base) */
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+  --space-section: 96px;
+
+  /* type — local system stack only (no Haas, no CDN) */
+  --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                "Helvetica Neue", Arial, sans-serif;
+
+  /* D26: article body readability override; tokens themselves unchanged. */
+  --type-article-size: 16px;
+  --type-article-leading: 1.6;
+
+  --layout-max: 1280px;
+  --touch-min: 44px;
+}

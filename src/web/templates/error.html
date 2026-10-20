@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }}{% endblock %}
+{% block content %}
+<div class="callout-error">
+  <h1 class="page-title error-headline">{{ code }}</h1>
+  <p>{{ message }}</p>
+  <p><a href="/">Kembali ke beranda</a></p>
+</div>
+{% endblock %}

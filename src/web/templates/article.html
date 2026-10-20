@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title or article.nid }}{% endblock %}
+{% block content %}
+<article>
+  <p class="card-meta"><a href="/">Beranda</a> / {{ article.category or '-' }}</p>
+  <h1 class="article-headline">{{ article.title or article.nid }}</h1>
+  <div class="meta-row">
+    <span>{{ article.category or '-' }}</span>
+    {% if article.subcategory %}<span>{{ article.subcategory }}</span>{% endif %}
+    <span>{{ article.nid }}</span>
+  </div>
+
+  {% if article.abstract %}
+    <div class="article-body" style="margin-top:24px">{{ article.abstract }}</div>
+  {% else %}
+    <p class="callout" style="margin-top:24px">Ringkasan tidak tersedia untuk berita ini.</p>
+  {% endif %}
+</article>
+
+{% if related %}
+<h2 class="section-title">Berita serupa</h2>
+<div class="card-grid">
+  {% for r in related %}
+  <a class="card" href="/berita/{{ r.nid }}?from=similar">
+    <span class="card-category">{{ r.category or 'umum' }}</span>
+    <h2 class="card-title">{{ r.title or r.nid }}</h2>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
