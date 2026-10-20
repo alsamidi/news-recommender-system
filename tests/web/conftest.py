@@ -25,10 +25,31 @@ for p in (str(SRC), str(REPO)):
         sys.path.insert(0, p)
 
 
+REQUIRED_ARTIFACTS = (
+    REPO / "data/processed/news_processed.parquet",
+    REPO / "data/processed/interactions_train.parquet",
+    REPO / "models/als_model.pkl",
+    REPO / "models/tfidf_baseline.pkl",
+)
+
+
+def artifacts_available() -> bool:
+    return all(p.exists() for p in REQUIRED_ARTIFACTS)
+
+
+requires_artifacts = pytest.mark.skipif(
+    not artifacts_available(),
+    reason="research artifacts absent (gitignored); run the full suite where they exist",
+)
+
+
 @pytest.fixture(scope="session")
 def client(tmp_path_factory):
     from fastapi.testclient import TestClient
     from web.app import create_app
+
+    if not artifacts_available():
+        pytest.skip("research artifacts absent; web app cannot start without the model")
 
     db = tmp_path_factory.mktemp("webdb") / "web.db"
     os.environ["WEB_DB_PATH"] = str(db)
@@ -42,8 +63,16 @@ def client(tmp_path_factory):
 
 
 @pytest.fixture(autouse=True)
-def clean_state(client):
-    """Empty application tables and cookies before every test."""
+def clean_state(request):
+    """Empty application tables and cookies before every test.
+
+    Depends on `client` only for tests that actually request it, so pure-logic
+    tests still run on a clean checkout with no research artifacts.
+    """
+    if "client" not in request.fixturenames:
+        yield
+        return
+    client = request.getfixturevalue("client")
     store = client.app.state.store
     with store.connect() as conn:
         conn.execute("DELETE FROM interactions")

@@ -1,0 +1,83 @@
+name: CI
+
+# Two tiers:
+#   lightweight — always runs. No research artifacts required (they are
+#                 gitignored, ~500 MB). Covers the web layer's pure logic,
+#                 design tokens, and static research-integrity checks.
+#   full        — runs only when research artifacts are present. Skipped on a
+#                 clean checkout by design: the model cannot load without
+#                 data/processed/*.parquet and models/*.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lightweight:
+    name: Web layer + static integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # Minimal set: the web layer does not need torch/transformers/implicit.
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install "fastapi>=0.104" "uvicorn>=0.24" "pydantic>=2.5" \
+                      "jinja2>=3.1" "python-multipart>=0.0.9" \
+                      "httpx>=0.24" "pytest>=7.0" "pyyaml>=6.0" \
+                      "pandas>=2.1" "numpy>=1.26" "scipy>=1.11"
+
+      - name: API contract surface unchanged
+        run: python scripts/ci/check_contract.py
+
+      - name: Alpha chain unchanged
+        run: python scripts/ci/check_alpha.py
+
+      - name: Web tests (model-dependent cases skip cleanly)
+        run: python -m pytest tests/web -q
+
+  full:
+    name: Full suite (requires research artifacts)
+    runs-on: ubuntu-latest
+    needs: lightweight
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Check for research artifacts
+        id: artifacts
+        run: |
+          if [ -f data/processed/news_processed.parquet ] && [ -f models/als_model.pkl ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Research artifacts absent (gitignored). Skipping the full suite."
+          fi
+
+      - name: Install
+        if: steps.artifacts.outputs.present == 'true'
+        run: pip install -r requirements.txt
+
+      - name: Full suite
+        if: steps.artifacts.outputs.present == 'true'
+        run: python -m pytest -q
+
+      - name: Freeze audit
+        if: steps.artifacts.outputs.present == 'true'
+        run: bash scripts/audit_freeze.sh
