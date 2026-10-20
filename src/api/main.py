@@ -48,6 +48,18 @@ def resolve_presets(data: dict) -> dict:
     return {"warm_user": elig[0], "cold_session": sess, "fallback_session": noals}
 
 
+def load_recommender() -> "HybridRecommender":
+    """Load frozen artifacts and install them for serving.
+
+    Additive seam for embedders (the web app) that mount this app and therefore
+    do not receive this module's lifespan. Returns the loaded instance.
+    Mirrors the lifespan below; keep the two in sync.
+    """
+    global rec, demo_presets
+    rec = HybridRecommender.load()
+    demo_presets = resolve_presets(rec._d)
+    return rec
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global rec, demo_presets

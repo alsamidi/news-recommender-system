@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Histori{% endblock %}
+{% block content %}
+<h1 class="page-title">Histori bacaan</h1>
+{% if articles %}
+  <div class="card-grid">
+  {% for a in articles %}
+    <a class="card" href="/berita/{{ a.nid }}?from=history">
+      <span class="card-category">{{ a.category or 'umum' }}</span>
+      <h2 class="card-title">{{ a.title or a.nid }}</h2>
+      <span class="card-meta">{{ a.viewed_at }}</span>
+    </a>
+  {% endfor %}
+  </div>
+{% else %}
+  <div class="callout">Kamu belum membuka berita. Pilih berita dari beranda untuk mulai membangun riwayat bacaan.</div>
+{% endif %}
+{% endblock %}

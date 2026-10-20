@@ -18,6 +18,11 @@ data/raw/*
 data/processed/*
 !data/processed/.gitkeep
 
+# Database aplikasi web (berisi email + hash password pengguna; JANGAN di-commit)
+data/web.db
+data/web.db-shm
+data/web.db-wal
+
 # Artifacts model terlatih (regenerate via src/models/*/train.py; hanya JSON kecil yang di-commit)
 models/*.pkl
 models/*.npy
@@ -38,3 +43,6 @@ multirun/
 *.key
 .DS_Store
 Thumbs.db
+
+# Python wheels accidentally downloaded (pip download) — never commit
+*.whl

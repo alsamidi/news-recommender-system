@@ -1,0 +1,236 @@
+"""Auth behaviour: registration, login, logout, CSRF, session isolation."""
+from __future__ import annotations
+
+from tests.web.conftest import TEST_PASSWORD, csrf_of
+
+
+def test_register_creates_user_and_redirects_to_feed(client, register):
+    r = register()
+    assert r.status_code == 303
+    assert r.headers["location"] == "/"          # TEST-AC-010
+    assert client.cookies.get("session")
+
+
+def test_duplicate_email_rejected(client, register):
+    register()
+    client.cookies.clear()
+    r = register(email="budi@example.com")
+    assert r.status_code == 400                  # TEST-AC-011
+    assert "Email sudah terdaftar." in r.text
+
+
+def test_short_password_rejected(client):
+    page = client.get("/register")
+    r = client.post("/register", data={
+        "name": "X", "email": "x@example.com", "password": "pendek",
+        "password_confirm": "pendek", "csrf_token": csrf_of(page.text)})
+    assert r.status_code == 400                  # TEST-AC-014
+    assert "minimal 8" in r.text
+
+
+def test_password_confirmation_mismatch(client):
+    page = client.get("/register")
+    r = client.post("/register", data={
+        "name": "X", "email": "x@example.com", "password": TEST_PASSWORD,
+        "password_confirm": "berbeda123", "csrf_token": csrf_of(page.text)})
+    assert r.status_code == 400                  # TEST-AC-013
+    assert "tidak sama" in r.text
+
+
+def test_password_stored_hashed(client, register):
+    register()
+    row = client.app.state.store.get_user_by_email("budi@example.com")
+    assert row["password_hash"].startswith("scrypt$")   # TEST-AC-012
+    assert TEST_PASSWORD not in row["password_hash"]
+
+
+def test_session_token_stored_hashed(client, register):
+    register()
+    cookie = client.cookies.get("session")
+    with client.app.state.store.connect() as conn:
+        rows = conn.execute("SELECT token_hash FROM sessions").fetchall()
+    assert len(rows) == 1
+    assert rows[0]["token_hash"] != cookie              # TEST-AC-019
+
+
+def test_login_success_and_uniform_failure(client, register):
+    register()
+    client.cookies.clear()
+    page = client.get("/login")
+    token = csrf_of(page.text)
+
+    bad = client.post("/login", data={"email": "budi@example.com",
+                                      "password": "salah", "csrf_token": token})
+    ghost = client.post("/login", data={"email": "nobody@example.com",
+                                        "password": "salah", "csrf_token": token})
+    assert bad.status_code == ghost.status_code == 400
+    assert "Email atau password salah." in bad.text
+    assert "Email atau password salah." in ghost.text    # TEST-AC-016
+
+    ok = client.post("/login", data={"email": "budi@example.com",
+                                     "password": TEST_PASSWORD, "csrf_token": token},
+                     follow_redirects=False)
+    assert ok.status_code == 303                          # TEST-AC-015
+
+
+def test_csrf_missing_is_rejected(client):
+    page = client.get("/register")
+    r = client.post("/register", data={
+        "name": "X", "email": "x@example.com", "password": TEST_PASSWORD,
+        "password_confirm": TEST_PASSWORD})
+    assert r.status_code == 403                           # TEST-AC-021
+
+
+def test_logout_destroys_session(client, register):
+    register()
+    session_token = client.cookies.get("session")
+    page = client.get("/")
+    token = csrf_of(page.text)
+    r = client.post("/logout", data={"csrf_token": token}, follow_redirects=False)
+    assert r.status_code == 303                           # TEST-AC-017
+    client.cookies.set("session", session_token)
+    assert client.get("/", follow_redirects=False).status_code == 303
+
+
+def test_protected_pages_require_session(client):
+    for path in ["/", "/histori", "/berita/N52622"]:
+        assert client.get(path, follow_redirects=False).status_code == 303  # TEST-AC-020
+
+
+def test_cookie_flags(client, register):
+    """Session cookie must be HttpOnly and SameSite=Lax (TEST-AC-018)."""
+    register()
+    cookie = next(c for c in client.cookies.jar if c.name == "session")
+    rest = {k.lower(): v for k, v in cookie._rest.items()}
+    assert "httponly" in rest
+    assert str(rest.get("samesite", "")).lower() == "lax"
+
+
+def test_session_expiry_is_enforced(client, register):
+    """An expired session must not authenticate (TEST-AC-022, 7-day TTL)."""
+    register()
+    token = client.cookies.get("session")
+    store = client.app.state.store
+    with store.connect() as conn:
+        conn.execute("UPDATE sessions SET expires_at = '2000-01-01T00:00:00+00:00'")
+    client.cookies.set("session", token)
+    assert client.get("/", follow_redirects=False).status_code == 303
+    with store.connect() as conn:
+        assert conn.execute("SELECT COUNT(*) c FROM sessions").fetchone()["c"] == 0
+
+
+def test_csrf_rejects_self_supplied_cookie(client):
+    """An attacker-planted cookie pair must not pass (SEC finding)."""
+    client.cookies.set("csrf_nonce", "attacker-nonce")
+    r = client.post("/register", data={
+        "name": "Evil", "email": "evil@example.com", "password": TEST_PASSWORD,
+        "password_confirm": TEST_PASSWORD,
+        "csrf_token": "1700000000.deadbeef"})
+    assert r.status_code == 403
+
+
+def test_csrf_token_is_bound_to_its_nonce(client):
+    """A valid token replayed against a different nonce must be rejected."""
+    page = client.get("/register")
+    token = csrf_of(page.text)
+    client.cookies.set("csrf_nonce", "different-nonce")
+    r = client.post("/register", data={
+        "name": "X", "email": "x@example.com", "password": TEST_PASSWORD,
+        "password_confirm": TEST_PASSWORD, "csrf_token": token})
+    assert r.status_code == 403
+
+
+def test_csrf_rejects_tampered_signature(client):
+    page = client.get("/register")
+    token = csrf_of(page.text)
+    ts, _mac = token.split(".", 1)
+    r = client.post("/register", data={
+        "name": "X", "email": "x@example.com", "password": TEST_PASSWORD,
+        "password_confirm": TEST_PASSWORD, "csrf_token": f"{ts}.{'0' * 64}"})
+    assert r.status_code == 403
+
+
+def test_session_csrf_differs_from_presession(client, register):
+    """Logged-in POSTs validate against the session token, not the nonce."""
+    register()
+    session_token = next(c for c in client.cookies.jar if c.name == "session")
+    client.cookies.clear()
+    client.cookies.set("session", session_token.value)
+    r = client.post("/logout", data={"csrf_token": "bogus"})
+    assert r.status_code == 403
+
+
+def test_login_throttled_after_five_failures(client, register):
+    """ARCHITECTURE §6: 5 failures per email per 15 minutes."""
+    register()
+    client.cookies.clear()
+    token = csrf_of(client.get("/login").text)
+    for _ in range(5):
+        r = client.post("/login", data={"email": "budi@example.com",
+                                        "password": "salah", "csrf_token": token})
+        assert r.status_code == 400
+    blocked = client.post("/login", data={"email": "budi@example.com",
+                                          "password": "salah", "csrf_token": token})
+    assert blocked.status_code == 429
+    assert "Terlalu banyak percobaan" in blocked.text
+
+
+def test_throttle_does_not_affect_other_emails(client, register):
+    register()
+    client.cookies.clear()
+    token = csrf_of(client.get("/login").text)
+    for _ in range(5):
+        client.post("/login", data={"email": "budi@example.com",
+                                    "password": "salah", "csrf_token": token})
+    other = client.post("/login", data={"email": "nobody@example.com",
+                                        "password": "salah", "csrf_token": token})
+    assert other.status_code == 400          # still evaluated, not blocked
+
+
+def test_successful_login_resets_failures(client, register):
+    register()
+    client.cookies.clear()
+    token = csrf_of(client.get("/login").text)
+    for _ in range(4):
+        client.post("/login", data={"email": "budi@example.com",
+                                    "password": "salah", "csrf_token": token})
+    ok = client.post("/login", data={"email": "budi@example.com",
+                                     "password": TEST_PASSWORD, "csrf_token": token},
+                     follow_redirects=False)
+    assert ok.status_code == 303
+    assert not client.app.state.throttle.is_blocked("budi@example.com")
+
+
+def test_throttle_window_expires():
+    """Unit-level: failures age out of the window."""
+    from web.throttle import LoginThrottle
+    t = LoginThrottle(window_seconds=1, max_failures=2)
+    t.record_failure("a@x.com")
+    t.record_failure("a@x.com")
+    assert t.is_blocked("a@x.com")
+    assert t.retry_after("a@x.com") >= 1
+    import time
+    time.sleep(1.1)
+    assert not t.is_blocked("a@x.com")
+
+
+def test_csrf_token_survives_a_clock_tick(client):
+    """A rendered token must not expire just because a second passed.
+
+    Regression: the middleware used to re-sign a fresh token on every GET,
+    so a form held open across a clock tick posted a stale signature (403).
+    """
+    import time
+
+    token = csrf_of(client.get("/login").text)
+    time.sleep(1.2)
+    r = client.post("/login", data={"email": "a@example.com",
+                                    "password": "salah", "csrf_token": token})
+    assert r.status_code == 400, r.status_code
+
+
+def test_csrf_token_is_stable_across_gets(client):
+    """Two GETs of the same form must render the same token."""
+    first = csrf_of(client.get("/login").text)
+    second = csrf_of(client.get("/register").text)
+    assert first == second

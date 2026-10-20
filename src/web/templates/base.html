@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Berita{% endblock %}</title>
+<link rel="stylesheet" href="/static/tokens.css">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="topnav">
+  <a class="brand" href="/">goodnews</a>
+  <details class="navmenu">
+    <summary aria-label="Menu navigasi"><span class="navburger" aria-hidden="true"></span></summary>
+    <nav class="navlinks">
+      {% if user %}
+        <a href="/">Beranda</a>
+        <a href="/histori">Histori</a>
+        <form method="post" action="/logout" style="margin:0">
+          <input type="hidden" name="csrf_token" value="{{ csrf }}">
+          <button class="btn btn-secondary btn-compact" type="submit">Keluar</button>
+        </form>
+      {% else %}
+        <a href="/login">Masuk</a>
+        <a href="/register">Daftar</a>
+      {% endif %}
+    </nav>
+  </details>
+</header>
+<main class="container">
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>
