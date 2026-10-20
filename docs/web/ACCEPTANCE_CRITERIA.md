@@ -210,6 +210,38 @@ functional criteria in `TEST-AC-001…199`. `[P]` = MVP-mandatory.
 
 ---
 
+## Traceability
+
+Every criterion above is cited by at least one test. Coverage is mechanical,
+not asserted:
+
+| Measure | Value |
+|---------|-------|
+| Criteria (`TEST-AC-NNN`) | 104 |
+| Cited by a test | **104** |
+| Tests in `tests/web/` | 134 (69 cite one or more criteria) |
+
+Verify:
+
+```bash
+python - <<'EOF'
+import re, pathlib
+doc = pathlib.Path('docs/web/ACCEPTANCE_CRITERIA.md').read_text()
+criteria = set(re.findall(r'^\|\s*(TEST-AC-\d+)\s*\*\*\[[PS]\]\*\*', doc, re.M))
+cited = set()
+for p in pathlib.Path('tests/web').glob('*.py'):
+    cited |= set(re.findall(r'TEST-AC-\d+', p.read_text()))
+print(f"{len(criteria - cited)} uncited of {len(criteria)}")
+EOF
+```
+
+Criteria belonging to CI or the demo script are covered in
+`tests/web/test_traceability.py`, which inspects those artefacts directly
+(`scripts/ci/*.py`, `scripts/smoke_web.sh`, `docs/evidence/web/`, `docs/web/*.md`)
+rather than duplicating their logic.
+
+---
+
 ## Summary for Approval
 
 **Namespace reminder:** `TEST-AC-xxx` (this file) vs `PRD-AC-xx`
