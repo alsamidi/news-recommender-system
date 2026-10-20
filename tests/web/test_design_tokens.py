@@ -183,3 +183,24 @@ def test_base_template_has_accessible_menu():
     html = read(TEMPLATES / "base.html")
     assert "<details" in html and "<summary" in html
     assert 'aria-label="Menu navigasi"' in html
+
+
+def test_brand_logo_is_inline_vector():
+    """The wordmark must be inline SVG so it inherits currentColor."""
+    html = read(TEMPLATES / "base.html")
+    assert 'class="brand-mark"' in html
+    assert "<svg" in html
+    assert "<img" not in html            # <img> would block currentColor
+    assert "currentColor" in html
+    css = read(STATIC / "app.css")
+    assert "fill: currentColor" in css
+
+
+def test_logo_asset_exists_and_is_vector():
+    svg = STATIC / "goodnews.svg"
+    assert svg.exists()
+    body = svg.read_text()
+    assert body.lstrip().startswith("<svg")
+    assert "viewBox" in body
+    assert "<image" not in body          # no embedded bitmap
+    assert len(body) < 40_000            # stay reasonable

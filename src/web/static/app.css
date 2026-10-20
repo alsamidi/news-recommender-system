@@ -26,7 +26,8 @@ a:hover { color: var(--color-link-active); }
   border-bottom: 1px solid var(--color-surface-strong);
   background: var(--color-canvas);
 }
-.brand { font-size: 18px; font-weight: 500; color: var(--color-ink); }
+.brand { display: inline-flex; align-items: center; color: var(--color-ink); }
+.brand-mark { display: block; height: 26px; width: auto; fill: currentColor; }
 .navlinks { display: flex; align-items: center; gap: var(--space-md); }
 .navlinks a { font-size: 14px; color: var(--color-ink); }
 .navlinks a:hover { color: var(--color-muted); }
