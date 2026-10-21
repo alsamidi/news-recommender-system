@@ -79,7 +79,9 @@ def clean_state(request):
         conn.execute("DELETE FROM sessions")
         conn.execute("DELETE FROM users")
     # Throttle state lives on the app, not in the DB: reset it explicitly.
+    # Both keys, or one test's failures leak into the next as a 429.
     client.app.state.throttle._failures.clear()
+    client.app.state.ip_throttle._failures.clear()
     client.cookies.clear()
     yield
 

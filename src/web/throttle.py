@@ -14,6 +14,11 @@ from collections import defaultdict, deque
 
 WINDOW_SECONDS = 15 * 60
 MAX_FAILURES = 5
+# Per-IP budget. Deliberately six times the per-email budget: one address is
+# not one person (campus NAT, office, mobile carrier gateway). A shared address
+# must not lock out bystanders because one person mistyped. 30 in 15 minutes
+# still caps automated guessing at ~2 attempts/minute.
+IP_MAX_FAILURES = 30
 
 
 class LoginThrottle:

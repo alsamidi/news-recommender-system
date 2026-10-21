@@ -45,10 +45,10 @@ Review date: 2026-10-20.
 
 | Limitation | Impact | Note |
 |------------|--------|------|
-| Rate limiting is per-email only | An attacker can spread attempts across many emails | PRD §11 asks for "simple" limiting; per-IP limiting needs a proxy or shared store. |
+| Rate limiting is per-email **and** per-IP | — | Resolved. Per-IP uses the socket peer, never `X-Forwarded-For`. Budget is 30/15 min vs 5/15 min per email, because one address is not one person (campus NAT, office, mobile gateway). |
 | Rate-limit state is in-memory | Resets on restart; not shared across workers | Single-process MVP. Multi-worker needs a shared store. |
-| `Secure` cookie flag absent | Cookie could travel over plain HTTP | Intentional for local HTTP demo. Must be enabled behind HTTPS. |
-| Single-process CSRF secret | Restart invalidates outstanding anonymous form tokens | Acceptable: forms are short-lived. A multi-worker deploy would need a shared secret. |
+| `Secure` cookie flag | Off by default; on with `WEB_SECURE_COOKIES=1` | Intentional: the local demo runs on plain HTTP and a `Secure` cookie would never be sent. Enable it behind TLS. |
+| CSRF secret | Per-process random by default; set `WEB_CSRF_SECRET` to fix it | A fixed secret keeps anonymous form tokens valid across restarts and workers. |
 | Session TTL is fixed, not sliding | Sessions expire mid-use after 7 days | Approved decision. |
 | No account lockout / CAPTCHA | Same as rate limiting | Out of MVP scope. |
 | No password strength beyond length ≥ 8 | Weak passwords accepted | Approved for MVP. |
@@ -56,11 +56,19 @@ Review date: 2026-10-20.
 
 ## 4. Deployment checklist before any non-local use
 
-1. Serve over HTTPS and set `Secure` on the session and nonce cookies.
-2. Set a fixed `csrf` secret from configuration instead of a per-process random value.
-3. Add per-IP login rate limiting (per-email limiting already exists).
+1. Serve over HTTPS and set `WEB_SECURE_COOKIES=1`. ✅ supported
+2. Set a fixed `WEB_CSRF_SECRET`. ✅ supported
+3. Per-IP login rate limiting. ✅ implemented (30 failures / 15 min per socket peer)
 4. Set `WEB_DEMO_PERSONA_PASSWORD` to a non-guessable value, or skip the persona.
 5. Back up `data/web.db` or accept it is disposable.
+
+Items 1-3 were implemented after the first review; 4-5 remain deployment
+choices and cannot be enforced from code.
+
+**Behind a reverse proxy**, set the peer address at the proxy (or rate-limit
+there). The app deliberately does not read `X-Forwarded-For`: that header is
+caller-controlled, so trusting it would let an attacker pick a fresh key per
+attempt and never be limited.
 
 ## 5. Deliberate non-findings
 

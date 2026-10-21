@@ -9,6 +9,17 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+def _bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    value = raw.strip().lower()
+    if value in ("1", "true", "yes", "on"):
+        return True
+    if value in ("0", "false", "no", "off"):
+        return False
+    raise ValueError(f"{name} must be a boolean, got {raw!r}")
+
 def _int(name: str, default: int) -> int:
     raw = os.environ.get(name)
     if raw is None or raw.strip() == "":
@@ -30,6 +41,10 @@ class Config:
     persona_user_id: str | None
     persona_email: str | None
     persona_password: str | None
+    # Public exposure controls. Defaults keep the local demo working on plain
+    # HTTP without any new setup; turn both on behind TLS (SECURITY_NOTES §4).
+    secure_cookies: bool
+    csrf_secret: str | None
 
     @property
     def session_ttl_seconds(self) -> int:
@@ -61,6 +76,8 @@ def load_config() -> Config:
         persona_user_id=persona_id,
         persona_email=persona_email,
         persona_password=persona_password,
+        secure_cookies=_bool("WEB_SECURE_COOKIES", False),
+        csrf_secret=(os.environ.get("WEB_CSRF_SECRET") or "").strip() or None,
     )
     _validate(cfg)
     return cfg
