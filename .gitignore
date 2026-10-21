@@ -46,3 +46,6 @@ Thumbs.db
 
 # Python wheels accidentally downloaded (pip download) — never commit
 *.whl
+
+# tasteskill audit scratch output
+.taste-skill/

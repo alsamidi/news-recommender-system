@@ -204,3 +204,33 @@ def test_logo_asset_exists_and_is_vector():
     assert "viewBox" in body
     assert "<image" not in body          # no embedded bitmap
     assert len(body) < 40_000            # stay reasonable
+
+
+def test_card_category_typography_matches_caption_spec():
+    """TEST-AC-214 & DESIGN.md caption token: 14px."""
+    css = read(STATIC / "app.css")
+    cat = re.search(r'\.card-category\s*\{([^}]+)\}', css)
+    assert cat, "card-category block missing"
+    assert "font-size: 14px" in cat.group(1)
+    assert "letter-spacing: 0.16px" in cat.group(1)
+
+
+def test_skip_link_and_footer_present_in_base():
+    """Accessible skip link and site footer must be present."""
+    html = read(TEMPLATES / "base.html")
+    assert "skip-link" in html
+    assert "site-footer" in html
+
+
+def test_login_uses_indonesian_copy():
+    """PRD requirement: all UI copy in Indonesian (MASUK instead of LOGIN)."""
+    html = read(TEMPLATES / "login.html")
+    assert "MASUK" in html
+    assert "LOGIN" not in html
+
+
+def test_breadcrumb_has_semantic_markup():
+    """Article breadcrumb must use semantic nav and ol elements."""
+    html = read(TEMPLATES / "article.html")
+    assert '<nav aria-label="Breadcrumb"' in html
+    assert '<ol class="breadcrumb"' in html

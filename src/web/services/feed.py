@@ -46,6 +46,23 @@ async def _fetch_articles(client, nids: list[str]) -> list[dict]:
     return out
 
 
+async def _attach_details(client, rows: list[dict]) -> list[dict]:
+    out = []
+    for row in rows:
+        if row.get("abstract") is not None:
+            out.append(row)
+        else:
+            detail = await client.article(row["nid"])
+            if detail is not None:
+                merged = {**detail, **row}
+                if detail.get("abstract"):
+                    merged["abstract"] = detail["abstract"]
+                out.append(merged)
+            else:
+                out.append(row)
+    return out
+
+
 async def build_feed(request: Request) -> FeedResult:
     cfg = request.app.state.config
     store = request.app.state.store
@@ -62,7 +79,8 @@ async def build_feed(request: Request) -> FeedResult:
         try:
             body = await client.recommend({"user_id": persona_id, "top_k": cfg.rec_top_k})
             rows = [a for a in body["recommendations"] if a["nid"] not in full_history]
-            return FeedResult(_dedupe_keep_order(rows, cfg.feed_limit), "warm")
+            deduped = _dedupe_keep_order(rows, cfg.feed_limit)
+            return FeedResult(await _attach_details(client, deduped), "warm")
         except RecAPIError as exc:
             # Invalid persona seed: fall through to history, then popular.
             notice = "Profil dataset demo tidak tersedia; menampilkan rekomendasi lain."
@@ -89,7 +107,8 @@ async def _history_or_popular(request, user_id: int, full_history: set[str],
         try:
             body = await client.recommend({"history": history, "top_k": cfg.rec_top_k})
             rows = [a for a in body["recommendations"] if a["nid"] not in full_history]
-            return FeedResult(_dedupe_keep_order(rows, cfg.feed_limit), "cold-session")
+            deduped = _dedupe_keep_order(rows, cfg.feed_limit)
+            return FeedResult(await _attach_details(client, deduped), "cold-session")
         except RecAPIError:
             # e.g. every history nid unknown to the catalog: fall back.
             pass

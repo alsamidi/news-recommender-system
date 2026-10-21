@@ -36,11 +36,18 @@ def _set_session(request: Request, user_id: int) -> RedirectResponse:
     return resp
 
 
+@router.get("/landing", response_class=HTMLResponse)
+async def landing(request: Request):
+    if request.state.user:
+        return RedirectResponse("/", status_code=303)
+    return _render(request, "landing.html", csrf=request.state.csrf, active_page="landing")
+
+
 @router.get("/register", response_class=HTMLResponse)
 async def register_form(request: Request):
     if request.state.user:
         return RedirectResponse("/", status_code=303)
-    return _render(request, "register.html", csrf=request.state.csrf, errors=[], values={})
+    return _render(request, "register.html", csrf=request.state.csrf, errors=[], values={}, active_page="register")
 
 
 @router.post("/register", response_class=HTMLResponse)
@@ -72,7 +79,7 @@ async def register_submit(
     if errors:
         return _render(request, "register.html", status_code=400,
                        csrf=request.state.csrf, errors=errors,
-                       values={"name": name, "email": email})
+                       values={"name": name, "email": email}, active_page="register")
 
     user_id = store.create_user(name, email, hash_password(password))
     return _set_session(request, user_id)
@@ -82,7 +89,7 @@ async def register_submit(
 async def login_form(request: Request):
     if request.state.user:
         return RedirectResponse("/", status_code=303)
-    return _render(request, "login.html", csrf=request.state.csrf, error=None, values={})
+    return _render(request, "login.html", csrf=request.state.csrf, error=None, values={}, active_page="login")
 
 
 @router.post("/login", response_class=HTMLResponse)
@@ -103,7 +110,7 @@ async def login_submit(
         return _render(request, "login.html", status_code=429,
                        csrf=request.state.csrf,
                        error="Terlalu banyak percobaan. Coba lagi beberapa menit lagi.",
-                       values={"email": email})
+                       values={"email": email}, active_page="login")
 
     user = store.get_user_by_email(email)
     # Uniform failure message: never reveal whether the email exists.
@@ -111,7 +118,7 @@ async def login_submit(
         throttle.record_failure(email)
         return _render(request, "login.html", status_code=400,
                        csrf=request.state.csrf,
-                       error="Email atau password salah.", values={"email": email})
+                       error="Email atau password salah.", values={"email": email}, active_page="login")
 
     throttle.reset(email)
     return _set_session(request, int(user["id"]))

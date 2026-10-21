@@ -1,8 +1,14 @@
 {% extends "base.html" %}
 {% block title %}{{ article.title or article.nid }}{% endblock %}
+{% block meta_desc %}{{ article.abstract or article.title or 'Detail berita' }}{% endblock %}
 {% block content %}
 <article>
-  <p class="card-meta"><a href="/">Beranda</a> / {{ article.category or '-' }}</p>
+  <nav aria-label="Breadcrumb">
+    <ol class="breadcrumb">
+      <li><a href="/">Beranda</a></li>
+      <li aria-current="page">{{ article.category or '-' }}</li>
+    </ol>
+  </nav>
   <h1 class="article-headline">{{ article.title or article.nid }}</h1>
   <div class="meta-row">
     <span>{{ article.category or '-' }}</span>
@@ -11,9 +17,9 @@
   </div>
 
   {% if article.abstract %}
-    <div class="article-body" style="margin-top:24px">{{ article.abstract }}</div>
+    <div class="article-body mt-lg">{{ article.abstract }}</div>
   {% else %}
-    <p class="callout" style="margin-top:24px">Ringkasan tidak tersedia untuk berita ini.</p>
+    <p class="callout mt-lg">Ringkasan tidak tersedia untuk berita ini.</p>
   {% endif %}
 </article>
 
@@ -24,6 +30,8 @@
   <a class="card" href="/berita/{{ r.nid }}?from=similar">
     <span class="card-category">{{ r.category or 'umum' }}</span>
     <h2 class="card-title">{{ r.title or r.nid }}</h2>
+    {% if r.abstract %}<p class="card-abstract">{{ r.abstract }}</p>{% endif %}
+    {% if r.subcategory %}<span class="card-meta">{{ r.subcategory }}</span>{% endif %}
   </a>
   {% endfor %}
 </div>

@@ -234,3 +234,18 @@ def test_csrf_token_is_stable_across_gets(client):
     first = csrf_of(client.get("/login").text)
     second = csrf_of(client.get("/register").text)
     assert first == second
+
+
+def test_landing_page_accessible_for_guests_and_redirects_if_logged_in(client, register):
+    """Landing page is open to guests with CTAs; redirects authenticated users to /."""
+    r = client.get("/landing")
+    assert r.status_code == 200
+    assert "Berita Terpilih Sesuai Minatmu" in r.text
+    assert "/register" in r.text
+    assert "/login" in r.text
+
+    # When authenticated, visiting /landing redirects to /
+    register()
+    r = client.get("/landing", follow_redirects=False)
+    assert r.status_code == 303
+    assert r.headers["location"] == "/"

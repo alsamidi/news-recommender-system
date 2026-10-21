@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Beranda{% endblock %}
 {% block content %}
-<h1 class="page-title">Berita</h1>
-<p class="page-sub">Halo, {{ user.name }}.</p>
+<h1 class="page-title">Halo, {{ user.name }}.</h1>
+<p class="page-sub">Rekomendasi bacaan untukmu hari ini.</p>
 
 <span class="source-label">{{ label }}</span>
 
-{% if notice %}<div class="callout" style="margin-bottom:24px">{{ notice }}</div>{% endif %}
+{% if notice %}<div class="callout mb-lg">{{ notice }}</div>{% endif %}
 
 {% if articles %}
   <div class="card-grid">
@@ -14,6 +14,7 @@
     <a class="card" href="/berita/{{ a.nid }}?from=feed">
       <span class="card-category">{{ a.category or 'umum' }}</span>
       <h2 class="card-title">{{ a.title or a.nid }}</h2>
+      {% if a.abstract %}<p class="card-abstract">{{ a.abstract }}</p>{% endif %}
       {% if a.subcategory %}<span class="card-meta">{{ a.subcategory }}</span>{% endif %}
     </a>
   {% endfor %}

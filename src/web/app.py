@@ -101,7 +101,7 @@ def create_app() -> FastAPI:
             return RedirectResponse("/login", status_code=303)
 
         # Anonymous forms need a signed token before a session exists.
-        anon_form = path in {"/register", "/login"} and request.state.user is None
+        anon_form = path in {"/register", "/login", "/landing"} and request.state.user is None
         nonce_to_set = None
         token_to_set = None
         if anon_form:

@@ -649,3 +649,34 @@ def test_hard_error_page_offers_a_way_out():
     block = re.search(r"\.callout-error\s*\{[^}]*\}", css).group(0)
     assert "var(--color-signature-coral)" in block
     assert "var(--color-on-primary)" in block
+
+
+def test_history_is_a_list_not_a_card_grid(client, register):
+    """History is a record of reads, not a feed to browse.
+
+    As a card grid, rows stretched to their tallest neighbour and a card with
+    no abstract carried a blank band; the abstract was then removed, and
+    clamping headlines to equalise heights cut real news titles mid-phrase.
+    A list keeps every headline whole and needs no truncation.
+    """
+    register()
+    first = re.findall(r"/berita/(N\d+)", client.get("/").text)[0]
+    client.get(f"/berita/{first}")
+    body = client.get("/histori").text
+
+    assert 'class="history-list"' in body
+    assert 'class="card-grid"' not in body
+    assert "<li" in body
+    # The full headline survives: nothing is truncated with an ellipsis.
+    assert not re.search(r'<span class="history-title">[^<]*…', body)
+
+
+def test_history_and_feed_share_one_left_edge():
+    """The page has one frame: brand, footer and content align on one edge.
+
+    Before: nav 24px, footer content 80px, text column 128px at 1440.
+    """
+    css = (STATIC / "app.css").read_text()
+    for block in (re.search(r"\.topnav\s*\{[^}]*\}", css).group(0),
+                  re.search(r"\.site-footer\s*\{[^}]*\}", css).group(0)):
+        assert "max(var(--space-lg), calc((100% - var(--layout-max)) / 2" in block

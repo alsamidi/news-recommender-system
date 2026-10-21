@@ -2,16 +2,19 @@
 {% block title %}Histori{% endblock %}
 {% block content %}
 <h1 class="page-title">Histori bacaan</h1>
+<p class="page-sub">Daftar artikel yang pernah kamu baca.</p>
 {% if articles %}
-  <div class="card-grid">
+  <ol class="history-list">
   {% for a in articles %}
-    <a class="card" href="/berita/{{ a.nid }}?from=history">
-      <span class="card-category">{{ a.category or 'umum' }}</span>
-      <h2 class="card-title">{{ a.title or a.nid }}</h2>
-      <span class="card-meta">{{ a.viewed_at }}</span>
-    </a>
+    <li class="history-row">
+      <a href="/berita/{{ a.nid }}?from=history">
+        <span class="history-title">{{ a.title or a.nid }}</span>
+      </a>
+      <span class="history-cat">{{ a.category or 'umum' }}</span>
+      <time class="history-time">Dibaca {{ a.viewed_at }}</time>
+    </li>
   {% endfor %}
-  </div>
+  </ol>
 {% else %}
   <div class="callout">Kamu belum membuka berita. Pilih berita dari beranda untuk mulai membangun riwayat bacaan.</div>
 {% endif %}

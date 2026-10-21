@@ -9,7 +9,7 @@
 # Fails non-zero on any broken step. Server is always cleaned up (trap).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-PORT=8000
+PORT="${PORT:-8000}"
 OUT=/tmp/opencode/smoke_demo
 VENV_DIR="${VENV_DIR:-venv}"
 mkdir -p "$OUT"
