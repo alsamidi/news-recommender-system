@@ -398,7 +398,7 @@ def _enable_picker(client):
 
 
 def test_persona_picker_is_off_by_default(client):
-    """The picker signs anyone into any account, so it must be opt-in.
+    """TEST-AC-250: the picker signs anyone into any account, so it is opt-in.
 
     Enabling it by default would make every public deployment open.
     """
@@ -409,7 +409,7 @@ def test_persona_picker_is_off_by_default(client):
 
 
 def test_persona_picker_rejects_unknown_ids(client):
-    """Only users with ALS factors may be entered, and CSRF still applies."""
+    """TEST-AC-252: only users with ALS factors may be entered; CSRF applies."""
     _enable_picker(client)
 
     page = client.get("/login/persona")
@@ -428,7 +428,7 @@ def test_persona_picker_rejects_unknown_ids(client):
 
 
 def test_persona_picker_lists_only_eligible_users(client):
-    """Every listed id must have ALS factors, or the warm path cannot run."""
+    """TEST-AC-251: every listed id has ALS factors, or the warm path cannot run."""
     _enable_picker(client)
 
     page = client.get("/login/persona")
@@ -439,7 +439,7 @@ def test_persona_picker_lists_only_eligible_users(client):
 
 
 def test_persona_picker_renders_counts_not_python_objects(client):
-    """A dict key named like a dict method silently renders the method.
+    """TEST-AC-251: a dict key named like a dict method renders the method.
 
     `{{ p.items }}` resolves to dict.items before the key of the same name, so
     every row read "<built-in method items of dict object at 0x...>".
@@ -453,3 +453,34 @@ def test_persona_picker_renders_counts_not_python_objects(client):
     counts = re.findall(r'<span class="picker-meta">(\d+) item latih</span>', body)
     assert counts, "no counts rendered"
     assert all(int(c) >= 0 for c in counts)
+
+
+def test_picker_login_is_idempotent_and_reaches_the_warm_path(client):
+    """TEST-AC-253: one account per persona, and the feed goes warm.
+
+    Logging in twice with the same persona must reuse the account rather than
+    create a second one, and the resulting feed must come from the dataset
+    profile, not the empty-history fallback.
+    """
+    _enable_picker(client)
+    store = client.app.state.store
+    persona = "U10022"
+
+    def login():
+        page = client.get("/login/persona")
+        token = csrf_of(page.text)
+        return client.post("/login/persona",
+                           data={"persona_user_id": persona, "csrf_token": token},
+                           follow_redirects=False)
+
+    assert login().status_code == 303
+    assert login().status_code == 303
+
+    with store.connect() as conn:
+        rows = conn.execute(
+            "SELECT id FROM users WHERE persona_user_id = ?", (persona,)
+        ).fetchall()
+    assert len(rows) == 1, f"expected one account, found {len(rows)}"
+
+    body = client.get("/").text
+    assert "Rekomendasi berdasarkan profil dataset demo" in body

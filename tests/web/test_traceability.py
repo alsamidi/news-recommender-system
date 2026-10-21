@@ -711,7 +711,7 @@ def test_history_page_shows_wib(client, register):
 
 
 def test_cards_show_unique_reader_counts(client, register):
-    """Cards show dataset readers and app readers, both unique per user."""
+    """TEST-AC-254 / TEST-AC-256: both counts render, labelled by source."""
     register()
     body = client.get("/").text
     # At least one card carries a dataset count (13.9% of the catalogue has one).
@@ -722,7 +722,7 @@ def test_cards_show_unique_reader_counts(client, register):
 
 
 def test_app_reader_count_is_unique_per_user(client, register):
-    """Opening the same article twice must not count twice."""
+    """TEST-AC-254: opening the same article twice must not count twice."""
     register()
     nid = re.findall(r"/berita/(N\d+)", client.get("/").text)[0]
     store = client.app.state.store
@@ -737,7 +737,7 @@ def test_app_reader_count_is_unique_per_user(client, register):
 
 
 def test_zero_reader_counts_are_hidden(client, register):
-    """An article nobody has read must not print '0 pembaca'."""
+    """TEST-AC-255: an article nobody has read must not print '0 pembaca'."""
     register()
     body = client.get("/").text
     # Match the rendered text exactly: a bare substring test would also match

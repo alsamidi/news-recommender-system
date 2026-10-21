@@ -78,11 +78,19 @@ All tables use an internal `INTEGER PRIMARY KEY`; `nid` is stored as `TEXT` with
 | `created_at` | TEXT | NOT NULL | ISO-8601 UTC |
 
 Notes:
-- `persona_user_id` is populated only by `python -m src.web.seed_persona`,
-  which reads `WEB_DEMO_PERSONA_USER_ID` (see `.env.example`). Never through
-  public registration, never at startup.
-- Seeding is **idempotent**: the command upserts on `email`, so re-running it
-  cannot create a second persona account.
+- `persona_user_id` is populated by two paths, both idempotent:
+  1. `python -m src.web.seed_persona`, which reads `WEB_DEMO_PERSONA_USER_ID`
+     (see `.env.example`).
+  2. The passwordless picker at `/login/persona` (D28), which calls
+     `Store.ensure_persona_user()` for the chosen id. Only reachable when
+     `WEB_PERSONA_PICKER` is set.
+  Never through public registration, never at startup.
+- Both paths upsert rather than insert, so re-running either cannot create a
+  second account for the same dataset user. The picker keys on
+  `persona_user_id`; the seed command keys on `email`.
+- Accounts created by the picker get a random password hash that is never
+  shown to anyone: they are entered by choosing them, not by typing a
+  credential.
 - There is no `role` column in the MVP (no admin).
 
 ### 3.2 `sessions`

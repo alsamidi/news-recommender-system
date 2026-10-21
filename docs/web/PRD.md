@@ -117,7 +117,7 @@ Consequences:
 | **D1** | How are new users mapped to recommendations? | (a) session from reading history only; (b) session + seeds from chosen topics; (c) map to a dataset persona | **(b)** — Figma topics can be mapped to `category`, then used as session seeds |
 | **D2** | Does "choose topic" change scores, or only pick seeds? | (a) filter candidates by category (changes ranking); (b) only pick seed `nid` values for `history` | **(b)** — (a) means new ranking logic outside the frozen model |
 | **D3** | Do star ratings influence recommendations? | (a) yes, as a signal; (b) no, UI only | **(b)** for MVP — (a) requires a new model |
-| **D4** | Do we need a dataset-persona demo account? | (a) not needed; (b) one demo account mapped to a warm `user_id` | **(b)** — demonstrates the warm path without retraining |
+| **D4** | Do we need a dataset-persona demo account? | (a) not needed; (b) one demo account mapped to a warm `user_id`; (c) a picker listing many dataset users | **(c)**, superseding (b) on 2026-10-21 (D28) — demonstrates the warm path without retraining, and lets a reviewer compare several profiles. Gated by `WEB_PERSONA_PICKER`, off by default |
 | **D5** | Storage | (a) SQLite; (b) Postgres (`psycopg2`/`pgvector` already in requirements) | **(a)** for MVP — zero extra services |
 | **D6** | Login session | (a) signed cookie session; (b) JWT | **(a)** — stdlib + `itsdangerous` already available |
 | **D7** | Is cross-device history required? | (a) yes; (b) no | **(b)** for MVP |
@@ -152,6 +152,10 @@ Referenced as `F-xx` and reused across documents.
 | F-22 | Frozen artifacts are not committed; load takes ~6.1 s, RSS ~503 MB | measurement |
 | F-23 | Serving latency: warm/cold ~6–7 ms; `/similar` ~70 ms | local measurement |
 | F-24 | An uncommitted change exists in `src/api/main.py` (line 172) that is **whitespace only**; tokens are identical | `git diff` |
+| F-25 | 15,608 dataset users have ALS factors and can serve as personas; the picker lists a capped subset (default 50) | `recommender_data["user_map"]`, `WEB_PERSONA_PICKER_LIMIT` |
+| F-26 | Only 9,100 of 65,238 catalogue nids (13.9%) appear in train+dev interactions at all; 86.1% have no recorded click | measurement of `interactions_{train,dev}.parquet` |
+| F-27 | Per-nid unique readers: median 3, p90 67, max 7,994 across the dataset sample | measurement, `services/stats.py` |
+| F-28 | The web layer writes no schema change for reader counts: `unique_readers()` is a query over the existing `interactions` table | `SCHEMA_VERSION == 1` |
 
 ## 9. Figma ↔ Data Fit (Summary)
 
@@ -179,8 +183,9 @@ Full detail in `UX_FLOWS.md` §5.
 
 Not model metrics (the model is frozen). These are product metrics for the demo:
 
-1. A new user can complete register → login → choose topics → feed
-   **without ever touching a `nid` or `user_id`**.
+1. A new user can complete register → login → feed **without ever touching a
+   `nid` or `user_id`**. (Topic selection was dropped from the MVP; see §7 D1
+   and the note in `ACCEPTANCE_CRITERIA.md`.)
 2. Every opened article is recorded as an interaction row and appears in history.
 3. The feed changes after history grows (recommendations react to the session).
 4. Every displayed recommendation is traceable to a real `/recommend` response

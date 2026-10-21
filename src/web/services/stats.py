@@ -26,7 +26,7 @@ DEV_PATH = "data/processed/interactions_dev.parquet"
 def build_dataset_readers() -> dict[str, int]:
     """nid -> unique dataset users who clicked it, across both splits.
 
-    Built once at startup (~0.25 s, 9,100 entries). Read-only afterwards.
+    Built once at startup (~0.6 s, 9,100 entries). Read-only afterwards.
     """
     frames = [
         pd.read_parquet(path, columns=["user_id", "nid"])

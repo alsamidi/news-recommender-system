@@ -29,11 +29,12 @@ Date: 2026-10-20.
                 │ HTTP (session cookie)
 ┌───────────────▼──────────────────────────────────────────────┐
 │  Web App  (NEW)  src/web/                                     │
-│  ├─ routes/auth      register, login, logout                  │
+│  ├─ routes/auth      register, login, persona, logout         │
 │  ├─ routes/feed      feed, history                            │
 │  ├─ routes/article   detail (proxy + record interaction)      │
-│  ├─ services/recs    user → /recommend payload mapping        │
-│  ├─ services/store   SQLite access                            │
+│  ├─ services/feed    persona → history → popular              │
+│  ├─ services/stats   unique reader counts (dataset + app)     │
+│  ├─ db.Store         SQLite access                            │
 │  ├─ templates/       Jinja2                                   │
 │  └─ static/          CSS/JS                                   │
 └───────┬──────────────────────────────┬───────────────────────┘
@@ -61,31 +62,38 @@ Aligned with `PRD_Web_Rekomendasi_Berita.md` (no topic onboarding) and
 src/web/
   __init__.py
   app.py                # web FastAPI app + lifespan owning the model
-  config.py             # DB path, session TTL, history cap, persona seed
-  security.py           # password hashing, session cookies, CSRF
-  db.py                 # SQLite connection + schema + idempotent migrations
-  schemas.py            # internal models (not part of the API contract)
+  config.py             # DB path, session TTL, history cap, persona seed, flags
+  security.py           # password hashing, session tokens, CSRF token helpers
+  csrf.py               # signed anonymous tokens + require_csrf
+  throttle.py           # login throttle (per email and per IP)
+  db.py                 # SQLite connection + schema + queries
+  seed_persona.py       # idempotent persona account seeding (CLI)
   routes/
-    auth.py             # /register /login /logout
+    auth.py             # /register /login /login/persona /logout
     feed.py             # / (feed), /histori
     article.py          # /berita/{nid}
   services/
-    recs.py             # build /recommend payload + call the client
+    feed.py             # decision tree: persona -> history -> popular
     popular.py          # train click-count popularity for the no-history feed
-    store.py            # user/interaction queries
+    persona.py          # eligible dataset users for the picker
+    stats.py            # unique reader counts (dataset + app)
   clients/
     rec_api.py          # thin client to the frozen API (in-process)
   templates/
-    base.html, landing.html, login.html, register.html,
-    feed.html, article.html, history.html, error.html
+    base.html, landing.html, login.html, persona_picker.html,
+    register.html, feed.html, article.html, history.html, error.html
   static/
     tokens.css          # DESIGN.md tokens as CSS custom properties
     app.css             # layout + components built from tokens
-    app.js              # minimal progressive enhancement
+    goodnews.svg        # wordmark, inlined into the nav
 tests/web/
   test_auth.py, test_feed.py, test_popular.py, test_article.py,
-  test_history.py, test_api_parity.py, test_design_tokens.py
+  test_units.py, test_design_tokens.py, test_traceability.py
 ```
+
+There is no `schemas.py` and no `services/store.py`: SQLite access lives on the
+`Store` class in `db.py`, and the web layer reuses the frozen API's Pydantic
+models rather than duplicating them.
 
 Notes:
 - `onboarding.py` / `topics.py` / `topics.html` from the earlier draft are
@@ -362,6 +370,28 @@ Implications:
 - The model loads **once** at startup, never per request.
 - Long history does not slow things down meaningfully (flat up to 400 nid).
 - `/similar` is ~10× slower; cap `top_k` and cache per `nid` if needed.
+
+### 7.1 State built at startup
+
+`app.state` is populated once in the lifespan, because everything below is
+read-only afterwards and would be wasteful to rebuild per request:
+
+| State | Built by | Cost | Used by |
+|-------|----------|------|---------|
+| `recommender_data` | `HybridRecommender.load()` | part of the ~8 s model load | persona picker (eligibility), feed |
+| `dataset_readers` | `services.stats.build_dataset_readers()` | ~0.6 s, 9,100 entries | reader counts on cards |
+| `popularity` | `Popularity.build()` | one pass over train interactions | the no-history feed |
+| `throttle` / `ip_throttle` | `LoginThrottle()` | trivial | login |
+| `csrf_secret` | config, or 32 random bytes | trivial | anonymous form tokens |
+
+`dataset_readers` maps `nid` → count of distinct dataset `user_id`s, built from
+the frozen interaction parquet at startup. It is a dict lookup at request time.
+
+Per-request cost added by reader counts: one grouped SQLite query per page,
+chunked at 500 ids because SQLite caps host parameters at 999.
+
+Memory note: `recommender_data` exposes the already-loaded `_d` dict rather
+than copying it, so the picker does not add a second copy of the model.
 
 ## 8. Observability
 

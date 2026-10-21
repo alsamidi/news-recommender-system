@@ -208,6 +208,18 @@ functional criteria in `TEST-AC-001…199`. `[P]` = MVP-mandatory.
 | TEST-AC-245 **[P]** | Hard error page uses `{colors.signature-coral}` with white text and a retry action | Inspect 503 page |
 | TEST-AC-246 **[P]** | No `<img>` placeholder or generated graphic stands in for missing article images | grep templates |
 
+### K.6 Persona picker and reader counts (added 2026-10-21)
+
+| ID | Criterion | Verification |
+|----|-----------|--------------|
+| TEST-AC-250 **[P]** | `/login/persona` returns 404 and the login page hides its link unless `WEB_PERSONA_PICKER` is set | Request the route with the flag off; grep `/login` for the link |
+| TEST-AC-251 **[P]** | The picker lists only `user_id`s present in the ALS `user_map` | Compare rendered ids against `recommender_data["user_map"]` |
+| TEST-AC-252 **[P]** | The picker POST rejects any id outside `user_map` with 400, and still enforces CSRF (403) | Post unknown ids, empty string, and an injection-shaped string |
+| TEST-AC-253 **[P]** | Picker login creates one account per persona, idempotently, and lands on the warm path | Log in twice with the same persona; assert a single row and `mode == "warm"` |
+| TEST-AC-254 **[P]** | Cards show a dataset reader count and an app reader count, both unique per user | Open one article 3× from one account; the app count must rise by 1 |
+| TEST-AC-255 **[P]** | A zero reader count is never printed; the row renders nothing instead | Grep the rendered feed for `>0 pembaca dataset<` |
+| TEST-AC-256 **[P]** | Reader counts are labelled by source, so a dataset sample is never presented as total readership | Inspect card copy for "pembaca dataset" and "di aplikasi ini" |
+
 ---
 
 ## Traceability
@@ -217,9 +229,9 @@ not asserted:
 
 | Measure | Value |
 |---------|-------|
-| Criteria (`TEST-AC-NNN`) | 104 |
-| Cited by a test | **104** |
-| Tests in `tests/web/` | 134 (69 cite one or more criteria) |
+| Criteria (`TEST-AC-NNN`) | 111 |
+| Cited by a test | **111** |
+| Test functions in `tests/web/` | 163 (5 of 9 files cite criteria; the rest are behavioural guards) |
 
 Verify:
 
@@ -278,6 +290,14 @@ rather than duplicating their logic.
 | — | Demo persona via `WEB_DEMO_PERSONA_USER_ID`, seeded by an explicit idempotent command | ✅ Approved |
 | — | Star ratings: **out of MVP** | ✅ Approved |
 | — | Feed source label: **in MVP**, raised to priority P | ✅ Approved |
+
+### Decisions recorded 2026-10-21
+
+| ID | Decision | Status |
+|----|----------|--------|
+| D28 | Passwordless persona picker at `/login/persona`, gated by `WEB_PERSONA_PICKER` (default **off**). The page is the credential: anyone who loads it enters any listed demo account, so it must not be enabled on a public deployment. Amends D4 from "one demo account" to "one account per chosen dataset user, created on demand" | ✅ Approved |
+| D29 | Reader counts shown on cards come from two labelled sources: dataset unique readers (MIND sample) and app unique readers (this deployment). Both count unique users, not views | ✅ Approved |
+| D30 | A zero reader count is hidden rather than printed. Only 13.9% of catalogue nids appear in the interactions at all, so "0 pembaca" would assert something the data cannot support | ✅ Approved |
 
 Consequence of D22: score-bearing criteria are **deleted**, not deferred. No
 `TEST-AC` requires a debug page, and none requires a score to be rendered.
