@@ -3,9 +3,10 @@
 Sistem Rekomendasi Berita Bahasa Indonesia berbasis **Content-Based (TF-IDF) + Collaborative Filtering (ALS) + Hybrid terbobot** untuk Tugas Akhir.
 Snapshot reprodusibel Day 5: dataset terkunci, preprocessing Indonesia, kedua model terlatih, evaluasi full-catalog + stratifikasi warm/cold selesai.
 
-Proyek ini punya dua lapisan: **lapisan riset** (dataset, preprocessing,
-training, evaluasi — hasilnya dibekukan) dan **lapisan aplikasi web** (akun,
-feed, histori bacaan, dan rekomendasi yang menyajikan artefak beku tersebut).
+Proyek ini terdiri dari dua lapisan. Lapisan riset memuat dataset,
+preprocessing, training, dan evaluasi, dan hasilnya sudah dibekukan. Lapisan
+aplikasi web memuat akun, feed, histori bacaan, dan rekomendasi yang menyajikan
+artefak beku tersebut.
 
 ## Tech Stack
 
@@ -43,9 +44,9 @@ browser → web app (FastAPI, Jinja2)
                   └─ HybridRecommender → artefak .pkl / .npy / .parquet
 ```
 
-Aplikasi web **tidak pernah menghitung skor sendiri** dan tidak pernah
-mengurutkan ulang hasil rekomendasi. Semua keputusan ranking tetap milik
-lapisan riset yang sudah dibekukan.
+Aplikasi web tidak menghitung skor sendiri dan tidak mengurutkan ulang hasil
+rekomendasi. Keputusan ranking sepenuhnya milik lapisan riset yang sudah
+dibekukan.
 
 ## Dataset
 
@@ -58,16 +59,16 @@ Pasangan resmi terkunci, lihat `data/DATASET_LOCK.md` (jangan dicampur dengan sp
 | dev (eval) | `MINDsmall_dev/` | news.tsv + behaviors.tsv (73.152 impressions, 50.000 users) |
 | dev (eval) | `xMINDsmall_dev/` | news.tsv terjemahan Indonesia (42.416 news) |
 
-Aturan split: **file-based temporal**, train = file `*_train`, eval = file `*_dev`, cutoff `2019-11-15`. Dilarang random split (leakage).
+Aturan split: **file-based temporal**, train = file `*_train`, eval = file `*_dev`, cutoff `2019-11-15`. Random split tidak dipakai karena menyebabkan leakage.
 Overlap NID MIND↔xMIND 100%; coverage teks Indonesia untuk behavior 100%.
-Konteks tambahan: 62,7% item relevan dev tidak pernah muncul di interaksi train; 88,1% user dev tidak punya train history (`models/error_coverage.json`).
+Sebagai konteks: 62,7% item relevan dev tidak pernah muncul di interaksi train, dan 88,1% user dev tidak punya train history (`models/error_coverage.json`).
 
 ## Preprocessing
 
 Pipeline Indonesia (`configs/preprocessing.yaml`, `src/preprocessing/build_locked.py`):
 
 - Stemmer Sastrawi (per kata-unik), stopwords `configs/stopwords_id.txt`, normalisasi alay opsional.
-- Token: min 2 / max 50 karakter, buang angka dan tanda baca.
+- Token: min 2 / max 50 karakter; angka dan tanda baca dibuang.
 - Input teks: `title + abstract` xMIND (ID); `category/entities` di-join dari MIND via `nid`.
 - Output: `data/processed/news_processed.parquet`, `data/processed/interactions_{train,dev}.parquet`.
 - Leakage guard: vectorizer TF-IDF hanya di-fit di train; dev/full catalog hanya `transform()`.
@@ -80,54 +81,54 @@ Pipeline Indonesia (`configs/preprocessing.yaml`, `src/preprocessing/build_locke
 | CF ALS implicit | factors 128, reg 0.01, alpha 40, 20 iterasi, min 5 interaksi/user, min 3/item (`configs/als.yaml`) | `models/als_model.pkl`, `als_user/item_factors.npy` (ruang ALS: 3.394 item) |
 | Hybrid terbobot | skor = α·content + (1−α)·CF, min-max per user (`configs/hybrid.yaml`) | `models/weighted_hybrid.pkl` |
 
-Catatan alpha: `configs/hybrid.yaml` final `content_weight: 0.4` — pemenang
+Catatan alpha: `configs/hybrid.yaml` final `content_weight: 0.4`, pemenang
 protokol full-catalog Day 4/5 (Katalog 93.698 item, NDCG@10 0,00208; lihat
-Evaluation). Nilai 0,8 dari sweep lama (ruang ALS saja) tersisa hanya sebagai
-catatan historis di `models/best_alpha.json` / `weighted_hybrid.pkl` dan tidak
-dipakai serving maupun angka laporan.
+Evaluation). Nilai 0,8 berasal dari sweep lama pada ruang ALS saja dan tersisa
+hanya sebagai catatan historis di `models/best_alpha.json` /
+`weighted_hybrid.pkl`. Nilai itu tidak dipakai serving maupun angka laporan.
 
 ## Evaluation
 
-Semua evaluasi memakai formula metrik frozen yang sama (`_metrics_at_ks`, min-max per user, top-k terurut), seed 42.
-Skor dinormalisasi min-max per user sebelum digabung; kandidat train/session selalu di-mask (`-inf`).
+Semua evaluasi memakai formula metrik frozen yang sama (`_metrics_at_ks`, min-max per user, top-k terurut) dengan seed 42.
+Skor dinormalisasi min-max per user sebelum digabung. Kandidat train/session selalu di-mask (`-inf`).
 
 ### Restricted Catalog (Table A)
 
 - Kandidat = ruang item ALS saja (3.394 item). Warm users, profil = mean TF-IDF item train.
-- Efek: item di luar ruang CF tidak pernah bisa direkomendasikan — relevan untuk perbandingan, tetapi menyembunyikan cold-start item.
+- Item di luar ruang CF tidak pernah bisa direkomendasikan. Berguna untuk perbandingan, tetapi menyembunyikan cold-start item.
 - Hasil (`models/full_catalog_tables.md`): condong ke content; α=1,0 (pure content) NDCG@10 tertinggi (0,00928; n=1.139).
 
 ### Full Catalog (Table B)
 
 - Kandidat = seluruh katalog (93.698 item). TF-IDF `transform`-only (frozen). Pure CF (α=0) mengisi slot unknown dengan `-inf`; α>0 memberi slot unknown nilai 0 sehingga content tetap bisa me-ranking item non-ALS.
 - Protokol: warm users, mask train history, sampel 2.000/2.858 eligible, K=5/10/20, sweep α 0,0–1,0.
-- Hasil: **α=0,4 menghasilkan NDCG@10 tertinggi pada protokol full-catalog yang diuji** (0,00208; MAP@10 0,00120; hit@10 0,0090; n=2.000). Pure content (α=1,0) jatuh ke 0,00007 — bukti item cold-start butuh sinyal CF.
+- Hasil: α=0,4 memberi NDCG@10 tertinggi pada protokol full-catalog yang diuji (0,00208; MAP@10 0,00120; hit@10 0,0090; n=2.000). Pure content (α=1,0) turun ke 0,00007, yang menunjukkan item cold-start butuh sinyal CF.
 
 ### Warm/Cold Stratified Evaluation (Table C / Table D)
 
-Pertanyaan Bab IV: bagaimana perilaku sistem saat informasi user tersedia vs tidak tersedia.
+Bagian ini menjawab pertanyaan Bab IV: bagaimana perilaku sistem saat informasi user tersedia dan saat tidak tersedia.
 
-**Warm (Table C): train history tersedia → ALS personalisasi dapat digunakan.**
+**Warm (Table C): train history tersedia, sehingga ALS personalisasi dapat digunakan.**
 
 - Protokol identik Table B: full catalog, mask train, profil mean TF-IDF train. Sampel 2.000/2.858 eligible.
-- Hasil: **α=0,4 menghasilkan NDCG@10 tertinggi (0,00208)**, tetapi **selisih terhadap pure CF (α=0; 0,00200) relatif kecil**. Artinya: pada user bersejarah, komponen collaborative filtering memberikan kontribusi penting; content hanya memberi koreksi kecil di atasnya.
+- Hasil: α=0,4 memberi NDCG@10 tertinggi (0,00208), tetapi selisihnya terhadap pure CF (α=0; 0,00200) kecil. Pada user bersejarah, komponen collaborative filtering yang menentukan; content hanya memberi koreksi kecil di atasnya.
 
-**Cold (Table D): train history tidak tersedia → user-factor ALS tidak tersedia → session history dev digunakan → pseudo-user dibuat dari item ALS yang muncul pada session.**
+**Cold (Table D): train history tidak tersedia, sehingga user-factor ALS tidak tersedia. Session history dev dipakai dan pseudo-user dibuat dari item ALS yang muncul pada session.**
 
 - Protokol: user tanpa interaksi train. Session-based leave-last-out dalam dev (klik diurut waktu; history = semua kecuali terakhir; relevant = klik terakhir). Profil TF-IDF dari history session; CF diproksi pseudo-user factor = mean ALS item-factors dari item session yang ada di ALS; fallback non-personalized = popularity train; full catalog, mask session. Sampel 2.000/22.703 session usable.
-- Hasil: **α=0,4 menghasilkan NDCG@10 tertinggi (0,00921; MAP@10 0,00706; hit@10 0,0163) pada subset yang memiliki setidaknya satu item session di ruang ALS (n=1.164)**. Pure content pada n=2.000 penuh hanya 0,00139; popularity 0,00000.
-- **Keterbatasan eksplisit: 836/2.000 session cold tidak memiliki item ALS, sehingga CF tidak dapat dibentuk untuk subset itu.** Baris `hybrid_pseudo_cf` (α=0/0,4/0,8/1,0) hanya dievaluasi pada n=1.164 yang memiliki pseudo-CF; baris `content` dan `popularity` dievaluasi pada n=2.000 penuh. Perbandingan antar-baris Table D karena itu **tidak dapat dibandingkan secara langsung** tanpa memperhatikan kolom n.
+- Hasil: α=0,4 memberi NDCG@10 tertinggi (0,00921; MAP@10 0,00706; hit@10 0,0163) pada subset yang punya setidaknya satu item session di ruang ALS (n=1.164). Pure content pada n=2.000 penuh hanya 0,00139; popularity 0,00000.
+- Keterbatasan: 836/2.000 session cold tidak punya item ALS, sehingga CF tidak dapat dibentuk untuk subset itu. Baris `hybrid_pseudo_cf` (α=0/0,4/0,8/1,0) hanya dievaluasi pada n=1.164 yang punya pseudo-CF; baris `content` dan `popularity` dievaluasi pada n=2.000 penuh. Karena itu baris-baris Table D tidak dapat dibandingkan langsung tanpa memperhatikan kolom n.
 
 ## Menjalankan Proyek
 
-Ada empat cara menjalankan, tergantung tujuannya. Semua perintah di bawah
-diverifikasi pada repo ini (Python 3.12, Linux x86_64).
+Ada empat cara menjalankan proyek ini. Pilih sesuai tujuannya. Semua perintah
+di bawah sudah dijalankan di repo ini (Python 3.12, Linux x86_64).
 
 ### A. Menjalankan website (cara tercepat)
 
-Butuh artefak model yang sudah ada di `data/processed/` dan `models/`.
-Artefak ini **gitignored** (± 386 MB), jadi clone baru belum bisa langsung
-jalan. Ambil dari **GitHub Releases**:
+Butuh artefak model di `data/processed/` dan `models/`. Artefak ini
+**gitignored** (± 386 MB), jadi clone baru belum bisa langsung jalan. Ambil
+dari **GitHub Releases**:
 
 ```bash
 # unduh salah satu arsip dari halaman Releases, lalu dari root repo:
@@ -140,11 +141,11 @@ bash scripts/verify_artifacts.sh --serving
 | `...-serving-*.tar.zst` | 62 MB | 7 file yang dibaca `web.app` — cukup untuk menjalankan situs |
 | `...-full-*.tar.zst` | 333 MB | 11 file — perlu kalau ingin mengulang evaluasi IndoBERT |
 
-Jangan lewati langkah verifikasi: parquet yang terpotong atau pickle yang
-setengah tertulis **tidak** menimbulkan error, tetapi mengubah hasil
-rekomendasi secara diam-diam. Detail per file: [`docs/ARTIFACTS.md`](docs/ARTIFACTS.md).
+Verifikasi jangan dilewati. Parquet yang terpotong atau pickle yang setengah
+tertulis tidak menimbulkan error, tetapi mengubah hasil rekomendasi tanpa
+ketahuan. Rincian per file: [`docs/ARTIFACTS.md`](docs/ARTIFACTS.md).
 
-Alternatif tanpa unduhan: regenerasi lewat langkah **D** di bawah.
+Kalau tidak ingin mengunduh, regenerasi lewat langkah **D** di bawah.
 
 ```bash
 python -m venv venv && source venv/bin/activate
@@ -154,87 +155,88 @@ uvicorn web.app:app --app-dir src --port 8000
 ```
 
 Buka <http://localhost:8000>. Halaman pertama adalah landing; daftar akun baru
-atau masuk. Aplikasi memuat model saat startup (~25 detik, ~450 MB RAM), jadi
+atau masuk. Model dimuat saat startup (± 25 detik, ± 450 MB RAM), jadi
 permintaan pertama menunggu sebentar.
 
-Lalu di browser:
+Di browser, alurnya:
 
 1. **Daftar** — isi nama, email, password (minimal 8 karakter).
 2. **Beranda** — 10 kartu rekomendasi. Akun baru belum punya riwayat, jadi
    sistem memakai jalur *populer*; label di atas kartu menyebut sumbernya.
-3. **Baca berita** — klik kartu mana pun. Setiap berita yang terbuka
-   tercatat sebagai interaksi.
+3. **Baca berita** — klik kartu mana pun. Berita yang terbuka tercatat sebagai
+   interaksi.
 4. **Histori** — semua yang pernah dibaca, terbaru di atas, waktu dalam WIB.
 5. **Kembali ke Beranda** — begitu ada riwayat, label berubah menjadi
    *"Rekomendasi dari riwayat bacaanmu"* dan isinya mengikuti bacaan tadi.
 
-Lewat Docker, lihat [Menjalankan lewat Docker](#menjalankan-lewat-docker).
+Untuk Docker, lihat [Menjalankan lewat Docker](#b-menjalankan-lewat-docker).
 
 ### B. Menjalankan lewat Docker
 
-Image sudah berisi dependensi dan artefak yang diperlukan. Tidak perlu venv,
-tidak perlu install apa pun selain Docker.
+Image sudah berisi dependensi dan artefak yang diperlukan. Selain Docker, tidak
+ada yang perlu dipasang.
 
 ```bash
 docker build -t goodnews:latest .
 docker run -d --name goodnews-app -p 8000:8000 -v goodnews-data:/data goodnews:latest
 ```
 
-Tag `:latest` ditulis eksplisit: tanpa itu Docker memberi tag `latest` juga,
-tetapi menyebutkannya membuat perintah `docker run` di bawah cocok dengan yang
-baru saja dibangun — bukan mencoba menarik `goodnews` dari registry dan gagal.
+Tag `:latest` ditulis eksplisit supaya perintah `docker run` di atas memakai
+image yang baru dibangun. Tanpa tag, Docker tetap memberi `latest`, tetapi
+kalau image-nya tidak ada ia akan mencoba menarik `goodnews` dari registry dan
+gagal.
 
 Buka <http://localhost:8000>.
 
 - **`-v goodnews-data:/data`** menyimpan akun dan histori di named volume
   Docker, jadi bertahan saat container di-restart. Tanpa volume, database
   SQLite hilang setiap restart.
-- **Jangan pakai bind mount `-v "$PWD/data:/data"`** kecuali direktori host
-  sudah bisa ditulis uid 10001. Container berjalan sebagai user non-root
-  (uid 10001), sedangkan `data/` milik user Anda, sehingga SQLite gagal dengan
-  `attempt to write a readonly database`. Kalau memang perlu bind mount:
+- **Bind mount `-v "$PWD/data:/data"` tidak dipakai** karena container berjalan
+  sebagai user non-root (uid 10001), sedangkan `data/` milik user Anda. SQLite
+  akan gagal dengan `attempt to write a readonly database`. Kalau memang perlu
+  bind mount:
 
   ```bash
   mkdir -p data-docker && sudo chown 10001:10001 data-docker
   docker run -p 8000:8000 -v "$PWD/data-docker:/data" goodnews
   ```
 
-- Model dimuat saat startup; tunggu sampai log menampilkan
+- Model dimuat saat startup. Tunggu log menampilkan
   `Application startup complete` sebelum membuka browser (± 25 detik).
 - Cek kesehatan: `curl localhost:8000/health` →
   `{"status":"ok","alpha":0.4,"catalog_size":93698,"als_items":3394}`.
 
-Untuk melihat isi volume (mis. backup SQLite):
+Isi volume bisa diambil untuk backup:
 
 ```bash
 docker cp goodnews-app:/data/web.db ./web.db.backup
 ```
 
-Angka resource yang terukur (Docker, Linux x86_64):
+Angka resource terukur (Docker, Linux x86_64):
 
 | | |
 |---|---|
 | Ukuran image | 807 MB |
-| Waktu start | ~25 detik |
+| Waktu start | ± 25 detik |
 | RAM idle | 445–476 MiB |
 | RAM, 24 sesi bersamaan | 481–498 MiB |
 
-Karena itu **512 MB terlalu mepet**; 1 GB adalah kebutuhan sebenarnya. Detail
-perbandingan platform gratis ada di [`docs/web/DEPLOYMENT.md`](docs/web/DEPLOYMENT.md).
+Dengan angka itu, 512 MB terlalu mepet dan 1 GB adalah kebutuhan sebenarnya.
+Perbandingan platform gratis ada di [`docs/web/DEPLOYMENT.md`](docs/web/DEPLOYMENT.md).
 
 ### C. Menjalankan dengan persona / akun demo
 
 Akun biasa memakai jalur *cold* (riwayat sesi) sampai user membaca beberapa
-berita. Untuk demonstrasi, biasanya lebih meyakinkan memakai **persona**: akun
-lokal yang dipetakan ke satu `user_id` di dataset MIND yang **punya faktor
-ALS**. Akun ini langsung memakai jalur *warm* — rekomendasi dari profil
-dataset, bukan dari riwayat kosong — sehingga label di beranda berbunyi
+berita. Untuk demonstrasi, **persona** memberi hasil yang lebih meyakinkan:
+akun lokal yang dipetakan ke satu `user_id` di dataset MIND yang punya faktor
+ALS. Akun ini langsung memakai jalur *warm*, yaitu rekomendasi dari profil
+dataset dan bukan dari riwayat kosong, sehingga label di beranda berbunyi
 *"Rekomendasi berdasarkan profil dataset demo"*.
 
-Contoh `user_id` yang terverifikasi eligible (ada di `user_map` ALS):
+`user_id` berikut sudah diverifikasi ada di `user_map` ALS:
 `U10022`, `U10045`, `U10062`, `U10103`.
 
-**Persiapan (sekali).** Isi variabel lingkungan — jangan pernah commit nilainya:
+**Persiapan (sekali).** Isi variabel lingkungan. Jangan commit nilainya:
 
 ```bash
 export WEB_DEMO_PERSONA_USER_ID=U10022
@@ -242,21 +244,22 @@ export WEB_DEMO_PERSONA_EMAIL=demo@example.com
 export WEB_DEMO_PERSONA_PASSWORD='pilih-password-yang-kuat'
 ```
 
-**Membuat akunnya** (idempoten — dijalankan ulang hanya memperbarui):
+**Membuat akunnya.** Perintah ini idempoten: dijalankan ulang hanya
+memperbarui.
 
 ```bash
 python -m src.web.seed_persona
 # persona ready: user_id=1 email=demo@example.com dataset_user=U10022
 ```
 
-Perintah ini memverifikasi lebih dulu bahwa `user_id` tersebut benar-benar
-punya faktor ALS; kalau tidak, ia berhenti tanpa menulis apa pun.
+Sebelum menulis apa pun, perintah ini memeriksa bahwa `user_id` tersebut punya
+faktor ALS. Kalau tidak, ia berhenti.
 
 **Masuk** ke <http://localhost:8000/login> dengan email dan password di atas.
-Beranda akan menampilkan label persona dan 10 kartu dari profil dataset.
+Beranda menampilkan label persona dan 10 kartu dari profil dataset.
 
-**Dengan Docker.** Variabel harus diberikan saat container dijalankan, lalu
-seed dijalankan di dalam container:
+**Dengan Docker.** Variabel diberikan saat container dijalankan, lalu seed
+dijalankan di dalam container:
 
 ```bash
 docker run -d --name goodnews-app -p 8000:8000 -v goodnews-data:/data \
@@ -269,7 +272,7 @@ docker exec goodnews-app python -m src.web.seed_persona
 ```
 
 Kalau seed dijalankan tanpa variabel, ia mencetak
-`Persona seed skipped; missing: ...` dan keluar dengan kode 2 — bukan error.
+`Persona seed skipped; missing: ...` dan keluar dengan kode 2.
 
 ### D. Reproduksi riset (lengkap)
 
@@ -303,7 +306,7 @@ bash scripts/smoke_demo.sh
 Kontrak API beku: [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md) +
 [`docs/openapi.json`](docs/openapi.json).
 
-### Memilih cara jalan yang mana?
+### Memilih cara jalan
 
 | Tujuan | Cara |
 |--------|------|
@@ -314,7 +317,7 @@ Kontrak API beku: [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md) +
 
 ## Konfigurasi
 
-Semua pengaturan dibaca dari environment; default-nya ada di
+Semua pengaturan dibaca dari environment. Default-nya ada di
 `src/web/config.py`. Salin [`.env.example`](.env.example) menjadi `.env` untuk
 pemakaian lokal.
 
@@ -360,7 +363,7 @@ NDCG@10 (seed 42):
 | C | Warm stratified = protokol B (n=2.000) | hybrid α=0,4 | 0,00208 (CF 0,00200; content 0,00007) |
 | D | Cold session LLO, pseudo-CF subset (n=1.164) | hybrid α=0,4 | 0,00921 (CF-proxy α=0: 0,00645; content n=2.000: 0,00139; popularity: 0,00000) |
 
-Keterbatasan yang dibawa ke Bab IV: (1) skor absolut kecil — task ranking 93.698 item dengan relevan tipis (median 1/user); (2) 836/2.000 session cold tanpa item ALS tidak mendapat skor CF; (3) sweep α Day 5 pada Tabel C/D hanya di titik 0,0/0,4/0,8/1,0 (sweep rapat 0,0–1,0 hanya ada di Tabel A/B).
+Keterbatasan yang dibawa ke Bab IV: (1) skor absolutnya kecil karena task ini meranking 93.698 item dengan relevan tipis (median 1 per user); (2) 836 dari 2.000 session cold tidak punya item ALS sehingga tidak mendapat skor CF; (3) sweep α Day 5 pada Tabel C/D hanya di titik 0,0/0,4/0,8/1,0, sedangkan sweep rapat 0,0–1,0 hanya ada di Tabel A/B.
 
 ## Status
 
