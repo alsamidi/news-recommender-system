@@ -1,7 +1,12 @@
 """Auth behaviour: registration, login, logout, CSRF, session isolation."""
 from __future__ import annotations
 
+import re
+
+import pytest
+
 from tests.web.conftest import TEST_PASSWORD, csrf_of
+from web.throttle import IP_MAX_FAILURES, MAX_FAILURES
 
 
 def test_register_creates_user_and_redirects_to_feed(client, register):
@@ -249,3 +254,133 @@ def test_landing_page_accessible_for_guests_and_redirects_if_logged_in(client, r
     r = client.get("/landing", follow_redirects=False)
     assert r.status_code == 303
     assert r.headers["location"] == "/"
+
+
+def test_per_ip_throttle_stops_cross_account_guessing(client, register):
+    """One attacker, many emails: the per-email key cannot see this.
+
+    Per-email limiting lets an attacker try one password against a thousand
+    accounts. The per-IP key exists to stop exactly that.
+    """
+    app = client.app
+    app.state.throttle._failures.clear()
+    app.state.ip_throttle._failures.clear()
+
+    token = csrf_of(client.get("/login").text)
+    # Fail against distinct emails so the per-email counter never trips.
+    for i in range(IP_MAX_FAILURES):
+        r = client.post("/login", data={"email": f"nobody{i}@example.com",
+                                        "password": "salah", "csrf_token": token})
+        assert r.status_code == 400, f"attempt {i} should not be blocked yet"
+
+    blocked = client.post("/login", data={"email": "another@example.com",
+                                          "password": "salah", "csrf_token": token})
+    assert blocked.status_code == 429
+    assert "Terlalu banyak" in blocked.text
+
+
+def test_per_ip_budget_is_looser_than_per_email(client):
+    """A shared address must not lock out bystanders.
+
+    Thirty users behind one campus NAT: five people mistype a few times each,
+    and nobody should be locked out, because no single account was attacked.
+    """
+    app = client.app
+    app.state.throttle._failures.clear()
+    app.state.ip_throttle._failures.clear()
+
+    # 25 failures spread over 25 accounts from one IP: under the IP budget.
+    for i in range(25):
+        app.state.ip_throttle.record_failure("10.0.0.7")
+    assert not app.state.ip_throttle.is_blocked("10.0.0.7")
+    # The per-email counter is what protects an individual account.
+    assert IP_MAX_FAILURES > MAX_FAILURES
+
+
+def test_client_ip_ignores_forwarded_header(client):
+    """X-Forwarded-For is caller-controlled; trusting it defeats the limiter."""
+    from web.routes.auth import client_ip
+
+    class Req:
+        headers = {"x-forwarded-for": "1.2.3.4, 5.6.7.8"}
+        client = type("C", (), {"host": "203.0.113.9"})()
+
+    assert client_ip(Req()) == "203.0.113.9"
+
+
+def test_secure_flag_follows_configuration(monkeypatch):
+    """WEB_SECURE_COOKIES must actually reach set_cookie, default off."""
+    import importlib
+
+    from web import config as cfgmod
+
+    monkeypatch.delenv("WEB_SECURE_COOKIES", raising=False)
+    assert cfgmod.load_config().secure_cookies is False
+    monkeypatch.setenv("WEB_SECURE_COOKIES", "1")
+    assert cfgmod.load_config().secure_cookies is True
+    monkeypatch.setenv("WEB_SECURE_COOKIES", "nonsense")
+    with pytest.raises(ValueError):
+        cfgmod.load_config()
+
+
+def test_csrf_secret_comes_from_configuration(monkeypatch):
+    """A fixed secret keeps anonymous tokens valid across restarts/workers."""
+    from web import config as cfgmod
+
+    monkeypatch.delenv("WEB_CSRF_SECRET", raising=False)
+    assert cfgmod.load_config().csrf_secret is None
+    monkeypatch.setenv("WEB_CSRF_SECRET", "a-fixed-secret")
+    assert cfgmod.load_config().csrf_secret == "a-fixed-secret"
+
+
+def test_logout_is_idempotent(client, register):
+    """Logging out twice must not produce a CSRF error.
+
+    A double click, a refresh of the POST, or a tab left open from before a
+    re-login all arrive with a token whose session no longer exists. The user
+    asked to be logged out; that state already holds. The old code fell
+    through to the anonymous CSRF branch and answered 403 with a raw JSON
+    body, which is what a user reported seeing.
+    """
+    register()
+    feed = client.get("/").text
+    token = re.search(r'action="/logout".*?value="([^"]+)"', feed, re.S).group(1)
+
+    first = client.post("/logout", data={"csrf_token": token}, follow_redirects=False)
+    assert first.status_code == 303
+
+    second = client.post("/logout", data={"csrf_token": token}, follow_redirects=False)
+    assert second.status_code == 303
+    assert second.headers["location"] == "/login"
+
+
+def test_logout_still_requires_csrf_when_a_session_exists(client, register):
+    """Idempotency must not become "logout accepts any token".
+
+    A forged token against a live session is still rejected; only the
+    no-session case short-circuits.
+    """
+    register()
+    r = client.post("/logout", data={"csrf_token": "bogus"}, follow_redirects=False)
+    assert r.status_code == 403
+    # The session survives the rejected request.
+    assert client.get("/", follow_redirects=False).status_code == 200
+
+
+def test_csrf_error_renders_a_page_not_json(client):
+    """A browser must not be handed {"detail": ...} for a form failure."""
+    r = client.post("/register", data={
+        "name": "X", "email": "x@example.com", "password": TEST_PASSWORD,
+        "password_confirm": TEST_PASSWORD}, headers={"accept": "text/html"})
+    assert r.status_code == 403
+    assert r.headers["content-type"].startswith("text/html")
+    assert "<html" in r.text.lower()
+    assert "CSRF token tidak valid" in r.text
+
+
+def test_csrf_error_still_json_for_api_clients(client):
+    """The frozen API's error shape is unchanged by the web-layer handler."""
+    r = client.post("/recommend", json={"top_k": 999})
+    assert r.status_code == 422
+    assert r.headers["content-type"].startswith("application/json")
+    assert "detail" in r.json()

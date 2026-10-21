@@ -21,6 +21,16 @@ def _render(request: Request, template: str, status_code: int = 200, **ctx):
     )
 
 
+def client_ip(request: Request) -> str:
+    """Caller address for rate limiting.
+
+    Uses the socket peer, not X-Forwarded-For: that header is caller-controlled
+    and trusting it would let an attacker pick a fresh key per attempt and
+    never be limited. Behind a proxy, configure the proxy to rewrite the peer
+    address (or terminate TLS and rate-limit there).
+    """
+    return request.client.host if request.client else "unknown"
+
 def _set_session(request: Request, user_id: int) -> RedirectResponse:
     cfg = request.app.state.config
     store = request.app.state.store
@@ -32,6 +42,7 @@ def _set_session(request: Request, user_id: int) -> RedirectResponse:
         "session", token,
         max_age=cfg.session_ttl_seconds,
         httponly=True, samesite="lax", path="/",
+        secure=request.app.state.config.secure_cookies,
     )
     return resp
 
@@ -102,11 +113,15 @@ async def login_submit(
     require_csrf(request, csrf_token)
     store = request.app.state.store
     throttle = request.app.state.throttle
+    ip_throttle = request.app.state.ip_throttle
     email = email.strip().lower()
+    ip = client_ip(request)
 
-    # Throttle by email. Message stays uniform: a blocked account is
-    # indistinguishable from a wrong password apart from the retry hint.
-    if throttle.is_blocked(email):
+    # Two keys, same limiter. Per-email stops guessing against one account;
+    # per-IP stops the same attacker spreading across many accounts, which the
+    # email key alone cannot see (SECURITY_NOTES §3). Both are checked before
+    # any password work.
+    if throttle.is_blocked(email) or ip_throttle.is_blocked(ip):
         return _render(request, "login.html", status_code=429,
                        csrf=request.state.csrf,
                        error="Terlalu banyak percobaan. Coba lagi beberapa menit lagi.",
@@ -116,19 +131,36 @@ async def login_submit(
     # Uniform failure message: never reveal whether the email exists.
     if not user or not verify_password(password, user["password_hash"]):
         throttle.record_failure(email)
+        ip_throttle.record_failure(ip)
         return _render(request, "login.html", status_code=400,
                        csrf=request.state.csrf,
                        error="Email atau password salah.", values={"email": email}, active_page="login")
 
     throttle.reset(email)
+    ip_throttle.reset(ip)
     return _set_session(request, int(user["id"]))
 
 
 @router.post("/logout")
 async def logout(request: Request, csrf_token: str = Form("")):
-    require_csrf(request, csrf_token)
+    """End the session. Idempotent on purpose.
+
+    Logging out is not a state-changing action worth protecting against
+    replay: if the session is already gone, the user's intent is satisfied.
+    Without this guard, a second click, a browser refresh of the POST, or a
+    tab left open from before a re-login all validate the submitted token
+    against a session that no longer exists, fall through to the anonymous
+    branch, and fail with "CSRF token tidak valid" -- which the user sees as
+    a raw JSON error while trying to log out.
+
+    The token is still enforced whenever a session does exist.
+    """
     cookie = request.cookies.get("session")
-    if cookie:
+    session_row = (
+        request.app.state.store.get_session(token_hash(cookie)) if cookie else None
+    )
+    if session_row is not None:
+        require_csrf(request, csrf_token)
         request.app.state.store.delete_session(token_hash(cookie))
     resp = RedirectResponse("/login", status_code=303)
     resp.delete_cookie("session", path="/")

@@ -13,8 +13,8 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -31,7 +31,7 @@ from .csrf import issue as issue_csrf  # noqa: E402
 from .security import token_hash  # noqa: E402
 from .clients.rec_api import RecClient  # noqa: E402
 from .services.popular import Popularity  # noqa: E402
-from .throttle import LoginThrottle  # noqa: E402
+from .throttle import IP_MAX_FAILURES, LoginThrottle  # noqa: E402
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
@@ -41,8 +41,20 @@ TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 async def lifespan(app: FastAPI):
     """Own everything the mounted frozen app cannot do for itself."""
     cfg = load_config()
-    app.state.csrf_secret = secrets.token_bytes(32)
+    # A fixed secret keeps outstanding anonymous form tokens valid across a
+    # restart and across workers. Without one, fall back to a per-process
+    # random value, which is fine for a single-process local demo.
+    app.state.csrf_secret = (
+        cfg.csrf_secret.encode() if cfg.csrf_secret else secrets.token_bytes(32)
+    )
     app.state.throttle = LoginThrottle()
+    # Same limiter, looser budget. One IP is not one person: a campus NAT, an
+    # office or a mobile carrier gateway fronts many users, so the per-IP
+    # ceiling must sit well above the per-email one or a shared address locks
+    # out people who never mistyped anything. 30 in 15 minutes still stops
+    # automated guessing across accounts (2 attempts/minute) while leaving a
+    # roomful of legitimate users unaffected.
+    app.state.ip_throttle = LoginThrottle(max_failures=IP_MAX_FAILURES)
     store = Store(cfg.db_path)
     store.init_schema()
 
@@ -80,6 +92,25 @@ def create_app() -> FastAPI:
     app.include_router(feed.router)
     app.include_router(article.router)
 
+    @app.exception_handler(HTTPException)
+    async def http_error(request: Request, exc: HTTPException):
+        """Render a page for browser requests instead of raw JSON.
+
+        The frozen API is mounted separately and handles its own exceptions,
+        so its JSON error shape is untouched by this handler. Here the client
+        is a person looking at a form: a 403 that reads
+        {"detail":"CSRF token tidak valid"} is a dead end with no way back.
+        """
+        if request.headers.get("accept", "").startswith(("application/json",)):
+            return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+        return request.app.state.templates.TemplateResponse(
+            request, "error.html",
+            {"config": request.app.state.config, "user": request.state.user,
+             "csrf": getattr(request.state, "csrf", None),
+             "message": exc.detail, "code": exc.status_code},
+            status_code=exc.status_code,
+        )
+
     @app.middleware("http")
     async def attach_session(request: Request, call_next):
         """Resolve the session and enforce auth on protected paths.
@@ -114,11 +145,13 @@ def create_app() -> FastAPI:
 
         if nonce_to_set:
             response.set_cookie(
-                "csrf_nonce", nonce_to_set, httponly=True, samesite="lax", path="/"
+                "csrf_nonce", nonce_to_set, httponly=True, samesite="lax", path="/",
+                secure=app.state.config.secure_cookies,
             )
         if token_to_set:
             response.set_cookie(
-                "csrf_token", token_to_set, httponly=True, samesite="lax", path="/"
+                "csrf_token", token_to_set, httponly=True, samesite="lax", path="/",
+                secure=app.state.config.secure_cookies,
             )
         return response
 
