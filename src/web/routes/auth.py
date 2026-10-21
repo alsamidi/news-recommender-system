@@ -5,6 +5,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ..csrf import require_csrf
+from ..services.persona import eligible_personas, persona_count
 from ..security import (
     hash_password, new_csrf_token, new_session_token, token_hash, verify_password,
 )
@@ -96,11 +97,58 @@ async def register_submit(
     return _set_session(request, user_id)
 
 
+
+@router.get("/login/persona", response_class=HTMLResponse)
+async def persona_picker(request: Request):
+    """Pick a dataset persona and sign in without a password.
+
+    Disabled unless WEB_PERSONA_PICKER is set. The page itself is the whole
+    credential: whoever loads it can enter any listed account, so it must not
+    be reachable on a public deployment by accident.
+    """
+    cfg = request.app.state.config
+    if not cfg.persona_picker:
+        return _render(request, "error.html", status_code=404,
+                       message="Halaman pemilih persona tidak aktif.",
+                       code=404, user=request.state.user, csrf=request.state.csrf)
+    if request.state.user:
+        return RedirectResponse("/", status_code=303)
+
+    personas = eligible_personas(request, cfg.persona_picker_limit)
+    return _render(request, "persona_picker.html", csrf=request.state.csrf,
+                   personas=personas, total=persona_count(request),
+                   limit=cfg.persona_picker_limit, active_page="login")
+
+
+@router.post("/login/persona", response_class=HTMLResponse)
+async def persona_picker_submit(request: Request, persona_user_id: str = Form(""),
+                                csrf_token: str = Form("")):
+    cfg = request.app.state.config
+    if not cfg.persona_picker:
+        return _render(request, "error.html", status_code=404,
+                       message="Halaman pemilih persona tidak aktif.",
+                       code=404, user=request.state.user, csrf=request.state.csrf)
+    require_csrf(request, csrf_token)
+
+    # Only users with ALS factors are offered; reject anything else, so the
+    # endpoint cannot be used to mint accounts for arbitrary ids.
+    if persona_user_id not in request.app.state.recommender_data["user_map"]:
+        return _render(request, "error.html", status_code=400,
+                       message="Persona tidak dikenal.",
+                       code=400, user=request.state.user, csrf=request.state.csrf)
+
+    user_id = request.app.state.store.ensure_persona_user(persona_user_id)
+    return _set_session(request, user_id)
+
+
 @router.get("/login", response_class=HTMLResponse)
 async def login_form(request: Request):
     if request.state.user:
         return RedirectResponse("/", status_code=303)
-    return _render(request, "login.html", csrf=request.state.csrf, error=None, values={}, active_page="login")
+    cfg = request.app.state.config
+    return _render(request, "login.html", csrf=request.state.csrf, error=None, values={},
+                   active_page="login",
+                   persona_picker=cfg.persona_picker)
 
 
 @router.post("/login", response_class=HTMLResponse)

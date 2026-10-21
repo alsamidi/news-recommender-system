@@ -384,3 +384,55 @@ def test_csrf_error_still_json_for_api_clients(client):
     assert r.status_code == 422
     assert r.headers["content-type"].startswith("application/json")
     assert "detail" in r.json()
+
+
+# ---------------------------------------------------------------------------
+# Passwordless persona picker
+# ---------------------------------------------------------------------------
+
+def _enable_picker(client):
+    """Swap in a config with the picker on. Config is frozen, so replace it."""
+    import dataclasses
+    client.app.state.config = dataclasses.replace(
+        client.app.state.config, persona_picker=True)
+
+
+def test_persona_picker_is_off_by_default(client):
+    """The picker signs anyone into any account, so it must be opt-in.
+
+    Enabling it by default would make every public deployment open.
+    """
+    assert client.app.state.config.persona_picker is False
+    assert client.get("/login/persona", follow_redirects=False).status_code == 404
+    # And the login page must not advertise it.
+    assert 'href="/login/persona"' not in client.get("/login").text
+
+
+def test_persona_picker_rejects_unknown_ids(client):
+    """Only users with ALS factors may be entered, and CSRF still applies."""
+    _enable_picker(client)
+
+    page = client.get("/login/persona")
+    assert page.status_code == 200
+    token = csrf_of(page.text)
+
+    for bogus in ["U99999999", "", "U10022' OR 1=1--"]:
+        r = client.post("/login/persona",
+                        data={"persona_user_id": bogus, "csrf_token": token},
+                        follow_redirects=False)
+        assert r.status_code == 400, bogus
+
+    no_csrf = client.post("/login/persona", data={"persona_user_id": "U10022"},
+                          follow_redirects=False)
+    assert no_csrf.status_code == 403
+
+
+def test_persona_picker_lists_only_eligible_users(client):
+    """Every listed id must have ALS factors, or the warm path cannot run."""
+    _enable_picker(client)
+
+    page = client.get("/login/persona")
+    ids = re.findall(r'name="persona_user_id" value="(U\d+)"', page.text)
+    assert ids, "picker rendered no personas"
+    user_map = client.app.state.recommender_data["user_map"]
+    assert all(i in user_map for i in ids)

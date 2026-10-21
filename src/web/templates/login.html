@@ -15,5 +15,8 @@
     </div>
   </form>
   <p class="page-sub mt-md">Belum punya akun? <a href="/register">Daftar</a></p>
+  {% if persona_picker %}
+  <p class="page-sub">Untuk demo: <a href="/login/persona">masuk sebagai persona dataset</a></p>
+  {% endif %}
 </div>
 {% endblock %}

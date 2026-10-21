@@ -274,6 +274,21 @@ docker exec goodnews-app python -m src.web.seed_persona
 Kalau seed dijalankan tanpa variabel, ia mencetak
 `Persona seed skipped; missing: ...` dan keluar dengan kode 2.
 
+**Cara cepat tanpa seed: pemilih persona.** Set `WEB_PERSONA_PICKER=1`, lalu
+buka <http://localhost:8000/login/persona>. Halaman itu menampilkan daftar
+`user_id` dataset yang punya faktor ALS; pilih satu, klik **MASUK**, dan akun
+lokal untuk persona tersebut dibuat otomatis. Tidak perlu password, tidak perlu
+menjalankan `seed_persona`.
+
+```bash
+WEB_PERSONA_PICKER=1 uvicorn web.app:app --app-dir src --port 8000
+```
+
+Halaman ini **mati secara default** dan sebaiknya tetap begitu di deployment
+publik: siapa pun yang membukanya bisa masuk ke akun demo mana pun tanpa
+kredensial. Daftar dibatasi `WEB_PERSONA_PICKER_LIMIT` (default 50 dari 15.608
+user yang eligible).
+
 ### D. Reproduksi riset (lengkap)
 
 ```bash

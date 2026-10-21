@@ -45,6 +45,10 @@ class Config:
     # HTTP without any new setup; turn both on behind TLS (SECURITY_NOTES §4).
     secure_cookies: bool
     csrf_secret: str | None
+    # Passwordless persona picker. Off unless explicitly enabled: the page
+    # signs anyone who finds it into a demo account with no credential.
+    persona_picker: bool
+    persona_picker_limit: int
 
     @property
     def session_ttl_seconds(self) -> int:
@@ -78,6 +82,8 @@ def load_config() -> Config:
         persona_password=persona_password,
         secure_cookies=_bool("WEB_SECURE_COOKIES", False),
         csrf_secret=(os.environ.get("WEB_CSRF_SECRET") or "").strip() or None,
+        persona_picker=_bool("WEB_PERSONA_PICKER", False),
+        persona_picker_limit=_int("WEB_PERSONA_PICKER_LIMIT", 50),
     )
     _validate(cfg)
     return cfg
@@ -94,5 +100,7 @@ def _validate(cfg: Config) -> None:
     if not 1 <= cfg.rec_top_k <= 100:
         # API contract: top_k is 1..100.
         raise ValueError("WEB_REC_TOP_K must be within 1..100")
+    if not 1 <= cfg.persona_picker_limit <= 500:
+        raise ValueError("WEB_PERSONA_PICKER_LIMIT must be within 1..500")
     if cfg.rec_top_k < cfg.feed_limit:
         raise ValueError("WEB_REC_TOP_K must be >= WEB_FEED_LIMIT")

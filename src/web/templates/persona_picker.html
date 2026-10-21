@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Masuk sebagai persona{% endblock %}
+{% block content %}
+<div class="picker-card">
+  <h1 class="page-title">Masuk sebagai persona</h1>
+  <p class="page-sub">
+    Pilih satu <code>user_id</code> dari dataset. Akun ini langsung memakai
+    rekomendasi berdasarkan profil dataset, tanpa password.
+  </p>
+
+  <p class="picker-note">
+    Menampilkan {{ personas|length }} dari {{ total }} persona yang punya faktor ALS.
+    {% if total > limit %}Ubah batas lewat <code>WEB_PERSONA_PICKER_LIMIT</code>.{% endif %}
+  </p>
+
+  <form method="post" action="/login/persona">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+
+    <div class="picker-list" role="radiogroup" aria-label="Daftar persona">
+      {% for p in personas %}
+      <label class="picker-row">
+        <input type="radio" name="persona_user_id" value="{{ p.user_id }}" required>
+        <span class="picker-id">{{ p.user_id }}</span>
+        <span class="picker-meta">{{ p.items }} item latih</span>
+      </label>
+      {% endfor %}
+    </div>
+
+    <div class="mt-lg">
+      <button class="btn btn-primary w-full" type="submit">MASUK</button>
+    </div>
+  </form>
+
+  <p class="page-sub mt-md">Kembali ke <a href="/login">login biasa</a>.</p>
+</div>
+{% endblock %}

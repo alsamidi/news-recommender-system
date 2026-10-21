@@ -51,6 +51,7 @@ Review date: 2026-10-20.
 | CSRF secret | Per-process random by default; set `WEB_CSRF_SECRET` to fix it | A fixed secret keeps anonymous form tokens valid across restarts and workers. |
 | Session TTL is fixed, not sliding | Sessions expire mid-use after 7 days | Approved decision. |
 | No account lockout / CAPTCHA | Same as rate limiting | Out of MVP scope. |
+| Passwordless persona picker | **Anyone who loads `/login/persona` can enter any listed demo account** | Off by default (`WEB_PERSONA_PICKER`). Only lists users that have ALS factors, rejects unknown ids (400), and still enforces CSRF (403). Never enable on a public deployment. |
 | No password strength beyond length ≥ 8 | Weak passwords accepted | Approved for MVP. |
 | `interactions` grows without bound | Disk growth over time | Approved (no purge). Fine at demo scale. |
 

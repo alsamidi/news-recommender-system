@@ -66,6 +66,7 @@ async def lifespan(app: FastAPI):
     popularity = Popularity.build(catalog_nids=catalog_nids)
 
     app.state.config = cfg
+    app.state.recommender_data = rec._d
     app.state.store = store
     app.state.popularity = popularity
     app.state.client = RecClient(app)
@@ -132,7 +133,10 @@ def create_app() -> FastAPI:
             return RedirectResponse("/login", status_code=303)
 
         # Anonymous forms need a signed token before a session exists.
-        anon_form = path in {"/register", "/login", "/landing"} and request.state.user is None
+        anon_form = (
+            path in {"/register", "/login", "/landing", "/login/persona"}
+            and request.state.user is None
+        )
         nonce_to_set = None
         token_to_set = None
         if anon_form:

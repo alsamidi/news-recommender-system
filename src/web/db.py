@@ -132,6 +132,41 @@ class Store:
             return int(cur.lastrowid)
 
     # -- sessions -------------------------------------------------------
+    def get_user_by_persona(self, persona_user_id: str) -> sqlite3.Row | None:
+        with self.connect() as conn:
+            return conn.execute(
+                "SELECT * FROM users WHERE persona_user_id = ?", (persona_user_id,)
+            ).fetchone()
+
+    def ensure_persona_user(self, persona_user_id: str) -> int:
+        """Return a local account bound to this dataset user, creating it once.
+
+        Used by the passwordless picker. The password hash is random and never
+        handed out: this account is entered by choosing it, not by typing a
+        credential, so there is nothing to guess.
+        """
+        existing = self.get_user_by_persona(persona_user_id)
+        if existing is not None:
+            return int(existing["id"])
+        email = f"{persona_user_id.lower()}@persona.local"
+        row = self.get_user_by_email(email)
+        if row is not None:
+            # Account predates the persona binding (e.g. seeded by hand).
+            with self.connect() as conn:
+                conn.execute(
+                    "UPDATE users SET persona_user_id = ? WHERE id = ?",
+                    (persona_user_id, row["id"]),
+                )
+            return int(row["id"])
+        from .security import hash_password
+        import secrets as _secrets
+        return self.upsert_persona(
+            name=persona_user_id,
+            email=email,
+            password_hash=hash_password(_secrets.token_urlsafe(32)),
+            persona_user_id=persona_user_id,
+        )
+
     def create_session(self, user_id: int, token_hash: str, csrf_token: str,
                        ttl_seconds: int) -> None:
         now = utcnow()
