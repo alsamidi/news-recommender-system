@@ -31,7 +31,10 @@
     <span class="card-category">{{ r.category or 'umum' }}</span>
     <h2 class="card-title">{{ r.title or r.nid }}</h2>
     {% if r.abstract %}<p class="card-abstract">{{ r.abstract }}</p>{% endif %}
-    {% if r.subcategory %}<span class="card-meta">{{ r.subcategory }}</span>{% endif %}
+    <span class="card-meta">
+      {% if r.subcategory %}<span>{{ r.subcategory }}</span>{% endif %}
+      {% with a = r %}{% include "_readers.html" %}{% endwith %}
+    </span>
   </a>
   {% endfor %}
 </div>

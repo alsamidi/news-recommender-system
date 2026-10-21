@@ -715,8 +715,8 @@ def test_cards_show_unique_reader_counts(client, register):
     register()
     body = client.get("/").text
     # At least one card carries a dataset count (13.9% of the catalogue has one).
-    assert "pembaca dataset" in body
-    counts = re.findall(r'>(\d+) pembaca dataset<', body)
+    assert "× dataset" in body
+    counts = re.findall(r'>(\d+)× dataset<', body)
     assert counts, "no dataset counts rendered"
     assert all(int(c) >= 1 for c in counts), "zero must be hidden, not printed"
 
@@ -742,5 +742,5 @@ def test_zero_reader_counts_are_hidden(client, register):
     body = client.get("/").text
     # Match the rendered text exactly: a bare substring test would also match
     # "10 pembaca dataset" and fail for the wrong reason.
-    assert not re.search(r">0 pembaca dataset<", body)
-    assert not re.search(r">0 di aplikasi ini<", body)
+    assert not re.search(r">0× dataset<", body)
+    assert not re.search(r">0× di sini<", body)

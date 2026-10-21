@@ -1,0 +1,14 @@
+{# Reader counts for one card. Included by feed.html, article.html (related
+   cards) and history.html so the copy and the labels cannot drift apart.
+
+   Zero is never printed: only 13.9% of catalogue nids appear in the
+   interactions at all, so "0 pembaca" would assert something the data cannot
+   support (TEST-AC-255). The two sources are labelled separately so a dataset
+   sample is not mistaken for total readership (TEST-AC-256). #}
+{% if a.dataset_readers or a.app_readers %}
+<span class="card-readers" aria-label="Jumlah pembaca">
+  {% if a.dataset_readers %}<span title="Pembaca unik di sampel dataset MIND (train+dev)">{{ a.dataset_readers }}× dataset</span>{% endif %}
+  {% if a.dataset_readers and a.app_readers %}<span aria-hidden="true">·</span>{% endif %}
+  {% if a.app_readers %}<span title="Akun unik yang membuka berita ini di aplikasi ini">{{ a.app_readers }}× di sini</span>{% endif %}
+</span>
+{% endif %}

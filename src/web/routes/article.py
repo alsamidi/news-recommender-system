@@ -13,6 +13,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from ..clients.rec_api import RecAPIError
+from ..services.stats import attach_reader_counts
 
 router = APIRouter()
 
@@ -44,6 +45,11 @@ async def article_detail(request: Request, nid: str):
     except RecAPIError:
         related = []
 
+    # Same counts as the feed: the related cards are the same kind of card and
+    # a reader comparing them deserves the same context.
+    related = [r for r in related if r["nid"] != nid]
+    attach_reader_counts(request, related)
+
     return request.app.state.templates.TemplateResponse(
         request, "article.html",
         {
@@ -51,7 +57,7 @@ async def article_detail(request: Request, nid: str):
             "user": request.state.user,
             "csrf": request.state.csrf,
             "article": article,
-            "related": [r for r in related if r["nid"] != nid],
+            "related": related,
         },
     )
 
