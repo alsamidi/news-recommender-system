@@ -254,3 +254,36 @@ def test_breadcrumb_has_semantic_markup():
     html = read(TEMPLATES / "article.html")
     assert '<nav aria-label="Breadcrumb"' in html
     assert '<ol class="breadcrumb"' in html
+
+
+def test_static_files_are_revalidated(client):
+    """A changed stylesheet must not be served from a stale cache.
+
+    Starlette sends ETag and Last-Modified but no Cache-Control, so browsers
+    apply heuristic freshness. A fixed layout kept looking broken until the
+    page was opened in a private window; `no-cache` forces a revalidation,
+    which the existing ETag answers with 304 when nothing changed.
+
+    Uses the shared `client`: building a second app here would load the model
+    again and clear the module-level recommender on teardown, breaking every
+    later test with "recommender not loaded".
+    """
+    r = client.get("/static/app.css")
+    assert r.status_code == 200
+    assert r.headers.get("cache-control") == "no-cache"
+    etag = r.headers.get("etag")
+    assert etag, "no ETag, so revalidation would re-download"
+    assert client.get("/static/app.css", headers={"if-none-match": etag}).status_code == 304
+
+
+def test_picker_list_scrolls_and_says_so():
+    """The list must be scrollable and look scrollable."""
+    css = read(STATIC / "app.css")
+    block = re.search(r"\.picker-list\s*\{([^}]*)\}", css).group(1)
+    assert "max-height" in block
+    assert "overflow-y: auto" in block
+    # Overlay scrollbars are ~2px and read as a truncated list.
+    assert "scrollbar-width: thin" in css
+    assert "::-webkit-scrollbar" in css
+    template = read(TEMPLATES / "persona_picker.html")
+    assert "Gulir daftar" in template

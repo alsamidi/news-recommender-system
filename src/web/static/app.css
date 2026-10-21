@@ -135,6 +135,18 @@ a:hover { color: var(--color-link-active); }
   border: 1px solid var(--color-surface-strong);
   border-radius: var(--radius-sm);
   background: var(--color-canvas);
+  /* Overlay scrollbars on Linux/Chrome are ~2px and read as "the list is cut
+     off" rather than "the list scrolls". Ask for a visible, thin one. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-muted) transparent;
+  overscroll-behavior: contain;
+}
+.picker-list::-webkit-scrollbar { width: 10px; }
+.picker-list::-webkit-scrollbar-track { background: var(--color-surface-soft); }
+.picker-list::-webkit-scrollbar-thumb {
+  background: var(--color-muted);
+  border-radius: 5px;
+  border: 2px solid var(--color-surface-soft);
 }
 .picker-row {
   display: grid;

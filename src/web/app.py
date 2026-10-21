@@ -16,6 +16,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
 from fastapi.templating import Jinja2Templates
 
 # src/ on sys.path so `api.main` and `models.*` resolve like the tests do.
@@ -36,6 +37,23 @@ from .throttle import IP_MAX_FAILURES, LoginThrottle  # noqa: E402
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
+
+
+class RevalidatingStaticFiles(StaticFiles):
+    """Static files that browsers must revalidate before reuse.
+
+    Starlette sends ETag and Last-Modified but no Cache-Control, so browsers
+    fall back to heuristic freshness and can serve a stale stylesheet long
+    after it changed -- which is how a fixed layout kept looking broken until
+    the page was opened in a private window. `no-cache` does not disable
+    caching: it requires a revalidation, and the ETag turns that into a 304
+    when the file has not changed. Cheap, and it cannot go stale.
+    """
+
+    def file_response(self, *args, **kwargs) -> Response:
+        response = super().file_response(*args, **kwargs)
+        response.headers["cache-control"] = "no-cache"
+        return response
 
 
 @asynccontextmanager
@@ -88,7 +106,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
         docs_url=None, redoc_url=None, openapi_url=None,   # D16: no web /docs
     )
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    app.mount("/static", RevalidatingStaticFiles(directory=str(STATIC_DIR)), name="static")
     app.state.templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
     from .routes import article, auth, feed

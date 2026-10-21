@@ -10,7 +10,8 @@
 
   <p class="picker-note">
     Menampilkan {{ personas|length }} dari {{ total }} persona yang punya faktor ALS.
-    {% if total > limit %}Ubah batas lewat <code>WEB_PERSONA_PICKER_LIMIT</code>.{% endif %}
+    {% if total > limit %}Gulir daftar untuk melihat sisanya, atau ubah batas lewat
+    <code>WEB_PERSONA_PICKER_LIMIT</code>.{% endif %}
   </p>
 
   <form method="post" action="/login/persona">
