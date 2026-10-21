@@ -708,3 +708,39 @@ def test_history_page_shows_wib(client, register):
     nid = re.findall(r"/berita/(N\d+)", client.get("/").text)[0]
     client.get(f"/berita/{nid}")
     assert "WIB" in client.get("/histori").text
+
+
+def test_cards_show_unique_reader_counts(client, register):
+    """Cards show dataset readers and app readers, both unique per user."""
+    register()
+    body = client.get("/").text
+    # At least one card carries a dataset count (13.9% of the catalogue has one).
+    assert "pembaca dataset" in body
+    counts = re.findall(r'>(\d+) pembaca dataset<', body)
+    assert counts, "no dataset counts rendered"
+    assert all(int(c) >= 1 for c in counts), "zero must be hidden, not printed"
+
+
+def test_app_reader_count_is_unique_per_user(client, register):
+    """Opening the same article twice must not count twice."""
+    register()
+    nid = re.findall(r"/berita/(N\d+)", client.get("/").text)[0]
+    store = client.app.state.store
+    uid = int(store.get_user_by_email("budi@example.com")["id"])
+
+    before = store.unique_readers([nid]).get(nid, 0)
+    for _ in range(3):
+        store.add_view(uid, nid, "direct")
+    after = store.unique_readers([nid]).get(nid, 0)
+
+    assert after == before + 1, f"{before} -> {after} after three opens by one user"
+
+
+def test_zero_reader_counts_are_hidden(client, register):
+    """An article nobody has read must not print '0 pembaca'."""
+    register()
+    body = client.get("/").text
+    # Match the rendered text exactly: a bare substring test would also match
+    # "10 pembaca dataset" and fail for the wrong reason.
+    assert not re.search(r">0 pembaca dataset<", body)
+    assert not re.search(r">0 di aplikasi ini<", body)

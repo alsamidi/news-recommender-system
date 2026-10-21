@@ -132,6 +132,31 @@ class Store:
             return int(cur.lastrowid)
 
     # -- sessions -------------------------------------------------------
+    def unique_readers(self, nids: list[str]) -> dict[str, int]:
+        """nid -> number of distinct accounts that opened it, in this app.
+
+        Unique users, not views: the same person opening an article twice
+        counts once. Chunked because SQLite caps host parameters at 999 and a
+        feed page can ask about more nids than that.
+        """
+        if not nids:
+            return {}
+        out: dict[str, int] = {}
+        unique = list(dict.fromkeys(nids))
+        for start in range(0, len(unique), 500):
+            chunk = unique[start:start + 500]
+            placeholders = ",".join("?" * len(chunk))
+            with self.connect() as conn:
+                rows = conn.execute(
+                    f"SELECT nid, COUNT(DISTINCT user_id) AS n"
+                    f" FROM interactions WHERE nid IN ({placeholders})"
+                    f" GROUP BY nid",
+                    chunk,
+                ).fetchall()
+            for row in rows:
+                out[row["nid"]] = int(row["n"])
+        return out
+
     def get_user_by_persona(self, persona_user_id: str) -> sqlite3.Row | None:
         with self.connect() as conn:
             return conn.execute(

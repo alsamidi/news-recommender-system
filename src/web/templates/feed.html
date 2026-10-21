@@ -16,6 +16,13 @@
       <h2 class="card-title">{{ a.title or a.nid }}</h2>
       {% if a.abstract %}<p class="card-abstract">{{ a.abstract }}</p>{% endif %}
       {% if a.subcategory %}<span class="card-meta">{{ a.subcategory }}</span>{% endif %}
+      {% if a.dataset_readers or a.app_readers %}
+      <span class="card-readers">
+        {% if a.dataset_readers %}<span title="Pembaca unik di sampel dataset MIND (train+dev)">{{ a.dataset_readers }} pembaca dataset</span>{% endif %}
+        {% if a.dataset_readers and a.app_readers %}<span aria-hidden="true">·</span>{% endif %}
+        {% if a.app_readers %}<span title="Akun unik yang membuka berita ini di aplikasi ini">{{ a.app_readers }} di aplikasi ini</span>{% endif %}
+      </span>
+      {% endif %}
     </a>
   {% endfor %}
   </div>

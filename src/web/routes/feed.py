@@ -11,6 +11,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from ..services.feed import build_feed
+from ..services.stats import attach_reader_counts
 
 router = APIRouter()
 
@@ -49,6 +50,7 @@ SOURCE_LABELS = {
 @router.get("/", response_class=HTMLResponse)
 async def feed(request: Request):
     result = await build_feed(request)
+    attach_reader_counts(request, result.articles)
     return request.app.state.templates.TemplateResponse(
         request, "feed.html",
         {
@@ -82,6 +84,7 @@ async def history(request: Request):
             continue
         articles.append({**detail, "viewed_at": format_viewed_at(row["created_at"]),
                          "source": row["source"]})
+    attach_reader_counts(request, articles)
     return request.app.state.templates.TemplateResponse(
         request, "history.html",
         {"config": request.app.state.config, "user": request.state.user,

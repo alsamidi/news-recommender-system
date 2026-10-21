@@ -31,6 +31,7 @@ from .csrf import issue as issue_csrf  # noqa: E402
 from .security import token_hash  # noqa: E402
 from .clients.rec_api import RecClient  # noqa: E402
 from .services.popular import Popularity  # noqa: E402
+from .services.stats import build_dataset_readers  # noqa: E402
 from .throttle import IP_MAX_FAILURES, LoginThrottle  # noqa: E402
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -67,6 +68,9 @@ async def lifespan(app: FastAPI):
 
     app.state.config = cfg
     app.state.recommender_data = rec._d
+    # Unique dataset readers per nid, built once (~0.25 s) from the frozen
+    # interaction parquet. Read-only for the life of the process.
+    app.state.dataset_readers = build_dataset_readers()
     app.state.store = store
     app.state.popularity = popularity
     app.state.client = RecClient(app)

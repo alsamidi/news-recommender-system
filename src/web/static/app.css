@@ -106,6 +106,16 @@ a:hover { color: var(--color-link-active); }
   margin: 0;
 }
 .card-meta { font-size: 14px; line-height: 1.25; color: var(--color-muted); margin-top: auto; }
+.card-readers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xxs) var(--space-xs);
+  font-size: 14px;
+  line-height: 1.25;
+  color: var(--color-muted);
+  margin-top: var(--space-xxs);
+}
+.card-readers > span { white-space: nowrap; }
 
 /* ---- persona picker ----
    A scrollable list of dataset users for the passwordless demo login. The
@@ -189,6 +199,7 @@ a:hover { color: var(--color-link-active); }
   color: var(--color-muted);
 }
 .history-time { font-size: 14px; color: var(--color-muted); text-align: right; white-space: nowrap; }
+.history-readers { font-size: 14px; color: var(--color-muted); text-align: right; white-space: nowrap; }
 @media (max-width: 768px) {
   .history-row { grid-template-columns: minmax(0, 1fr); gap: var(--space-xxs); }
   .history-time { text-align: left; }
