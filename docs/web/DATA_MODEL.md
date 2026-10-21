@@ -104,7 +104,7 @@ Notes:
 | `user_id` | INTEGER | NOT NULL → `users(id)` ON DELETE CASCADE | |
 | `nid` | TEXT | NOT NULL | Must exist in the catalog (validated by the app) |
 | `event` | TEXT | NOT NULL | `view` only in the MVP |
-| `created_at` | TEXT | NOT NULL | ISO-8601 UTC |
+| `created_at` | TEXT | NOT NULL | ISO-8601 UTC (storage is always UTC; the history page renders it as WIB, UTC+7) |
 | `source` | TEXT | NOT NULL | `feed`, `similar`, `history`, `direct` |
 
 Indexes: `(user_id, created_at DESC)`, `(user_id, nid)`.

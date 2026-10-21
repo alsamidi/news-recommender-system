@@ -680,3 +680,31 @@ def test_history_and_feed_share_one_left_edge():
     for block in (re.search(r"\.topnav\s*\{[^}]*\}", css).group(0),
                   re.search(r"\.site-footer\s*\{[^}]*\}", css).group(0)):
         assert "max(var(--space-lg), calc((100% - var(--layout-max)) / 2" in block
+
+
+def test_history_time_is_rendered_in_wib():
+    """Timestamps are stored UTC and shown as WIB (UTC+7).
+
+    The formatter previously printed the UTC clock without converting, so a
+    reader in Jakarta saw times seven hours behind their own. Indonesia has no
+    daylight saving, so a fixed +07:00 is exact.
+    """
+    from web.routes.feed import format_viewed_at
+
+    assert format_viewed_at("2026-10-21T07:38:00+00:00") == "21 Okt 2026, 14:38 WIB"
+    # Day rollover is the case a naive "+7 hours to the string" would break.
+    assert format_viewed_at("2026-10-21T20:30:00+00:00") == "22 Okt 2026, 03:30 WIB"
+    assert format_viewed_at("2026-10-21T17:00:00+00:00") == "22 Okt 2026, 00:00 WIB"
+    # A naive value is UTC, which is what utcnow() writes.
+    assert format_viewed_at("2026-10-21T07:38:00") == "21 Okt 2026, 14:38 WIB"
+    # An already-offset value converts from that offset, not from UTC.
+    assert format_viewed_at("2026-10-21T07:38:00+07:00") == "21 Okt 2026, 07:38 WIB"
+    # Unparseable input is passed through rather than raising into the page.
+    assert format_viewed_at("bukan-tanggal") == "bukan-tanggal"
+
+
+def test_history_page_shows_wib(client, register):
+    register()
+    nid = re.findall(r"/berita/(N\d+)", client.get("/").text)[0]
+    client.get(f"/berita/{nid}")
+    assert "WIB" in client.get("/histori").text

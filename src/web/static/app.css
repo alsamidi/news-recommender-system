@@ -119,7 +119,7 @@ a:hover { color: var(--color-link-active); }
 }
 .history-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px 190px;
+  grid-template-columns: minmax(0, 1fr) 120px 210px;
   align-items: baseline;
   gap: var(--space-md);
   padding: var(--space-sm) 0;
@@ -140,11 +140,10 @@ a:hover { color: var(--color-link-active); }
   text-transform: uppercase;
   color: var(--color-muted);
 }
-.history-time { font-size: 14px; color: var(--color-muted); text-align: right; }
+.history-time { font-size: 14px; color: var(--color-muted); text-align: right; white-space: nowrap; }
 @media (max-width: 768px) {
   .history-row { grid-template-columns: minmax(0, 1fr); gap: var(--space-xxs); }
   .history-time { text-align: left; }
-  .history-cat { order: 2; }
 }
 
 /* ---- article body (D26) ---- */

@@ -5,7 +5,7 @@ the API cannot provide when the payload is capped at 50 nids.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
@@ -17,13 +17,26 @@ router = APIRouter()
 ID_MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
 
 
+# WIB is UTC+7 year-round; Indonesia has no daylight saving, so a fixed offset
+# is exact rather than an approximation. Stored timestamps stay UTC -- only the
+# presentation converts.
+WIB = timezone(timedelta(hours=7), "WIB")
+
 def format_viewed_at(iso_str: str) -> str:
+    """Render a stored UTC timestamp as WIB (UTC+7).
+
+    The stored value carries its own offset, so astimezone converts from
+    whatever was written instead of assuming. A naive value is treated as UTC,
+    which is what utcnow() writes.
+    """
     try:
         dt = datetime.fromisoformat(iso_str)
-        month_name = ID_MONTHS[dt.month - 1]
-        return f"{dt.day} {month_name} {dt.year}, {dt.hour:02d}:{dt.minute:02d}"
-    except Exception:
+    except (ValueError, TypeError):
         return iso_str
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    dt = dt.astimezone(WIB)
+    return f"{dt.day} {ID_MONTHS[dt.month - 1]} {dt.year}, {dt.hour:02d}:{dt.minute:02d} WIB"
 
 
 SOURCE_LABELS = {
