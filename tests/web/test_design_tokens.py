@@ -158,6 +158,26 @@ def test_no_rating_control():
             assert word not in body
 
 
+def test_desktop_nav_is_not_hidden_by_details_content():
+    """Regression: the desktop nav rendered nothing.
+
+    `<details>` exposes its children through a `::details-content` box that is
+    `content-visibility: hidden` while closed. `display: contents` on the
+    parent does not reach inside that box, so `.navmenu > summary {display:
+    none}` hid the toggle while the links stayed unpainted — Beranda, Histori
+    and Keluar were laid out at a 44px height with nothing drawn (measured in
+    Chrome 155). A source test cannot see paint; it guards the override that
+    makes them visible, together with the browser check recorded in the
+    commit that added this rule.
+    """
+    css = read(STATIC / "app.css")
+    assert ".navmenu::details-content" in css, (
+        "desktop nav links will be invisible again: <details> hides its "
+        "content box while closed")
+    rule = re.search(r"\.navmenu::details-content\s*\{([^}]*)\}", css).group(1)
+    assert "content-visibility: visible" in rule
+
+
 def test_nav_collapse_rule_exists():
     """TEST-AC-242: the nav must collapse below 768px."""
     css = read(STATIC / "app.css")

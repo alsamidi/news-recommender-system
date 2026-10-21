@@ -374,6 +374,12 @@ input:disabled, button:disabled, .btn:disabled {
 .navmenu > summary { display: none; }
 .navmenu > summary::-webkit-details-marker { display: none; }
 
+/* Chrome renders a closed <details> through a ::details-content box that is
+   content-visibility:hidden by default. display:contents on the parent does
+   not reach inside it, so the desktop links stayed invisible until here
+   (measured: links laid out at 44px tall, zero paint, Chrome 155). */
+.navmenu::details-content { content-visibility: visible; display: contents; }
+
 .navburger, .navburger::before, .navburger::after {
   display: block; width: 20px; height: 2px;
   background: var(--color-ink); content: "";
