@@ -26,12 +26,17 @@ had not yet grown; use the range, not the best case.
 ## Build and run
 
 ```bash
-docker build -t goodnews .
-docker run -p 8000:8000 -v "$PWD/data:/data" goodnews
+docker build -t goodnews:latest .
+docker run -d --name goodnews-app -p 8000:8000 -v goodnews-data:/data goodnews:latest
 ```
 
 `WEB_DB_PATH` defaults to `/data/web.db` inside the image. Mount a volume there
 or every restart loses accounts and history.
+
+Use a **named volume**, not a bind mount to `./data`. The container runs as
+uid 10001, so a host directory owned by your user is not writable and SQLite
+fails at startup with `attempt to write a readonly database`. If a bind mount
+is required, `chown 10001:10001` the directory first.
 
 Optional demo persona (a dataset user that has ALS factors, so the warm path
 is exercised instead of the cold fallback):
@@ -125,7 +130,7 @@ finished loading, so a passing check means the service can actually recommend.
 ## Rebuilding after a code change
 
 The image is built from the working tree, so a rebuild after a fix is
-`docker build -t goodnews .`. Two things are worth checking rather than
+`docker build -t goodnews:latest .`. Two things are worth checking rather than
 assuming:
 
 1. **The build is fast when it should not be.** A rebuild that finishes in a
