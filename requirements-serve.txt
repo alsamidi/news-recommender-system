@@ -1,0 +1,21 @@
+# Serving-only dependencies for the web app image.
+# Derived from sys.modules across a real cold start AND a static import scan of
+# src/web, src/api and src/models -- the runtime scan alone missed httpx, which
+# rec_api.py imports at module level and only fails at container start. Pinned
+# to the versions the test suite ran against.
+# Research-only packages (torch, transformers, sentence-transformers, mlflow,
+# jupyterlab, matplotlib) are absent: nothing on the serving path imports them.
+
+fastapi==0.141.1
+uvicorn==0.52.3
+pydantic==2.13.4
+jinja2==3.1.6
+python-multipart==0.0.32
+numpy==2.5.2
+scipy==1.18.0
+scikit-learn==1.9.0
+pandas==2.3.3
+pyarrow==25.0.1
+implicit==0.7.3
+pyyaml==6.0.3
+httpx==0.28.1
