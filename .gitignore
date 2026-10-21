@@ -49,3 +49,6 @@ Thumbs.db
 
 # tasteskill audit scratch output
 .taste-skill/
+
+# Artifact release archives (built by scripts/pack_artifacts.sh)
+dist/
