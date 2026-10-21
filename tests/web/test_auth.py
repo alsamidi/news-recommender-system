@@ -436,3 +436,20 @@ def test_persona_picker_lists_only_eligible_users(client):
     assert ids, "picker rendered no personas"
     user_map = client.app.state.recommender_data["user_map"]
     assert all(i in user_map for i in ids)
+
+
+def test_persona_picker_renders_counts_not_python_objects(client):
+    """A dict key named like a dict method silently renders the method.
+
+    `{{ p.items }}` resolves to dict.items before the key of the same name, so
+    every row read "<built-in method items of dict object at 0x...>".
+    """
+    _enable_picker(client)
+    body = client.get("/login/persona").text
+
+    assert "built-in method" not in body
+    assert "0x" not in body.split("picker-meta")[1][:40]
+    # Each row shows a real count.
+    counts = re.findall(r'<span class="picker-meta">(\d+) item latih</span>', body)
+    assert counts, "no counts rendered"
+    assert all(int(c) >= 0 for c in counts)

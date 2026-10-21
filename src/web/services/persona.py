@@ -26,7 +26,11 @@ def eligible_personas(request: Request, limit: int) -> list[dict]:
             "user_id": user_id,
             # How many catalogue items the profile is built from. Shown so the
             # list is not a wall of identical strings.
-            "items": len(train_full.get(user_id, ())),
+            #
+            # Named item_count, not "items": in Jinja `p.items` resolves to the
+            # dict's own .items method before it tries the key, so the page
+            # rendered "<built-in method items of dict object at 0x...>".
+            "item_count": len(train_full.get(user_id, ())),
         })
     return out
 
