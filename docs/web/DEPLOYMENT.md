@@ -121,3 +121,23 @@ In order of effect:
 
 Point the platform's health check here. It responds only after the model has
 finished loading, so a passing check means the service can actually recommend.
+
+## Rebuilding after a code change
+
+The image is built from the working tree, so a rebuild after a fix is
+`docker build -t goodnews .`. Two things are worth checking rather than
+assuming:
+
+1. **The build is fast when it should not be.** A rebuild that finishes in a
+   few seconds is usually just re-tagging a cached layer. Confirm the change
+   is inside:
+
+   ```bash
+   docker run --rm --entrypoint python goodnews \
+     -c "import sys; sys.path.insert(0,'/app/src'); print('ok')"
+   docker exec <container> grep -c '<the symbol you added>' /app/src/<path>
+   ```
+
+2. **Cache-bypass the browser.** Static assets are served with normal HTTP
+   caching, so a verification screenshot can show the previous CSS. Reload
+   with the cache disabled before concluding a layout fix did not work.
