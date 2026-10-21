@@ -126,8 +126,25 @@ diverifikasi pada repo ini (Python 3.12, Linux x86_64).
 ### A. Menjalankan website (cara tercepat)
 
 Butuh artefak model yang sudah ada di `data/processed/` dan `models/`.
-Artefak ini **gitignored** (± 386 MB), jadi kalau baru clone, jalankan
-langkah B lebih dulu atau salin artefaknya.
+Artefak ini **gitignored** (± 386 MB), jadi clone baru belum bisa langsung
+jalan. Ambil dari **GitHub Releases**:
+
+```bash
+# unduh salah satu arsip dari halaman Releases, lalu dari root repo:
+tar -xf ta-news-rec-artifacts-serving-2026-10-21.tar.zst -C .
+bash scripts/verify_artifacts.sh --serving
+```
+
+| Arsip | Ukuran | Isi |
+|-------|--------|-----|
+| `...-serving-*.tar.zst` | 62 MB | 7 file yang dibaca `web.app` — cukup untuk menjalankan situs |
+| `...-full-*.tar.zst` | 333 MB | 11 file — perlu kalau ingin mengulang evaluasi IndoBERT |
+
+Jangan lewati langkah verifikasi: parquet yang terpotong atau pickle yang
+setengah tertulis **tidak** menimbulkan error, tetapi mengubah hasil
+rekomendasi secara diam-diam. Detail per file: [`docs/ARTIFACTS.md`](docs/ARTIFACTS.md).
+
+Alternatif tanpa unduhan: regenerasi lewat langkah **D** di bawah.
 
 ```bash
 python -m venv venv && source venv/bin/activate
@@ -330,6 +347,7 @@ Detail keamanan dan batasannya: [`docs/web/SECURITY_NOTES.md`](docs/web/SECURITY
 | [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md) | Kontrak API beku v1.0.0 |
 | [`docs/RESEARCH_FREEZE.md`](docs/RESEARCH_FREEZE.md) | Bukti pembekuan riset |
 | [`data/DATASET_LOCK.md`](data/DATASET_LOCK.md) | Dataset terkunci + checksum |
+| [`docs/ARTIFACTS.md`](docs/ARTIFACTS.md) | Artefak model: unduhan, checksum, cara regenerasi |
 
 
 ## Current Results
