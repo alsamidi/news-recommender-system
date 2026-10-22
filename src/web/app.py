@@ -39,6 +39,24 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 
 
+def truncate_words(text: str, limit: int) -> str:
+    """Shorten at a word boundary, appending an ellipsis only if it cut.
+
+    CSS line-clamp broke abstracts mid-word ("...selama kalahah h...").
+    Trimming the string first means the clamp never has to cut, so what the
+    reader sees always ends on a whole word. The limit is generous enough to
+    fill two lines at the measured width (~49 chars/line on desktop, fewer on
+    a phone, where the clamp still applies).
+    """
+    if not text:
+        return ""
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+    cut = text[:limit].rsplit(" ", 1)[0].rstrip(" ,.;:—-")
+    return f"{cut}…" if cut else text[:limit] + "…"
+
+
 class RevalidatingStaticFiles(StaticFiles):
     """Static files that browsers must revalidate before reuse.
 
@@ -108,6 +126,7 @@ def create_app() -> FastAPI:
     )
     app.mount("/static", RevalidatingStaticFiles(directory=str(STATIC_DIR)), name="static")
     app.state.templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
+    app.state.templates.env.filters["truncate_words"] = truncate_words
 
     from .routes import article, auth, feed
 

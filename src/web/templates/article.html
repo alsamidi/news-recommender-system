@@ -28,11 +28,13 @@
 <div class="card-grid">
   {% for r in related %}
   <a class="card" href="/berita/{{ r.nid }}?from=similar">
-    <span class="card-category">{{ r.category or 'umum' }}</span>
+    <span class="card-eyebrow">
+      <span class="card-category">{{ r.category or 'umum' }}</span>
+      {% if r.subcategory %}<span class="card-sub">{{ r.subcategory }}</span>{% endif %}
+    </span>
     <h2 class="card-title">{{ r.title or r.nid }}</h2>
-    {% if r.abstract %}<p class="card-abstract">{{ r.abstract }}</p>{% endif %}
+    {% if r.abstract %}<p class="card-abstract">{{ r.abstract|truncate_words(85) }}</p>{% endif %}
     <span class="card-meta">
-      {% if r.subcategory %}<span>{{ r.subcategory }}</span>{% endif %}
       {% with a = r %}{% include "_readers.html" %}{% endwith %}
     </span>
   </a>

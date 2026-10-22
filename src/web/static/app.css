@@ -86,6 +86,14 @@ a:hover { color: var(--color-link-active); }
 }
 .card:hover { background: var(--color-surface-soft); }
 
+.card-eyebrow {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 0 var(--space-xs);
+  min-width: 0;
+  overflow: hidden;
+}
 .card-category {
   font-size: 14px;
   font-weight: 500;
@@ -93,6 +101,20 @@ a:hover { color: var(--color-link-active); }
   letter-spacing: 0.16px;
   text-transform: uppercase;
   color: var(--color-muted);
+  white-space: nowrap;
+}
+/* The raw MIND taxonomy value. Displayed because the accepted criterion asks
+   for it, but demoted: it is an identifier, not something a reader parses. */
+.card-sub {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  opacity: 0.75;
 }
 .card-title {
   font-size: 18px;
@@ -101,8 +123,10 @@ a:hover { color: var(--color-link-active); }
   color: var(--color-ink);
   margin: 0;
   /* No clamp: cutting a news headline mid-phrase is data loss, and half the
-     cards would be truncated at 2 lines. Cards in a row differ in height by
-     one line instead, which reads as normal rather than as a defect. */
+     cards would be truncated at 2 lines. Reserving three lines instead was
+     tried and reverted: it moved the slack between the headline and the
+     abstract, which reads as a mistake, whereas slack above the footer reads
+     as a normal bottom-aligned card. */
 }
 .card-abstract {
   font-size: 14px;
@@ -113,15 +137,18 @@ a:hover { color: var(--color-link-active); }
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin: 0;
+  /* Reserve two lines whether or not the abstract fills them, so cards in a
+     row end on one line. A minimum, not a fixed height: a single long word
+     can still take three. */
+  min-height: calc(2 * 1.5 * 14px);
 }
 .card-meta {
   font-size: 14px;
   line-height: 1.3;
   color: var(--color-muted);
+  /* Sit the footer at the bottom edge so every card ends flush. */
   margin-top: auto;
-  /* The footer is one baseline: source and counts sit in the same row so the
-     card does not end in three stacked grey lines of equal weight. nowrap
-     because a wrapped footer changes the card height inside a grid row. */
+  padding-top: var(--space-xs);
   display: flex;
   flex-wrap: nowrap;
   align-items: baseline;
@@ -129,7 +156,6 @@ a:hover { color: var(--color-link-active); }
   overflow: hidden;
 }
 .card-meta > span { white-space: nowrap; }
-.card-meta > span:first-child { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .card-readers {
   display: flex;
   flex-wrap: wrap;
