@@ -143,25 +143,30 @@ a:hover { color: var(--color-link-active); }
   min-height: calc(2 * 1.5 * 14px);
 }
 .card-meta {
-  font-size: 14px;
-  line-height: 1.3;
-  color: var(--color-muted);
-  /* Sit the footer at the bottom edge so every card ends flush. */
+  /* Footer sits at the bottom edge, right-aligned: it is reference data, not
+     something to read first. */
   margin-top: auto;
   padding-top: var(--space-xs);
   display: flex;
   flex-wrap: nowrap;
+  justify-content: flex-end;
   align-items: baseline;
   gap: 0 var(--space-xs);
   overflow: hidden;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--color-muted);
 }
 .card-meta > span { white-space: nowrap; }
+/* Counts run one step below body text. At 12px they read as a footnote and
+   stop competing with the headline and the abstract. */
 .card-readers {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: baseline;
+  justify-content: flex-end;
   gap: 0 var(--space-xs);
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.3;
   color: var(--color-muted);
 }
