@@ -246,10 +246,11 @@ a:hover { color: var(--color-link-active); }
 }
 .history-row {
   display: grid;
-  /* Title takes the slack; the three metadata columns hold their content,
-     so the readers label sits on the same baseline row, right-aligned like
-     the card footer on the home feed (TEST-AC-256). */
-  grid-template-columns: minmax(0, 1fr) 120px 210px minmax(120px, max-content);
+  /* Title takes the slack; metadata columns are fixed so a row with only
+     "1× via web" does not shrink the last column and shift category/time
+     leftwards relative to rows that carry both counts. 220px fits
+     "4257× via MIND · 8× via web" at 14px with room to spare. */
+  grid-template-columns: minmax(0, 1fr) 120px 210px 220px;
   align-items: baseline;
   gap: var(--space-md);
   padding: var(--space-sm) 0;
