@@ -264,7 +264,9 @@ behaves exactly as before.
 
 **Proof required before merge (all four):**
 
-1. `python -m pytest -q` → 26 passed (unchanged count).
+1. `python -m pytest tests/ --ignore=tests/web -q` → 26 passed (unchanged
+   count). Run the full suite too (193 passed today), but the research count
+   is the invariant this seam must not disturb.
 2. `bash scripts/audit_freeze.sh` → `RESEARCH FREEZE AUDIT PASSED`.
 3. `docs/openapi.json` identical to `app.openapi()` (regenerate and diff).
 4. `test_openapi_contract_surface` passes; `git diff src/api/main.py` shows

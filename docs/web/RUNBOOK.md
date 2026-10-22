@@ -105,7 +105,7 @@ eligible for evaluation, which persona seeding does not require).
 bash scripts/smoke_web.sh
 
 # research stack must remain untouched
-python -m pytest -q                # 77 passed
+python -m pytest -q                # 193 passed
 bash scripts/audit_freeze.sh       # RESEARCH FREEZE AUDIT PASSED
 bash scripts/smoke_demo.sh         # original API + demo UI proof
 ```

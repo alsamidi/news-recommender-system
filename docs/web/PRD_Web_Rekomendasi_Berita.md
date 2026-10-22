@@ -2,7 +2,7 @@
 
 **Versi:** 1.0  
 **Tanggal:** 20 Oktober 2026 · disetujui 21 Oktober 2026  
-**Status:** **Disetujui dan diimplementasikan.** Keputusan §18 mengikat. Implementasi ada di `src/web/`, diverifikasi oleh 90 tes, `scripts/smoke_web.sh`, dan `scripts/audit_freeze.sh`.  
+**Status:** **Disetujui dan diimplementasikan.** Keputusan §18 mengikat. Implementasi ada di `src/web/`, diverifikasi oleh 193 tes (167 web + 26 penelitian), `scripts/smoke_web.sh`, dan `scripts/audit_freeze.sh`.  
 **Bahasa produk:** Bahasa Indonesia  
 **Tujuan:** Menjadi sumber kebenaran utama bagi coding agent saat membangun lapisan web di atas sistem rekomendasi yang sudah ada.
 
