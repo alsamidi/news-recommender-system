@@ -12,8 +12,12 @@
       </a>
       <span class="history-cat">{{ a.category or 'umum' }}</span>
       <time class="history-time">Dibaca {{ a.viewed_at }}</time>
-      {% if a.dataset_readers %}
-      <span class="history-readers" title="Pembaca unik di sampel dataset MIND">{{ a.dataset_readers }}× via MIND</span>
+      {% if a.dataset_readers or a.app_readers %}
+      <span class="history-readers">
+        {% if a.dataset_readers %}<span title="Pembaca unik di sampel dataset MIND (train+dev)">{{ a.dataset_readers }}× via MIND</span>{% endif %}
+        {% if a.dataset_readers and a.app_readers %}<span aria-hidden="true">·</span>{% endif %}
+        {% if a.app_readers %}<span title="Akun unik yang membuka berita ini di web ini">{{ a.app_readers }}× via web</span>{% endif %}
+      </span>
       {% endif %}
     </li>
   {% endfor %}

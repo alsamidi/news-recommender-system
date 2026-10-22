@@ -9,6 +9,6 @@
 <span class="card-readers" aria-label="Jumlah pembaca">
   {% if a.dataset_readers %}<span title="Pembaca unik di sampel dataset MIND (train+dev)">{{ a.dataset_readers }}× via MIND</span>{% endif %}
   {% if a.dataset_readers and a.app_readers %}<span aria-hidden="true">·</span>{% endif %}
-  {% if a.app_readers %}<span title="Akun unik yang membuka berita ini di aplikasi ini">{{ a.app_readers }}× di sini</span>{% endif %}
+  {% if a.app_readers %}<span title="Akun unik yang membuka berita ini di web ini">{{ a.app_readers }}× via web</span>{% endif %}
 </span>
 {% endif %}

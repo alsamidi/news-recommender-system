@@ -159,7 +159,8 @@ a:hover { color: var(--color-link-active); }
 }
 .card-meta > span { white-space: nowrap; }
 /* Counts run one step below body text. At 12px they read as a footnote and
-   stop competing with the headline and the abstract. */
+   stop competing with the headline and the abstract; the extra opacity drop
+   keeps the numbers available but visually quiet (user request, 2026-10-22). */
 .card-readers {
   display: flex;
   flex-wrap: nowrap;
@@ -169,6 +170,7 @@ a:hover { color: var(--color-link-active); }
   font-size: 12px;
   line-height: 1.3;
   color: var(--color-muted);
+  opacity: 0.65;
 }
 .card-readers > span { white-space: nowrap; }
 
@@ -269,7 +271,8 @@ a:hover { color: var(--color-link-active); }
   color: var(--color-muted);
 }
 .history-time { font-size: 14px; color: var(--color-muted); text-align: right; white-space: nowrap; }
-.history-readers { font-size: 14px; color: var(--color-muted); text-align: right; white-space: nowrap; }
+.history-readers { font-size: 14px; color: var(--color-muted); text-align: right; white-space: nowrap; opacity: 0.65; }
+.history-readers > span { white-space: nowrap; }
 @media (max-width: 768px) {
   .history-row { grid-template-columns: minmax(0, 1fr); gap: var(--space-xxs); }
   .history-time { text-align: left; }

@@ -743,4 +743,4 @@ def test_zero_reader_counts_are_hidden(client, register):
     # Match the rendered text exactly: a bare substring test would also match
     # "10 pembaca dataset" and fail for the wrong reason.
     assert not re.search(r">0× via MIND<", body)
-    assert not re.search(r">0× di sini<", body)
+    assert not re.search(r">0× via web<", body)
