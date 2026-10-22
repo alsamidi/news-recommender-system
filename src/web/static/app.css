@@ -244,7 +244,10 @@ a:hover { color: var(--color-link-active); }
 }
 .history-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px 210px;
+  /* Title takes the slack; the three metadata columns hold their content,
+     so the readers label sits on the same baseline row, right-aligned like
+     the card footer on the home feed (TEST-AC-256). */
+  grid-template-columns: minmax(0, 1fr) 120px 210px minmax(120px, max-content);
   align-items: baseline;
   gap: var(--space-md);
   padding: var(--space-sm) 0;

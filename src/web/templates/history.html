@@ -13,7 +13,7 @@
       <span class="history-cat">{{ a.category or 'umum' }}</span>
       <time class="history-time">Dibaca {{ a.viewed_at }}</time>
       {% if a.dataset_readers %}
-      <span class="history-readers" title="Pembaca unik di sampel dataset MIND">{{ a.dataset_readers }} pembaca dataset</span>
+      <span class="history-readers" title="Pembaca unik di sampel dataset MIND">{{ a.dataset_readers }}× via MIND</span>
       {% endif %}
     </li>
   {% endfor %}
