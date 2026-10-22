@@ -217,8 +217,10 @@ functional criteria in `TEST-AC-001…199`. `[P]` = MVP-mandatory.
 | TEST-AC-252 **[P]** | The picker POST rejects any id outside `user_map` with 400, and still enforces CSRF (403) | Post unknown ids, empty string, and an injection-shaped string |
 | TEST-AC-253 **[P]** | Picker login creates one account per persona, idempotently, and lands on the warm path | Log in twice with the same persona; assert a single row and `mode == "warm"` |
 | TEST-AC-254 **[P]** | Cards show a dataset reader count and an app reader count, both unique per user | Open one article 3× from one account; the app count must rise by 1 |
-| TEST-AC-255 **[P]** | A zero reader count is never printed; the row renders nothing instead | Grep the rendered feed for `>0 pembaca dataset<` |
-| TEST-AC-256 **[P]** | Reader counts are labelled by source, so a dataset sample is never presented as total readership | Inspect card copy for "pembaca dataset" and "di aplikasi ini" |
+| TEST-AC-255 **[P]** | A zero reader count is never printed; the row renders nothing instead | Grep the rendered feed for `>0× via MIND<` and `>0× via web<` |
+| TEST-AC-256 **[P]** | Reader counts are labelled by source, so a dataset sample is never presented as total readership | Inspect card and history copy for `× via MIND` and `× via web` |
+| TEST-AC-257 **[P]** | A history row keeps its column geometry whether it carries one count or both | Measure `.history-cat`, `.history-time`, `.history-readers` left edges across rows; all rows must agree |
+| TEST-AC-258 **[P]** | Reader counts are visually subordinate to the title and abstract | Computed opacity of `.card-readers` and `.history-readers` is below 1 |
 
 ---
 
@@ -262,7 +264,7 @@ rather than duplicating their logic.
 - **MVP mandatory [P]:** TEST-AC-001…008, 010…021, 040…050, 060…066,
   070…074, 080…086, 090…094, 100…104, 110…114, 120…122.
 - **Design mandatory [P]:** TEST-AC-201…207, 210…214, 220…225, 230…237,
-  240…246 (33 criteria).
+  240…246, 250…258 (42 criteria).
 - **Next stage [S]:** none. Session TTL and the feed source label were raised
   to **[P]**; the rating criteria were removed (ratings are out of MVP).
 
