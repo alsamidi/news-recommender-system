@@ -2,6 +2,12 @@
 
 Status: **DRAFT — not approved.**
 Date: 2026-10-20.
+Revised: **2026-10-27 — peralihan korpus (PRD v1.1).** Referensi `U10022`,
+`interactions_train.parquet`, dan angka 93,698 adalah **pengukuran era MIND** yang
+tetap sah untuk riset v1 yang beku; korpus aktif (Detik/Tempo/Kompas + interaksi
+simulasi dummy) adalah korpus baru — lihat PRD v1.1 §0 dan
+`data/DATASET_LOCK_INDO.md`. Aturan integrasi (golden rules, routing, filter
+histori) TIDAK berubah bentuk.
 
 This document is the **only** place describing how the web layer uses the
 model. The API contract, dataset, hybrid configuration, artifacts, and
@@ -40,7 +46,8 @@ evaluation numbers are **not duplicated** here — their references are:
 
 Consequences the web layer must understand:
 
-- `user_id` is **not** a web account. It is a MIND dataset ID.
+- `user_id` is **not** a web account. It is a research-dataset user ID (MIND
+  era: `U10022`; korpus aktif: ID akun dummy korpus Indo — lihat PRD v1.1 §18).
 - Sending a `user_id` without ALS factors → **404**, not a fallback. (F-06)
 - Empty `history` → **400**. All-unknown `nid` → **400**.
 - Sending both → **400**.
@@ -94,11 +101,12 @@ When a non-persona user has no history, the feed does **not** call
 
 | Item | Value |
 |------|-------|
-| Source | `data/processed/interactions_train.parquet` (read-only) |
+| Source | `data/processed/interactions_train.parquet` (read-only; era MIND. **Korpus aktif:** parquet interaksi simulasi korpus Indo — path final dicatat di `data/DATASET_LOCK_INDO.md` pada tahap generator) |
 | When computed | **Once at application startup**, then cached in memory |
-| Definition | `nid` sorted by **descending summed `weight`** |
+| Definition | `nid` sorted by **descending summed `weight`** (korpus aktif: `view` simulasi, weight=1/event) |
 | Tie-break | `nid` ascending (deterministic) |
 | Catalog filter | Only `nid` present in the catalog are kept |
+| Catalog | Era MIND: `news_processed.parquet`. Korpus aktif: katalog korpus Indo, path final per lock |
 | Artifact | **None.** No `popular.json`, no new file under `models/` |
 | Failure mode | Missing/unreadable parquet → startup fails with a clear message |
 
@@ -206,7 +214,7 @@ alters the model input, so results no longer match the evaluation.
 
 | Endpoint | Web usage | Note |
 |----------|-----------|------|
-| `GET /article/{nid}` | Article detail page | Single source of `title/abstract/category/subcategory`. 404 → "not found" page |
+| `GET /article/{nid}` | Article detail page | Single source of `title/category/content/source/published_at` (korpus aktif; tidak ada `abstract`/`subcategory` — PRD v1.1 §10.2). 404 → "not found" page |
 | `GET /similar/{nid}?top_k=5` | "Berita serupa" block | TF-IDF neighbours; the query article never appears (F-08). ~70 ms |
 | `GET /health` | Health check / badge | `alpha`, `catalog_size`, `als_items` |
 
@@ -234,7 +242,7 @@ web layer registers its own `/` route first, so it wins (verified in
 | I5 | `nid` in the **full** history never reappears in the feed | Assert empty intersection against the whole DB history, not just the 50 sent (§5.4) |
 | I6 | `top_k` is always within 1–100 | Assert the constant (30) |
 | I7 | API contract unchanged | `test_openapi_contract_surface` + diff of `docs/openapi.json` |
-| I8 | α stays 0.4 | `test_serving_alpha_matches_table_b_winner` |
+| I8 | α comes from the active research config, never from the web | `test_serving_alpha_matches_table_b_winner` (era MIND); nilai korpus baru mengikuti konfigurasi korpus |
 
 ## 9. Prohibited Actions
 
@@ -259,6 +267,11 @@ Summary, without replacing the numbers (source:
 - **Never** claim "high accuracy". The valid claim is: "α=0.4 is the winner of
   the tested full-catalog protocol".
 
+**Corpus note (2026-10-27):** all numbers above are MIND-era and stay frozen for
+research v1. Angka korpus aktif baru dinyatakan setelah evaluasi korpus Indo
+selesai; jangan mencampur atau membandingkan dua protokol tanpa mencantumkan
+ketergantungan pada interaksi simulasi.
+
 ## 11. Integration Validation Plan
 
 1. `pytest` still shows ≥ 26 passing (research regression).
@@ -279,3 +292,13 @@ All integration decisions are **settled** (2026-10-20).
 | D22 | No score rendered anywhere; no debug page in MVP | ✅ Approved |
 | D23 | History cap: 50 unique `nid`, then filter against the full history | ✅ Approved |
 | D24 | `/similar` only on the detail page, never in the feed | ✅ Approved |
+
+## 13. Corpus Transition (2026-10-27, per PRD v1.1)
+
+- Katalog aktif berganti ke korpus Indo; field UI kini `title, category,
+  content, source, published_at` (tanpa abstract/subkategori).
+- Interaksi CF berasal dari simulasi akun dummy (`view` saja). Reader-count
+  era MIND (`× via MIND`) diganti sumbernya ke unik-pembaca simulasi; label
+  produk menyesuaikan (PRD v1.1 §18; TEST-AC-255/256 menyusul).
+- Semua aturan web-side seperti routing, top_k=30, filter histori penuh,
+  dedupe, tanpa skor — **tidak diubah** oleh migrasi ini.

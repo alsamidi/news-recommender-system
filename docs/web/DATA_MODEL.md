@@ -22,6 +22,11 @@ not duplicated here.
 user interactions are stored separately in SQLite so the research dataset stays
 byte-identical to the frozen snapshot.
 
+**Corpus note (2026-10-27, PRD v1.1):** phase-2 aktif memakai katalog korpus
+Indonesia + parquet interaksi simulasi (path final di
+`data/DATASET_LOCK_INDO.md`). Keduanya masuk boundary read-only yang sama;
+artefak era MIND tetap beku sebagai riset v1.
+
 ## 2. Catalog Schema (READ ONLY — fact)
 
 Source: `data/processed/news_processed.parquet`, 93,698 rows.
@@ -61,6 +66,26 @@ onboarding was dropped from the MVP (see `UX_FLOWS.md` §5.3 and
 `PRD_Web_Rekomendasi_Berita.md` §5.2): 3 of the 5 Figma topic chips have no
 valid `category` counterpart.
 
+### 2.3 Active corpus schema (Indo — phase 2, drafted 2026-10-27)
+
+Skema §2–2.2 di atas adalah fakta era MIND (riset v1, beku). Korpus aktif
+(sumber: `data/DATASET_LOCK_INDO.md`) membangun parquet katalog sendiri dengan
+kolom:
+
+| Column | Note |
+|--------|------|
+| `nid` | `'I' + sha1(url)[:10]` — deterministik, tanpa tabrakan format `N...` |
+| `title` | dari `Judul` |
+| `content` | konten penuh setelah strip boilerplate portal (pengganti peran `abstract`) |
+| `processed_text` | teks pra-proses TF-IDF; **never show to users** (aturan sama) |
+| `category` | hasil pemetaan seksi URL (100% cakupan terukur); bukan tag portal |
+| `source` | `kompas` / `tempo` / `detik` |
+| `published_at` | dari `Waktu` (parser bulan-Indonesia, 100% terparse) |
+| `split` | temporal; cutoff final dicatat di lock (TBC sampai generator v1) |
+
+Tidak ada `abstract`/`subcategory`. Baris: 80.472 mentah → **67.381 unik**
+(dup URL 100% identik — terukur, beda dari kasus MIND di §2.1).
+
 ## 3. Application Schema (NEW — SQLite)
 
 All tables use an internal `INTEGER PRIMARY KEY`; `nid` is stored as `TEXT` with
@@ -74,7 +99,7 @@ All tables use an internal `INTEGER PRIMARY KEY`; `nid` is stored as `TEXT` with
 | `name` | TEXT | NOT NULL | Display name |
 | `email` | TEXT | NOT NULL UNIQUE (case-insensitive) | Stored lowercase |
 | `password_hash` | TEXT | NOT NULL | Format `scrypt$n$r$p$salt_b64$hash_b64` |
-| `persona_user_id` | TEXT | NULL | Dataset `user_id` for the demo account (D4). NULL for regular users |
+| `persona_user_id` | TEXT | NULL | Dataset `user_id` for the demo account (D4); korpus aktif: ID akun dummy simulasi (PRD v1.1). NULL for regular users |
 | `created_at` | TEXT | NOT NULL | ISO-8601 UTC |
 
 Notes:
@@ -218,7 +243,7 @@ SQLite is more than sufficient. There is no high-concurrency requirement.
 |------|--------|
 | Recommendation scores | Min-max per request → meaningless across time (F-13) |
 | Per-web-user ALS factors | Web users have none; the pseudo-user is computed by the API per request |
-| Copies of `title`/`abstract` | Duplicating the frozen catalog → divergence risk |
+| Copies of `title`/`content`/`abstract` | Duplicating the frozen catalog → divergence risk |
 | `processed_text` in the UI | Stemmed text, not meant for humans |
 | Search history | No search feature in the MVP |
 | IP / user-agent | Not needed; avoids personal data |

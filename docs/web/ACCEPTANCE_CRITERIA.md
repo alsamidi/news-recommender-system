@@ -2,6 +2,7 @@
 
 Status: **DRAFT — not approved.**
 Date: 2026-10-20.
+Revised: **2026-10-27 — addendum transisi korpus (PRD v1.1)** lihat §L.
 
 Each criterion is written to be **objectively testable**.
 
@@ -221,6 +222,31 @@ functional criteria in `TEST-AC-001…199`. `[P]` = MVP-mandatory.
 | TEST-AC-256 **[P]** | Reader counts are labelled by source, so a dataset sample is never presented as total readership | Inspect card and history copy for `× via MIND` and `× via web` |
 | TEST-AC-257 **[P]** | A history row keeps its column geometry whether it carries one count or both | Measure `.history-cat`, `.history-time`, `.history-readers` left edges across rows; all rows must agree |
 | TEST-AC-258 **[P]** | Reader counts are visually subordinate to the title and abstract | Computed opacity of `.card-readers` and `.history-readers` is below 1 |
+
+---
+
+## L. Corpus transition addendum (2026-10-27 — DRAFT, PRD v1.1)
+
+Kriteria §A–K ditulis terhadap implementasi era MIND yang berjalan hari ini dan
+tetap benar sampai migrasi fase-2 dieksekusi. Setelah korpus aktif berganti
+(PRD v1.1), delta berikut berlaku — dicatat lebih dulu supaya migrasi tidak
+bisa lolos tanpa jejak:
+
+| Menyentuh | Kriteria fase-2 | Catatan |
+|-----------|-----------------|---------|
+| TEST-AC-060 | Detail menampilkan judul, kategori, sumber, tanggal terbit, dan konten penuh | Tidak ada `abstract`/`subcategory` di katalog aktif |
+| TEST-AC-065 | Artikel dengan konten kosong/pendek tetap render bersih | 0,01% kosong (terukur); boilerplate distrip di pipeline penelitian |
+| TEST-AC-081 | UI **boleh** menampilkan label sumber nyata (kompas/tempo/detik) sebagai teks; tautan portal tetap dilarang | Membalik 081 |
+| TEST-AC-083 | UI **boleh** menampilkan tanggal terbit artikel yang nyata | Membalik 083 |
+| TEST-AC-085 | Kategori tampil ∈ hasil pemetaan seksi URL yang terdokumentasi di lock aktif | Mengganti 18 nilai MIND |
+| TEST-AC-086 | Jangan klaim jumlah artikel apa pun secara hardcoded; angka mengikuti `data/DATASET_LOCK_INDO.md` | Digeneralisasi |
+| TEST-AC-221 | Meta kartu = kategori + sumber + tanggal | `subcategory` tidak ada lagi |
+| TEST-AC-222 | Tanpa penulis dan tanpa tautan portal; label "Sumber:" dan "Tanggal:" justru WAJIB tampil bila ada nilainya | Sebagian dibalik |
+| TEST-AC-255/256 | Label reader-count sumber dataset `× via MIND` → sumber baru dihitung dari interaksi simulasi korpus aktif; aturan zero-count (D30) tetap | D29 berlanjut dengan data simulasi |
+| TEST-AC-049 | Feed populer bersumber dari statistik interaksi train hasil simulasi | Label "Berita populer" tidak berubah |
+
+Tidak ada satu pun baris di addendum ini yang efektif sebelum PRD v1.1
+disetujui dan `data/DATASET_LOCK_INDO.md` lepas dari status TBC.
 
 ---
 

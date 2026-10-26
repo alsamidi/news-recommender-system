@@ -2,6 +2,10 @@
 
 Status: **DRAFT — not approved.**
 Date: 2026-10-20.
+Revised: **2026-10-27 — peralihan korpus (PRD v1.1).** Persona era MIND (`U10045`)
+adalah contoh; setelah generator interaksi korpus Indo jalan, persona dipetakan ke
+ID akun dummy (format `I...`, `data/DATASET_LOCK_INDO.md`). Mekanisme seed,
+validasi, dan semua seam arsitektur tidak berubah.
 
 ---
 
@@ -343,6 +347,11 @@ Approved 2026-10-20. The demo account is **never** created at startup and
 | Startup | No seeding, no demo user creation, no extra work |
 | Missing env var | Persona seeding is skipped explicitly; the app still runs with normal users only |
 
+**Corpus note (2026-10-27):** nilai `U10045` di atas adalah contoh era MIND.
+Setelah PRD v1.1 disetujui dan generator interaksi korpus Indo berjalan, persona
+dipetakan ke ID akun dummy korpus (format `I...` per
+`data/DATASET_LOCK_INDO.md`); mekanisme seed dan validasi via API tidak berubah.
+
 `U10045` is verified to have ALS factors (2,858 eligible warm users; returns 10
 recommendations).
 
@@ -420,7 +429,7 @@ than copying it, so the picker does not add a second copy of the model.
 | R3 | History contains only non-ALS items | Quality drops (content-only) | Detect from the response (`mode`), label in the UI |
 | R4 | `nid` duplicated across splits | Duplicate cards in the UI | Dedupe by `nid` in the web layer (API already dedupes; this is a second layer) |
 | R5 | Scores not comparable across requests | Misleading if compared | Do not render raw scores; or label them explicitly |
-| R6 | 5.0% of articles have no `abstract` | Empty detail page | Conditional rendering |
+| R6 | Era MIND: 5,0% artikel tanpa `abstract`. Korpus aktif: 0,01% konten kosong + boilerplate portal | Detail bolong/aneh | Render meta-only untuk konten kosong; strip boilerplate di pipeline penelitian, bukan di web |
 | R7 | 6 s startup + 503 MB | Slow cold start | Load once; health check; document it |
 | R8 | Accidental changes to frozen files | Freeze audit fails | Run `audit_freeze.sh` locally/CI before committing |
 | R9 | `data/processed/*.parquet` not committed | Fresh deploy has no data | Document prerequisites; never rely on git |

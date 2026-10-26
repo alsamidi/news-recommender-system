@@ -3,6 +3,9 @@
 Status: **DRAFT — not approved.**
 Design source: Figma `8vH3wuK6rRMwQASuvSt1uc` (file "Untitled", Page 1).
 Figma audit date: 2026-10-20.
+Revised: **2026-10-27 — peralihan korpus (PRD v1.1)**: ketersediaan data di §5
+berubah (sumber & tanggal kini ADA), feed card memuat meta kategori+sumber+
+tanggal; gambar/penulis tetap tidak tersedia. Lihat §5.0.
 
 ---
 
@@ -146,6 +149,19 @@ must not render `score` in any form (D22). See `RECOMMENDATION_INTEGRATION.md`.
 This section answers the request to "check whether the Figma features match the
 news data that is actually available".
 
+### 5.0 Corpus update 2026-10-27 (PRD v1.1) — what changed in data availability
+
+| Figma element | Era MIND (audit 2026-10-20) | Korpus aktif (Indo) |
+|---------------|------------------------------|---------------------|
+| `Sumber: detik.com` | ❌ Absent | ✅ **Tersedia** — kolom `source` nyata (kompas/tempo/detik); tampilkan sebagai label teks |
+| `Tanggal: 29-01-2024` | ❌ Absent | ✅ **Tersedia** — tanggal terbit per artikel dari `Waktu` |
+| Body artikel | `abstract` (5% null, ±218 char) | `content` penuh (median 2.225 char; tanpa boilerplate setelah strip) |
+| `Kategori:` | 18 MIND values | Pemetaan seksi URL (100% cakupan terukur) |
+| Images / `Penulis` | ❌ Absent | ❌ Tetap absent — jangan direkayasa |
+| Star ratings | ❌ + out of scope | ❌ Tetap out of scope (PRD v1.1 §18) |
+
+§5.1–5.3 di bawah dipertahankan sebagai dokumentasi era MIND (riset v1).
+
 ### 5.1 Available and Directly Usable
 
 | Figma element | Source column | Coverage |
@@ -225,8 +241,8 @@ availability win (see `AGENTS.md` §5.1).
 |--------|---------------------|---------------------|
 | Landing | `hero-band`, `button-primary`, `button-secondary` | No rainbow stripes, no demo grids. One primary CTA ("Daftar"), one secondary ("Masuk"). |
 | Register / Login | `text-input`, `text-input-focus`, `button-primary`, `label-md` | Add error state (no token exists — use `{colors.signature-coral}`). Card container uses `{rounded.lg}` on `{colors.canvas}`. |
-| Feed | `article-card`, `top-nav`, `label-md` | **No thumbnail.** Category tag only. 3-up desktop, 2-up tablet, 1-up mobile. |
-| Article detail | `article-card` (for related), `top-nav` | Body text uses `{typography.body-md}` at a comfortable measure (~65–75ch). Related block uses `article-card` without thumbnails. |
+| Feed | `article-card`, `top-nav`, `label-md` | **No thumbnail** (korpus tetap tanpa gambar). Meta line: kategori + sumber + tanggal (PRD v1.1 §10.2). 3-up desktop, 2-up tablet, 1-up mobile. |
+| Article detail | `article-card` (for related), `top-nav` | Header: judul + kategori + sumber + tanggal; body = `content` penuh lewat `.article-body` (16/1.6, D26) pada lebar ~65–75ch. Related block uses `article-card` without thumbnails. |
 | History | `article-card` (compact), `top-nav` | Same card without thumbnail; show `created_at` grouped by day. |
 | Error / 404 / 503 | `cream-callout-card` or `signature-coral-card` | Coral for hard errors (503/404), cream for soft empty states. |
 | Empty history | `cream-callout-card` | Uses PRD §16 copy: "Kamu belum membuka berita…". |
@@ -312,11 +328,12 @@ hovering must never be the only way to perceive interactivity.
 
 ## 7. UX Principles for the MVP
 
-1. **Never fabricate data.** No invented images, dates, authors, or sources.
-   Text-first cards (§6.2).
+1. **Never fabricate data.** Render only what the aktif corpus provides — sejak
+   peralihan korpus, itu termasuk sumber dan tanggal; gambar dan penulis tetap
+   tidak tersedia. Text-first cards (§6.2).
 2. **Explain where recommendations come from.** Each feed carries a source
    label: "Berita populer" / "Rekomendasi dari riwayat bacaanmu" /
-   "Rekomendasi berdasarkan profil dataset demo" (PRD §16).
+   "Rekomendasi berdasarkan profil akun demo" (PRD §16 v1.1).
 3. **Do not present raw scores as quality.** Scores are not rendered at all in
    the MVP (PRD §18).
 4. **Always provide a way out.** Empty feed → popular articles; 404 detail → back

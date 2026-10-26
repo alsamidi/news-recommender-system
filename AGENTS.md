@@ -16,6 +16,11 @@ An Indonesian-language news recommendation system for a thesis (Tugas Akhir):
 
 - Content-based **TF-IDF** + **implicit ALS** collaborative filtering + **weighted hybrid**.
 - MINDsmall / xMINDsmall datasets (English + Indonesian translation), file-based temporal split.
+- **Fase 2 (2026-10-27, PRD v1.1):** korpus aktif berganti ke korpus portal
+  Indonesia (Detik/Tempo/Kompas; Juli 2024 – Oktober 2025; 80.472 baris mentah →
+  67.381 unik) dengan interaksi simulasi akun dummy (`view` saja) —
+  `data/DATASET_LOCK_INDO.md` + `docs/web/PRD_Web_Rekomendasi_Berita.md` v1.1.
+  Riset v1 (MIND) tetap beku; angkanya tetap sumber kebenaran untuk dokumen lama.
 - Serving layer: FastAPI + `HybridRecommender` over frozen artifacts.
 - The web application layer (auth, feed, history, profile) **does not exist yet**
   and is the next piece of work.
@@ -26,6 +31,7 @@ An Indonesian-language news recommendation system for a thesis (Tugas Akhir):
 |------|----------|--------|
 | `README.md` | Research summary, results, reproduction steps | Frozen (facts) |
 | `data/DATASET_LOCK.md` | Official dataset pairs + sha256 + split rules | **Frozen** |
+| `data/DATASET_LOCK_INDO.md` | Phase-2 aktif: korpus portal Indonesia + interaksi simulasi; hash, skema katalog turunan, aturan split | **Draft — menunggu persetujuan PRD v1.1** |
 | `docs/API_CONTRACT.md` | API contract v1.0.0 | **Frozen** |
 | `docs/openapi.json` | OpenAPI snapshot v1.0.0 | **Frozen** (regenerate only on version bump) |
 | `docs/RESEARCH_FREEZE.md` | P3.4 freeze audit | **Frozen** |
@@ -49,6 +55,8 @@ An Indonesian-language news recommendation system for a thesis (Tugas Akhir):
 
 Raw datasets (`MINDsmall_*`, `xMINDsmall_*`) and large artifacts
 (`models/*.pkl`, `*.npy`, `*.npz`) are **not committed** (see `.gitignore`).
+File korpus aktif `data/raw/final_merge_dataset.csv` (216,4 MB) juga tidak
+dikomit — hash dan profilnya tercatat di `data/DATASET_LOCK_INDO.md`.
 
 ## 3. Hard Rules
 
@@ -66,7 +74,9 @@ Raw datasets (`MINDsmall_*`, `xMINDsmall_*`) and large artifacts
 5. **Never refit the vectorizer.** TF-IDF is `transform()`-only on the full catalog.
 6. **Never change α.** The serving value `0.4` comes from `configs/hybrid.yaml`
    and is guarded by `test_serving_alpha_matches_table_b_winner`. There is no
-   per-request override.
+   per-request override. (Era MIND. Untuk korpus fase 2, nilai α ditetapkan
+   di konfigurasi penelitian korpus baru melalui grid kecil yang terdokumentasi
+   — `src/web/` tetap tidak pernah mengirim atau mengubah α.)
 7. **Never add or change contract routes** (`/health`, `/recommend`,
    `/similar/{nid}`, `/article/{nid}`) without a version bump, a regenerated
    `docs/openapi.json`, and fresh parity/smoke evidence.
@@ -292,7 +302,7 @@ assume content we do not have. **Data availability wins** (PRD §10.3).
 | DESIGN.md says | Reality | Resolution |
 |----------------|---------|------------|
 | `article-card` carries a **16:9 illustrated thumbnail** | Catalog has no image column (F-16) | Render the card **without** a thumbnail. Do not substitute a placeholder image, stock photo, or generated graphic. If a visual anchor is needed, use a flat token-colored bar (e.g. `{colors.surface-soft}`) with no imagery. |
-| `article-card` carries a **meta line** (author/date/source) | No author, no publication date, no publisher (F-16) | Show only `category` (and `subcategory` when present). Nothing else. |
+| `article-card` carries a **meta line** (author/date/source) | MIND: tidak ada satu pun (F-16). Korpus aktif: punya `source` dan tanggal terbit nyata (bukan author), tetap tanpa gambar | Korpus aktif: tampilkan `category` + `source` + tanggal (PRD v1.1 §10.2); author/subkategori tetap jangan |
 | `article-card` has a **small uppercase category tag** | `category` exists (18 values) | ✅ Use it. This is the one meta element that is real. |
 | `topic-filter-rail` (240px left rail) | Topic selection is out of MVP (PRD §5.2) | Do not build it. No category filtering in the MVP. |
 | `hero-band` with 96px padding and rainbow stripes | Marketing artifact | Landing page may use `hero-band` whitespace rhythm, but no rainbow treatment. |
@@ -316,7 +326,7 @@ assume content we do not have. **Data availability wins** (PRD §10.3).
 | `weighted_hybrid.pkl` (α=0.8) | Historical record. Not read by serving. Do not use. |
 | `models/best_alpha.json` | Also historical (α=0.8). Not the source of truth for serving. |
 | `configs/preprocessing.yaml` mentions `publish_date` and `alay_dict.csv` | Neither is used or present. `build_locked.py` reads no date column, and `configs/alay_dict.csv` does not exist in the repo. |
-| Thin article metadata | `data/processed/news_processed.parquet` has only `nid, title, abstract, processed_text, category, subcategory, split`. No URL, publication date, author, or image. |
+| Thin article metadata | `data/processed/news_processed.parquet` has only `nid, title, abstract, processed_text, category, subcategory, split`. No URL, publication date, author, or image. Kebalikannya di korpus aktif: punya `content`, `source`, `published_at`, `url`; tidak punya `abstract`/`subcategory` (lihat §2.3 `DATA_MODEL.md`). |
 | `data/web.db` is **not** gitignored | `git check-ignore data/web.db` returns nothing. The app database holds emails and password hashes. Add `data/web.db*` to `.gitignore` **before** the first commit that creates it. |
 | `docs/web/PRD.md` is superseded | It still describes a topic-onboarding MVP. `PRD_Web_Rekomendasi_Berita.md` §5.2 removes topics. Do not implement from the old file. |
 | Two documents use `AC-xx` IDs | `PRD_Web_Rekomendasi_Berita.md` §14 uses AC-01…AC-54; `ACCEPTANCE_CRITERIA.md` uses AC-01…AC-122. 17 IDs collide with **different meanings**. Always name the file when citing an AC until they are renumbered. |
@@ -355,7 +365,8 @@ git rm --cached data/web.db
 | `feat/web-mvp-docs` | Documentation set for the web MVP (`AGENTS.md`, `.env.example`, `.gitignore`, `docs/web/**`) |
 | `feat/web-mvp` (next) | Implementation; branch from `feat/web-mvp-docs` after review |
 
-Rules:
+**Rules (koreksi status 2026-10-27): pekerjaan web MVP sudah melebur ke
+`develop`; korpus fase-2 dieksekusi di `feat/dataset-indo-news` dari `develop`.**
 - Do not merge the docs branch into `develop` until the documents are approved.
 - Implementation work starts from the docs branch, not from `develop`.
 - Never force-push or rewrite `develop`.
@@ -383,6 +394,7 @@ Do not reopen these without explicit approval. Implementation must follow them.
 | Error color | `--color-error` = `signature-coral` #aa2d00 (D25). |
 | Article body | 16px/1.6 via `.article-body`; all else keeps tokens (D26). |
 | Hover | Five token-only changes, ≤ 120 ms; focus always visible (D27). |
+| Korpus fase 2 | PRD v1.1 (2026-10-27): korpus portal Indonesia + interaksi simulasi dummy (`view` saja, tanpa like/durasi/rating); kontrak API dan field `nid` dipertahankan. PRD v1.0 tetap mengikat untuk korpus MIND yang beku. Status: **menunggu persetujuan pembimbing**. |
 
 ## 7. Definition of Done for Web-Layer Work
 
@@ -392,7 +404,8 @@ Do not reopen these without explicit approval. Implementation must follow them.
 - No changes to model artifacts, configuration, or evaluation numbers.
 - Documents in `docs/web/` are updated when decisions change.
 - **Design compliance:** every rendered screen uses only tokens from
-  `docs/web/DESIGN.md`; no CDN fonts; no images, authors, dates, or publishers;
+  `docs/web/DESIGN.md`; no CDN fonts; no images or authors — sumber/tanggal
+  hanya sejauh katalog aktif menyerakannya secara nyata (PRD v1.1);
   no pricing components; no topic rail; focus states present on all interactive
   elements.
 
