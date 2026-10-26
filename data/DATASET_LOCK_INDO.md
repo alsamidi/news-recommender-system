@@ -44,6 +44,9 @@ versi 1 yang sudah beku.
 ## Identitas artikel
 - `nid` = `'I' + sha1(url).hexdigest()[:10]` — deterministik dari URL,
   bebas tabrakan dengan format MIND (`N...`), kontrak API tidak berubah.
+- Saat build: **hard assert keunikan global `nid`** — tabrakan = build gagal
+  keras, bukan warning. Bawa hasil assert (jumlah artikel, jumlah nid unik)
+  ke output preproses untuk dibandingkan dengan angka lock ini.
 
 ## Interaksi
 - Tidak ada interaksi nyata pada korpus. Interaksi dibangkitkan oleh

@@ -22,8 +22,9 @@ An Indonesian-language news recommendation system for a thesis (Tugas Akhir):
   `data/DATASET_LOCK_INDO.md` + `docs/web/PRD_Web_Rekomendasi_Berita.md` v1.1.
   Riset v1 (MIND) tetap beku; angkanya tetap sumber kebenaran untuk dokumen lama.
 - Serving layer: FastAPI + `HybridRecommender` over frozen artifacts.
-- The web application layer (auth, feed, history, profile) **does not exist yet**
-  and is the next piece of work.
+- The web application layer (auth, feed, history, profile) **sudah diimplementasikan
+  dan melebur ke `develop`** (PRD v1.0; lihat §6.4 koreksi status; PRD v1.1 adalah
+  draft peralihan korpus yang menunggu persetujuan).
 
 ## 2. Repository Map
 
