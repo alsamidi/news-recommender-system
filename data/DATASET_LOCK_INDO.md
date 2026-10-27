@@ -38,7 +38,7 @@ versi 1 yang sudah beku.
   kanonik berbentuk `kompas.com/read/...`).
 - Cakupan terukur: seksi ter-extract 100% baris (probe 2026-10-27).
 - Pemetaan sekksi-URL → label kategori akhir diterministik oleh
-  `src/preprocessing/build_corpus_indo.py` dan tercantum di keluarannya; jangan
+  `src/phase2/build_corpus_indo.py` dan tercantum di keluarannya; jangan
   menampilkan tag portal mentah sebagai kategori (PRD §10.3 v1.1).
 
 ## Identitas artikel
