@@ -88,9 +88,10 @@ hardcode di template. Angka ini akan bergeser hanya jika korpus di-lock ulang.
 
 ## 4. Algoritma Feed Topik (definisi eksak untuk coding agent)
 
-Dengan `m` = topik terpilih (1 ≤ m ≤ 3), urutan topik = urutan pilihan user
-tersimpan; `P_L` = list popularitas beku yang difilter label `L`; riwayat =
-seluruh `nid` yang pernah dibuka (aturan v1.1 §8.3 tidak berubah):
+Dengan `m` = topik terpilih (1 ≤ m ≤ 3), urutan topik = **urutan kanonik chip
+§3** yang tersimpan di `user_topics.position` (bukan urutan klik — lihat §5);
+`P_L` = list popularitas beku yang difilter label `L`; riwayat = seluruh `nid`
+yang pernah dibuka (aturan v1.1 §8.3 tidak berubah):
 
 1. **Kuota per topik:** `q = ceil(10 / m)`.
 2. **Ambil awal:** dari tiap `P_L` ambil `q` teratas; sisipkan round-robin
@@ -117,7 +118,7 @@ absen — `DATA_MODEL.md` §3.4 dan PRD §9.4 dicabut terbatas oleh addendum ini
 | `id` | INTEGER | PK AUTOINCREMENT |
 | `user_id` | INTEGER | FK ke `users.id` ON DELETE CASCADE |
 | `label` | TEXT | Harus anggota set 12 chip §3; divalidasi di server |
-| `position` | INTEGER | 1..m, urutan pilihan user (dipakai determinisme) |
+| `position` | INTEGER | 1..m, **urutan kanonik chip §3** (dipakai determinisme) |
 | `created_at` | TEXT | UTC ISO-8601 |
 
 Batasan: `UNIQUE (user_id, label)`; maksimal **3** baris per user; dibaca
@@ -125,6 +126,29 @@ server-side dari sesi (identitas dari sesi, bukan parameter); form post pakai
 CSRF (v1.1 §11). Skema idempoten via `CREATE TABLE IF NOT EXISTS` di jalur
 migrasi yang sama. Kolom/volume: <100 user demo, <100 KB — tanpa service baru.
 Indeks: `UNIQUE (user_id, label)` sudah mencakup pola baca per user.
+
+**Koreksi implementasi (diputuskan saat eksekusi, 2026-10-27):**
+
+1. **`position` = urutan kanonik, bukan urutan klik.** Form multi-checkbox HTML
+   mengirim nilai dalam urutan DOM, bukan urutan klik — "urutan pilihan user"
+   tidak dapat direkam tanpa JavaScript. Menyimpan urutan yang berbeda dari
+   yang dikirim browser akan membuat feed nondeterministik. Konsekuensi yang
+   diterima: himpunan chip yang sama berperilaku sama, apa pun urutan kliknya,
+   dan AC-58 berlaku apa adanya (tanpa kualifikasi "urutan pilihan sama").
+2. **Kolom penanda `users.topics_prompted_at TEXT NULL`.** Tanpa kolom ini,
+   "sudah menekan Lewati" dan "belum pernah ditanya" sama-sama terlihat sebagai
+   nol baris `user_topics`, sehingga janji "muncul sekali" (C2) tidak bisa
+   dipenuhi. Kolom ditambahkan lewat `ALTER TABLE` idempoten yang dijaga
+   `PRAGMA table_info` — `CREATE TABLE IF NOT EXISTS` tidak berpengaruh pada
+   tabel `users` yang sudah ada di `data/web.db`.
+3. **m = 0 berarti Lewati.** `ceil(10/m)` tidak terdefinisi untuk m = 0, maka
+   form tanpa chip tidak menulis preferensi apa pun (hanya penanda).
+4. **Desain chip memakai token yang ada**: radius `{rounded.sm}` (DESIGN.md
+   tidak punya token chip; `{rounded.pill}` pricing-only, `{rounded.full}`
+   untuk tombol ikon), border `{colors.muted}` (14,6:1; `hairline` 1,36:1
+   gagal WCAG 1.4.11), state terpilih memakai `surface-soft` + ring ink (coral
+   berarti error, D25), target sentuh terukur 45px, focus ring pada label, dan
+   kelas CSS `.topic-chip` (bukan `topic-filter-*`).
 
 ## 6. Alur UX (ringkas; detail screen masuk UX_FLOWS saat dilebur)
 
@@ -149,9 +173,9 @@ Indeks: `UNIQUE (user_id, label)` sudah mencakup pola baca per user.
   berbeda dari "Berita populer".
 - **PRD-AC-57 [P0]** Feed topik tidak menambah panggilan `POST /recommend`
   dan tidak mengirim/mengubah α; diturunkan murni dari list popularitas beku.
-- **PRD-AC-58 [P0]** Dua user dengan topik sama mendapat urutan feed identik
-  (determinisme round-robin + urutan pilihan tersimpan), setelah filter
-  riwayat masing-masing.
+- **PRD-AC-58 [P0]** Dua user dengan himpunan topik sama mendapat urutan feed
+  identik (determinisme round-robin + `position` kanonik), setelah filter
+  riwayat masing-masing. Urutan klik tidak memengaruhi hasil.
 - **PRD-AC-59 [P1]** Chip hanya 12 label §3; `Pemilu`, `Ramadan`, `Otomotif`,
   `Investigasi`, `Bersponsor`, dan tag portal mentah tidak pernah tampil.
 - **PRD-AC-60 [P1]** Form onboarding menerima maksimal 3 chip, menolak label
@@ -203,7 +227,8 @@ pembimbing)
    tanpa sentuh kontrak/α/artefak.
 4. 12 chip dari aturan terukur §3.
 5. Kuota `ceil(10/m)` + isi ulang global.
-6. Tabel `user_topics` (3 baris maks/user) di `data/web.db`.
+6. Tabel `user_topics` (3 baris maks/user, `position` kanonik) +
+   `users.topics_prompted_at` sebagai penanda "onboarding sudah ditampilkan".
 
 Jika semua disetujui, #8 dikerjakan (dilebur PRD v1.2), baru implementasi
 di `feat/web-mvp` turunan dari `feat/dataset-indo-news` setelah phase-2 merge.

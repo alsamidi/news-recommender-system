@@ -4,6 +4,26 @@ Captured 2026-10-20 against a live `uvicorn web.app:app` instance on port 8101
 with a throwaway database. Screenshots are 1800×1250 (1440×1000 viewport at
 1.25 DPR).
 
+## Indo-era evidence (2026-10-27)
+
+Captured against a live `uvicorn web.app:app --app-dir src` instance with a
+throwaway database, after the phase-2 corpus swap and the PRD v1.2 topic
+feature. Same 1800×1250 / 1440×1000 at 1.25 DPR.
+
+| File | State | What it proves |
+|------|-------|----------------|
+| `11_feed_popular_indo.png` | Feed, no history, indo corpus | Label **"BERITA POPULER"**, 10 cards, card meta = category + `Sumber:` + date, no excerpt, counts labelled `× via simulasi`. |
+| `12_article_detail_indo.png` | Article detail | Title, category, `Sumber:`, `Tanggal:`, full `content`, "Berita serupa" block. No author, no portal link, no image. |
+| `13_history_indo.png` | History | Three rows, each exactly four grid cells (title / category+source+date / Dibaca / counts); column left edges identical across rows (TEST-AC-257). |
+| `14_feed_after_history_indo.png` | Feed after reading | Label **"REKOMENDASI DARI RIWAYAT BACAANMU"**, already-read nids excluded. |
+| `15_onboarding_topik.png` | Topic onboarding | 12 measured chips, max 3, "Lewati" present, optional screen. |
+| `16_feed_topik.png` | Topic feed (0-view user) | Label **"POPULER DI TOPIK PILIHANMU"**, cards alternating Politik/Hukum (round-robin), no `/recommend` call. |
+
+Measured in-browser, not estimated: topic chip radius 6px
+(`--radius-sm`), border `rgb(65,69,77)` = `--color-muted` (14.6:1), height
+45px, focus ring 2px `#458fff`; history row column left edges 610 / 866 /
+1092 identical on every row.
+
 ## Screenshots
 
 | File | State | What it proves |
