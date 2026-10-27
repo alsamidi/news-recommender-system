@@ -299,3 +299,20 @@ def test_picker_list_scrolls_and_says_so():
     assert "Gulir daftar" in template
 
 
+
+
+def test_reader_counts_are_visually_subordinate():
+    """TEST-AC-258: reader counts sit below 1 opacity, under the title.
+
+    They are reference data, not something to read first; the reduced opacity
+    keeps them available without competing with the headline. Both surfaces
+    (cards and history rows) must agree, or the same number would look like a
+    different kind of information on two pages.
+    """
+    css = read(STATIC / "app.css")
+    for selector in (".card-readers", ".history-readers"):
+        block = re.search(re.escape(selector) + r"\s*\{([^}]*)\}", css)
+        assert block, f"{selector} block missing"
+        opacity = re.search(r"opacity:\s*([\d.]+)", block.group(1))
+        assert opacity, f"{selector} has no opacity"
+        assert float(opacity.group(1)) < 1.0

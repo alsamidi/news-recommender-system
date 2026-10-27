@@ -303,9 +303,12 @@ not asserted:
 
 | Measure | Value |
 |---------|-------|
-| Criteria (`TEST-AC-NNN`) | 111 |
-| Cited by a test | **111** |
-| Test functions in `tests/web/` | 163 (5 of 9 files cite criteria; the rest are behavioural guards) |
+| Criteria (`TEST-AC-NNN`) | 121 |
+| Cited by a test | **121** |
+| Test functions in `tests/web/` | 191 (7 of 12 files cite criteria; the rest are behavioural guards) |
+
+Numbers are produced by the snippet below, not typed by hand — re-run it after
+adding a criterion or a test instead of editing this table.
 
 Verify:
 

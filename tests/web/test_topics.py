@@ -1,6 +1,6 @@
 """PRD addendum v1.2 — topic onboarding and the 0-view topic feed.
 
-Covers PRD-AC-55…62. The three invariants that are easy to get subtly wrong
+Covers TEST-AC-259…266 (PRD-AC-55…62). The three invariants that are easy to get subtly wrong
 and therefore get the most attention here:
 
 - the topic feed must not call `/recommend` at all (AC-57): a spy on the
@@ -60,7 +60,7 @@ def _feed_nids(client) -> list[str]:
 
 
 def test_onboarding_offered_once_then_never_again(client):
-    """PRD-AC-55 / C2: the screen appears once, and skipping is remembered."""
+    """TEST-AC-264 / PRD-AC-55 / C2: shown once; skipping is remembered."""
     _register(client)
 
     first = client.get("/onboarding/topik")
@@ -75,7 +75,7 @@ def test_onboarding_offered_once_then_never_again(client):
 
 
 def test_chip_set_is_the_measured_twelve(client):
-    """PRD-AC-59: only the 12 measured labels are offered."""
+    """TEST-AC-263 / PRD-AC-59: only the 12 measured labels are offered."""
     _register(client)
     body = client.get("/onboarding/topik").text
     chips = CHIP.findall(body)
@@ -93,7 +93,7 @@ def test_chip_set_is_the_measured_twelve(client):
 
 
 def test_onboarding_rejects_unknown_label_and_too_many(client):
-    """PRD-AC-60: server-side validation, not just form shape."""
+    """TEST-AC-264 / PRD-AC-60: server-side validation, not just form shape."""
     _register(client)
     assert _post_topics(client, ["Topik Palsu"]).status_code == 400
     assert _post_topics(
@@ -101,7 +101,7 @@ def test_onboarding_rejects_unknown_label_and_too_many(client):
 
 
 def test_onboarding_requires_csrf(client):
-    """PRD-AC-60: the preference form is CSRF-protected like every other POST."""
+    """TEST-AC-264 / PRD-AC-60: the form is CSRF-protected like every POST."""
     _register(client)
     r = client.post("/onboarding/topik", data={"topik": "Politik"},
                     follow_redirects=False)
@@ -109,7 +109,7 @@ def test_onboarding_requires_csrf(client):
 
 
 def test_empty_submission_is_a_skip(client):
-    """C2: m = 0 has no quota, so zero chips means "no preference"."""
+    """TEST-AC-264 / TEST-AC-265 / C2: m = 0 means "no preference"."""
     _register(client)
     r = client.post("/onboarding/topik", data={"csrf_token": csrf_of(
         client.get("/onboarding/topik").text)}, follow_redirects=False)
@@ -121,7 +121,7 @@ def test_empty_submission_is_a_skip(client):
 
 
 def test_topic_feed_renders_for_zero_view_user_only(client, register):
-    """PRD-AC-55 / C1: the slice appears before the first view, never after."""
+    """TEST-AC-259 / PRD-AC-55 / C1: shown before the first view, never after."""
     _register(client)
     assert _post_topics(client, ["Politik", "Hukum"]).status_code == 303
 
@@ -135,7 +135,7 @@ def test_topic_feed_renders_for_zero_view_user_only(client, register):
 
 
 def test_topic_feed_categories_match_choice_or_global_topup(client):
-    """PRD-AC-56: every card is in a chosen topic, or a global top-up."""
+    """TEST-AC-260 / PRD-AC-56: chosen topic, or a global top-up card."""
     import pandas as pd
 
     _register(client)
@@ -157,7 +157,7 @@ def test_topic_feed_categories_match_choice_or_global_topup(client):
 
 
 def test_topic_feed_never_calls_recommend(client):
-    """PRD-AC-57: selection, not scoring — no /recommend, no alpha."""
+    """TEST-AC-261 / PRD-AC-57: selection, not scoring — no /recommend, no alpha."""
     from web.clients.rec_api import RecClient
 
     _register(client)
@@ -181,7 +181,7 @@ def test_topic_feed_never_calls_recommend(client):
 
 
 def test_topic_order_is_deterministic_across_users(client):
-    """PRD-AC-58: same topic set -> same order, for every account.
+    """TEST-AC-262 / PRD-AC-58: same topic set -> same order, for every account.
 
     Registered as two separate users with the same chips submitted in
     DIFFERENT form order: canonicalisation must erase the difference, because
@@ -200,7 +200,7 @@ def test_topic_order_is_deterministic_across_users(client):
 
 
 def test_topics_are_profile_data_not_events(client):
-    """PRD-AC-61 / C5: preference never becomes an interaction row."""
+    """TEST-AC-265 / PRD-AC-61 / C5: preference never becomes an event."""
     _register(client)
     assert _post_topics(client, ["Teroka"]).status_code == 303
     store = client.app.state.store
@@ -218,7 +218,7 @@ def test_topics_are_profile_data_not_events(client):
 
 
 def test_smoke_flow_register_topic_detail_history(client):
-    """PRD-AC-62: the new-user journey still ends on the v1.1 history path."""
+    """TEST-AC-266 / PRD-AC-62: the journey ends on the v1.1 history path."""
     _register(client)
     assert _post_topics(client, ["Multimedia"]).status_code == 303
 
@@ -235,6 +235,7 @@ def test_smoke_flow_register_topic_detail_history(client):
 
 
 def test_chip_set_matches_the_measured_rule():
+    """TEST-AC-263 / PRD-AC-59: the chip set is DERIVED from the corpus."""
     """The chip list is DERIVED, not curated — re-derive it from the corpus.
 
     PRD v1.2 §3 rule: labels with >= 50 train-viewed items in the effective

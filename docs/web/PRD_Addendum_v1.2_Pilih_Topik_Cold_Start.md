@@ -178,7 +178,9 @@ dan 250–258 dari addendum §L. Aturan dual-namespace tetap berlaku.
 4. `RECOMMENDATION_INTEGRATION.md` §4/§5: slot feed topik di prioritas
    routing (persona → history → **populer-di-topik** → populer), penegasan
    tanpa-skor dan tanpa-panggilan-API.
-5. `ACCEPTANCE_CRITERIA.md`: `TEST-AC-123+` untuk PRD-AC-55…62.
+5. `ACCEPTANCE_CRITERIA.md`: `TEST-AC-259+` untuk PRD-AC-55…62 (§7 —
+   123–258 sudah terpakai). **Selesai 2026-10-27**: §M + id di
+   `tests/web/test_topics.py`.
 6. `AGENTS.md` §6.5 baris Scope, agar rulebook tidak kontradiksi dengan PRD.
 
 ## 9. Risiko dan Mitigasi (tambahan atas PRD v1.1 §17)
