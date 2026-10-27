@@ -1,4 +1,6 @@
-"""Corpus assembly: strict URL dedupe with content-identity assert."""
+"""Corpus assembly: dedupe, URL-section categories, boilerplate stripping."""
+from urllib.parse import urlparse
+
 import pandas as pd
 
 
@@ -25,3 +27,145 @@ def dedupe(df: pd.DataFrame) -> pd.DataFrame:
         )
     out = df.sort_values(["Link", "Waktu"], kind="mergesort")
     return out.drop_duplicates(subset="Link", keep="first").reset_index(drop=True)
+
+
+# ---------------------------------------------------------------------------
+# Task 4: URL-section category derivation
+# ---------------------------------------------------------------------------
+
+def extract_section(url: str, source: str) -> str:
+    """Extract the raw URL section for one article.
+
+    Measured rules (probe on the full CSV, 2026-10-27):
+      tempo : first path segment after tempo.co/ (leading www stripped);
+              e.g. https://www.tempo.co/politik/... -> "politik"
+      detik : channel path segment on news.detik.com, e.g.
+              https://news.detik.com/berita/d-... -> "berita"
+      kompas: subdomain before .kompas.com — canonical read URLs do not embed
+              the section; the subdomain carries it
+              (nasional/megapolitan/regional/internasional measured).
+    """
+    if not isinstance(url, str) or not url.strip():
+        raise ValueError(f"empty URL for section extraction (source={source})")
+    if source == "tempo":
+        host = urlparse(url).netloc
+        if not host.endswith("tempo.co"):
+            raise ValueError(f"tempo row with foreign host: {url!r}")
+        segs = [s for s in urlparse(url).path.split("/") if s]
+        if not segs:
+            raise ValueError(f"tempo URL without path section: {url!r}")
+        return segs[0].lower()
+    if source == "detik":
+        host = urlparse(url).netloc
+        if not host.endswith("detik.com"):
+            raise ValueError(f"detik row with foreign host: {url!r}")
+        segs = [s for s in urlparse(url).path.split("/") if s]
+        # measured shape: /<channel>/d-<id>/...; detiktv/infografis keep d-id too
+        if not segs:
+            raise ValueError(f"detik URL without path channel: {url!r}")
+        return segs[0].lower()
+    if source == "kompas":
+        host = urlparse(url).netloc
+        if not host.endswith("kompas.com"):
+            raise ValueError(f"kompas row with foreign host: {url!r}")
+        sub = host[: -len(".kompas.com")].lower()
+        if not sub or sub == "www":
+            raise ValueError(f"kompas URL without section subdomain: {url!r}")
+        return sub
+    raise ValueError(f"unknown source: {source!r}")
+
+
+# Section (raw URL segment) -> final category label. Built from the measured
+# full-CSV section inventory; unknown section = hard build failure, never a
+# silent fallback.
+SECTION_TO_LABEL = {
+    # --- tempo ---
+    "politik": "Politik",
+    "hukum": "Hukum",
+    "ekonomi": "Ekonomi",
+    "internasional": "Internasional",
+    "olahraga": "Olahraga",
+    "sepakbola": "Olahraga",
+    "hno": "Olahraga",
+    "bola": "Olahraga",
+    "hiburan": "Hiburan",
+    "gaya-hidup": "Hiburan",
+    "musik": "Hiburan",
+    "seleb": "Hiburan",
+    "teroka": "Teroka",
+    "sains": "Tekno-Sains",
+    "digital": "Tekno-Sains",
+    "tekno": "Tekno-Sains",
+    "lingkungan": "Lingkungan",
+    "kolom": "Kolom",
+    "cekfakta": "Cek Fakta",
+    "info-tempo": "Info Tempo",
+    "foto": "Multimedia",
+    "video": "Multimedia",
+    "infografik": "Multimedia",
+    "arsip": "Info Tempo",
+    "newsletter": "Info Tempo",
+    "data": "Info Tempo",
+    "prelude": "Info Tempo",
+    "tokoh": "Kolom",
+    "wawancara": "Kolom",
+    "investigasi": "Investigasi",
+    "otomotif": "Otomotif",
+    # same section, both spellings measured
+    "ramadan": "Ramadan",
+    "ramadhan": "Ramadan",
+    # --- detik ---
+    "berita": "Berita",
+    "pilkada": "Pemilu",
+    "pemilu": "Pemilu",
+    "dw": "Internasional",
+    "bbc-world": "Internasional",
+    "abc-australia": "Internasional",
+    "internasional-utama": "Internasional",
+    "kolom": "Kolom",
+    "detiktv": "Multimedia",
+    "infografis": "Multimedia",
+    "adv-nhl-detikcom": "Bersponsor",
+    "bangun-indonesia": "Bersponsor",
+    "melindungi-tuah-marwah": "Bersponsor",
+    # --- kompas ---
+    "nasional": "Berita",
+    "megapolitan": "Berita",
+    "regional": "Berita",
+}
+
+
+def build_category_map(df: pd.DataFrame) -> dict:
+    """Map sections to labels and return {source -> {section -> label}}.
+
+    Hard-fails on any row whose section is missing from SECTION_TO_LABEL —
+    measured coverage is 100%; a miss means the corpus drifted.
+    """
+    sections = pd.Series(
+        [extract_section(u, s) for u, s in zip(df["Link"], df["source"])],
+        name="section",
+    )
+    unknown = sorted(set(sections) - set(SECTION_TO_LABEL))
+    if unknown:
+        raise ValueError(
+            f"unknown URL sections ({len(unknown)}): {unknown[:20]}"
+        )
+    per_source: dict = {}
+    for src, grp in pd.DataFrame({"source": df["source"], "section": sections}) \
+            .groupby("source"):
+        per_source[src] = dict(sorted(set(zip(grp["section"],
+                                              grp["section"].map(SECTION_TO_LABEL)))))
+    return per_source
+
+
+def add_categories(df: pd.DataFrame) -> pd.DataFrame:
+    """Return df with a derived `category` column (hard 100% coverage)."""
+    sections = [extract_section(u, s) for u, s in zip(df["Link"], df["source"])]
+    unknown = sorted(set(sections) - set(SECTION_TO_LABEL))
+    if unknown:
+        raise ValueError(
+            f"unknown URL sections ({len(unknown)}): {unknown[:20]}"
+        )
+    out = df.copy()
+    out["category"] = [SECTION_TO_LABEL[s] for s in sections]
+    return out

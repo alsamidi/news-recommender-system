@@ -62,3 +62,59 @@ def test_nan_vs_nan_counts_identical():
     )
     out = dedupe(df)
     assert len(out) == 1
+
+
+# ---------------------------------------------------------------------------
+# Task 4: URL-section categories
+# ---------------------------------------------------------------------------
+
+from urllib.parse import urlparse
+
+import pandas as pd
+
+from src.phase2.corpus import SECTION_TO_LABEL, add_categories, build_category_map, extract_section
+
+
+def test_extract_section_tempo():
+    assert extract_section(
+        "https://www.tempo.co/politik/some-title-1173464", "tempo") == "politik"
+    assert extract_section(
+        "https://tempo.co/ekonomi/x-1", "tempo") == "ekonomi"
+
+
+def test_extract_section_detik():
+    assert extract_section(
+        "https://news.detik.com/berita/d-7947358/x", "detik") == "berita"
+    assert extract_section(
+        "https://news.detik.com/dw/d-7571144/y", "detik") == "dw"
+
+
+def test_extract_section_kompas_subdomain():
+    # canonical read URLs carry no section in the path; subdomain does
+    assert extract_section(
+        "https://nasional.kompas.com/read/2024/08/02/17263401/x", "kompas") == "nasional"
+    assert extract_section(
+        "https://megapolitan.kompas.com/read/2025/04/15/17400331/y", "kompas") == "megapolitan"
+
+
+def test_extract_section_rejects_garbage():
+    with pytest.raises(ValueError):
+        extract_section("", "tempo")
+    with pytest.raises(ValueError):
+        extract_section("https://cnn.com/x", "tempo")
+    with pytest.raises(ValueError):
+        extract_section("https://www.kompas.com/read/x", "kompas")  # no subdomain
+    with pytest.raises(ValueError):
+        extract_section("https://nasional.kompas.com/read/x", "hackernews")
+
+
+def test_full_csv_category_coverage_100pct():
+    df = pd.read_csv("data/raw/final_merge_dataset.csv", usecols=["Link", "source"])
+    labeled = add_categories(df)
+    assert labeled["category"].notna().all()
+    assert (labeled["category"].astype(str).str.len() > 0).all()
+    # measured inventory: every extracted section must be in the explicit map
+    sections = [extract_section(u, s) for u, s in zip(df["Link"], df["source"])]
+    assert set(sections) <= set(SECTION_TO_LABEL)
+    per_src = build_category_map(df)
+    assert set(per_src) == {"kompas", "tempo", "detik"}
