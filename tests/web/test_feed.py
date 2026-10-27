@@ -39,7 +39,7 @@ def test_history_switches_to_cold_and_filters(client, register):
 
 
 def test_feed_never_exceeds_twelve(client, register):
-    """The feed cap moved 10 -> 12 in v1.3; it must still be a hard cap."""
+    """TEST-AC-272: the cap moved 10 -> 12 in v1.3; still a hard cap."""
     register()
     for nid in feed_nids(client)[:5]:
         client.get(f"/berita/{nid}")

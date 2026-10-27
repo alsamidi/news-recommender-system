@@ -396,7 +396,7 @@ def test_csrf_error_still_json_for_api_clients(client):
 # ---------------------------------------------------------------------------
 
 def test_persona_endpoints_are_gone(client):
-    """The dataset-persona feature was deleted, not hidden.
+    """TEST-AC-250 / TEST-AC-271: the persona feature was deleted, not hidden.
 
     It existed to demo a warm feed for a dataset account. v1.3 removes roles
     entirely: the routes must 404 (not 403/405), and the login page must not
@@ -414,7 +414,7 @@ def test_persona_endpoints_are_gone(client):
 
 
 def test_config_has_no_persona_fields():
-    """The config surface no longer carries persona knobs."""
+    """TEST-AC-271: the config surface no longer carries persona knobs."""
     from web.config import load_config
 
     cfg = load_config()

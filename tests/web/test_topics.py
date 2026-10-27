@@ -273,7 +273,7 @@ def test_chip_set_matches_the_measured_rule():
 
 
 def test_onboarding_locks_navigation(client):
-    """v1.3 #1: the wordmark is not a link on the onboarding screen.
+    """TEST-AC-267 / v1.3 #1: the wordmark is not a link on the onboarding screen.
 
     The screen must be answered (save or skip), so leaving by clicking the logo
     is disabled — but both buttons stay, so the user is never trapped.
@@ -288,7 +288,7 @@ def test_onboarding_locks_navigation(client):
 
 
 def test_onboarding_label_has_no_number(client):
-    """v1.3 #8: the heading says "beberapa", the cap is enforced server-side."""
+    """TEST-AC-275 / v1.3 #8: heading says "beberapa"; the cap is server-side."""
     _register(client)
     body = client.get("/onboarding/topik").text
     assert "Pilih beberapa topik yang paling kamu sukai" in body
@@ -296,7 +296,7 @@ def test_onboarding_label_has_no_number(client):
 
 
 def test_five_topics_accepted_and_feed_has_twelve_cards(client):
-    """v1.3 #6/#8: cap 5, feed 12, q = ceil(12/5) = 3."""
+    """TEST-AC-274 / v1.3 #6/#8: cap 5, feed 12, q = ceil(12/5) = 3."""
     _register(client)
     five = ["Politik", "Hukum", "Ekonomi", "Multimedia", "Olahraga"]
     assert _post_topics(client, five).status_code == 303

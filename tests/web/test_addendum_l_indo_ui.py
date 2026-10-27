@@ -76,7 +76,7 @@ def test_card_meta_is_category_source_and_date_only(client, register):
 
 
 def test_no_author_and_source_link_only_from_data(client, register):
-    """TEST-AC-222 (amended v1.3).
+    """TEST-AC-222 / TEST-AC-273 (amended v1.3).
 
     `Sumber:`/`Tanggal:` stay mandatory; the author is still forbidden. The
     portal-link ban is narrowed rather than dropped: exactly one link is
@@ -199,7 +199,7 @@ def test_history_row_keeps_four_grid_cells(client, register):
 
 
 def test_body_starts_without_dateline_comma(client, register):
-    """v1.3 #2: display-only cleanup of the leftover dateline comma.
+    """TEST-AC-268 / v1.3 #2: display-only cleanup of the leftover dateline comma.
 
     34.4% of bodies (90.7% of Tempo rows) start with ", ". It is stripped when
     rendering, never in the corpus — the lock hash and every gate number stay
@@ -215,7 +215,7 @@ def test_body_starts_without_dateline_comma(client, register):
 
 
 def test_article_body_is_justified(client, register):
-    """v1.3 #3: justified body with a first-line indent, token-only CSS."""
+    """TEST-AC-269 / v1.3 #3: justified body with a first-line indent."""
     from pathlib import Path
 
     css = (REPO / "src/web/static/app.css").read_text()

@@ -213,9 +213,9 @@ functional criteria in `TEST-AC-001…199`. `[P]` = MVP-mandatory.
 
 | ID | Criterion | Verification |
 |----|-----------|--------------|
-| TEST-AC-250 **[P]** | `/login/persona` returns 404 unconditionally (v1.3: the feature is deleted, not gated) | `test_auth.py::test_persona_endpoints_are_gone` |
-| TEST-AC-251 **[P]** | The picker lists only `user_id`s present in the ALS `user_map` | Compare rendered ids against `recommender_data["user_map"]` |
-| TEST-AC-252 **[P]** | The picker POST rejects any id outside `user_map` with 400, and still enforces CSRF (403) | Post unknown ids, empty string, and an injection-shaped string |
+| TEST-AC-250 **[P]** | `/login/persona` returns 404 unconditionally (v1.3: the feature is deleted, not gated) | `test_auth.py::test_persona_endpoints_are_gone` (cites TEST-AC-250) |
+| ~~TEST-AC-251~~ | **Retired v1.3** — there is no picker to list users | — |
+| ~~TEST-AC-252~~ | **Retired v1.3** — the picker POST endpoint is gone; the surviving invariant (404) is TEST-AC-250 | — |
 | ~~TEST-AC-253~~ | **Retired v1.3** — there is no picker and no warm path | — |
 | TEST-AC-254 **[P]** | Cards show a dataset reader count and an app reader count, both unique per user | Open one article 3× from one account; the app count must rise by 1 |
 | TEST-AC-255 **[P]** | A zero reader count is never printed; the row renders nothing instead | Grep the rendered feed for `>0× via MIND<` and `>0× via web<` |
@@ -300,15 +300,15 @@ idempotent `PRAGMA table_info`-guarded `ALTER TABLE`, because
 
 | ID | Criterion | How it is checked |
 |----|-----------|-------------------|
-| TEST-AC-267 **[P]** | On the topic onboarding screen the wordmark is not a link (navigation locked), and both "Simpan pilihan" and "Lewati" are present | `test_topics.py::test_onboarding_locks_navigation` |
-| TEST-AC-268 **[P]** | Article bodies never start with the leftover dateline comma; the corpus itself is unchanged | `test_addendum_l_indo_ui.py::test_body_starts_without_dateline_comma` |
-| TEST-AC-269 **[P]** | `.article-body` is justified with a first-line indent, using tokens only | `…::test_article_body_is_justified` |
-| TEST-AC-270 **[P]** | History rows share one height and identical column offsets, whatever the title/date length | `test_addendum_l_indo_ui.py::test_history_row_keeps_four_grid_cells` + browser measurement |
-| TEST-AC-271 **[P]** | No persona feature remains: `/login/persona` 404s, the login page does not advertise it, and `Config`/`Store` carry no persona surface | `test_auth.py::test_persona_endpoints_are_gone`, `…::test_config_has_no_persona_fields` |
-| TEST-AC-272 **[P]** | The feed renders at most 12 unique cards | `test_feed.py::test_feed_never_exceeds_twelve` |
-| TEST-AC-273 **[P]** | The detail page shows exactly one portal link, after the body, whose host matches the article's `source` | `test_addendum_l_indo_ui.py::test_no_author_and_source_link_only_from_data` |
-| TEST-AC-274 **[P]** | Up to 5 topics are accepted and the topic feed then renders 12 cards (`q = ceil(12/5) = 3`) | `test_topics.py::test_five_topics_accepted_and_feed_has_twelve_cards` |
-| TEST-AC-275 **[P]** | The onboarding heading carries no number, while the 5-chip cap is enforced server-side | `…::test_onboarding_label_has_no_number`, `…::test_onboarding_rejects_unknown_label_and_too_many` |
+| TEST-AC-267 **[P]** | On the topic onboarding screen the wordmark is not a link (navigation locked), and both "Simpan pilihan" and "Lewati" are present | `test_topics.py::test_onboarding_locks_navigation` (cites TEST-AC-267) |
+| TEST-AC-268 **[P]** | Article bodies never start with the leftover dateline comma; the corpus itself is unchanged | `test_addendum_l_indo_ui.py::test_body_starts_without_dateline_comma` + `test_textview.py` unit cases (cite TEST-AC-268) |
+| TEST-AC-269 **[P]** | `.article-body` is justified with a first-line indent, using tokens only | `…::test_article_body_is_justified` (cites TEST-AC-269) |
+| TEST-AC-270 **[P]** | History rows share one height and identical column offsets, whatever the title/date length | `test_addendum_l_indo_ui.py::test_history_row_keeps_four_grid_cells`, `…::test_history_rows_share_one_height` (cites TEST-AC-270) + browser measurement |
+| TEST-AC-271 **[P]** | No persona feature remains: `/login/persona` 404s, the login page does not advertise it, and `Config`/`Store` carry no persona surface | `test_auth.py::test_persona_endpoints_are_gone`, `…::test_config_has_no_persona_fields` (cite TEST-AC-271) |
+| TEST-AC-272 **[P]** | The feed renders at most 12 unique cards | `test_feed.py::test_feed_never_exceeds_twelve` (cites TEST-AC-272) |
+| TEST-AC-273 **[P]** | The detail page shows exactly one portal link, after the body, whose host matches the article's `source` | `test_addendum_l_indo_ui.py::test_no_author_and_source_link_only_from_data` (cites TEST-AC-273) |
+| TEST-AC-274 **[P]** | Up to 5 topics are accepted and the topic feed then renders 12 cards (`q = ceil(12/5) = 3`) | `test_topics.py::test_five_topics_accepted_and_feed_has_twelve_cards` (cites TEST-AC-274) |
+| TEST-AC-275 **[P]** | The onboarding heading carries no number, while the 5-chip cap is enforced server-side | `…::test_onboarding_label_has_no_number`, `…::test_onboarding_rejects_unknown_label_and_too_many` (cite TEST-AC-275) |
 
 ---
 
@@ -319,9 +319,15 @@ not asserted:
 
 | Measure | Value |
 |---------|-------|
-| Criteria (`TEST-AC-NNN`) | 121 |
-| Cited by a test | **121** |
-| Test functions in `tests/web/` | 191 (7 of 12 files cite criteria; the rest are behavioural guards) |
+| Criteria (`TEST-AC-NNN`) | 125 |
+| Cited by a test | **125** |
+| Test functions in `tests/web/` | 196 (7 of 12 files cite criteria; the rest are behavioural guards) |
+
+Note (v1.3): deleting the persona feature retired TEST-AC-251/252/253 rather
+than leaving them "covered" by tests that no longer exist, and the count is
+**not** held at a previous number on purpose — it is whatever the snippet
+prints. Deleting tests that guard a deleted feature is correct; padding the
+suite to preserve a number would not be.
 
 Numbers are produced by the snippet below, not typed by hand — re-run it after
 adding a criterion or a test instead of editing this table.
