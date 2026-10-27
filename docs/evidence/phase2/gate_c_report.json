@@ -1,0 +1,24 @@
+{
+  "item_factor_coverage": 0.7894108280254777,
+  "account_factor_coverage": 1.0,
+  "items_with_factors": 13881,
+  "n_effective_items": 17584,
+  "accounts_with_factors": 600,
+  "n_accounts": 600,
+  "params": {
+    "factors": 128,
+    "regularization": 0.01,
+    "iterations": 20,
+    "alpha": 40.0,
+    "seed": 42
+  },
+  "cutoff_draft": "2025-09-18 06:05:20.102251571+00:00",
+  "dev_events": 14407,
+  "train_events": 57627,
+  "generated_at_utc": "2026-10-27T02:57:19.345755+00:00",
+  "artifact_sha256": {
+    "model": "5188465f1f975093a166f5f2ad96f5828a8f19e2ab2a4fee69000ea5a0c711dc",
+    "user_factors": "8ad68981822a4e15b6406a253d2d942de42f9728e2c45a39ec2c5c15ba15fec2",
+    "item_factors": "da515ef5f1b1d3486d226e283a2021f6860a63d9acf08a76d4ff7d0c1345518c"
+  }
+}
