@@ -1,0 +1,45 @@
+{
+  "raw_rows": 80472,
+  "unique_rows": 67381,
+  "unique_nids": 67381,
+  "per_source": {
+    "kompas": 35275,
+    "tempo": 25580,
+    "detik": 6526
+  },
+  "category_counts": {
+    "Berita": 40468,
+    "Politik": 4928,
+    "Ekonomi": 3736,
+    "Hukum": 3697,
+    "Multimedia": 2330,
+    "Internasional": 2225,
+    "Info Tempo": 2168,
+    "Hiburan": 1998,
+    "Olahraga": 1877,
+    "Tekno-Sains": 969,
+    "Teroka": 884,
+    "Lingkungan": 793,
+    "Pemilu": 475,
+    "Kolom": 349,
+    "Bersponsor": 265,
+    "Cek Fakta": 166,
+    "Otomotif": 34,
+    "Ramadan": 10,
+    "Investigasi": 9
+  },
+  "median_content_chars": 2182.0,
+  "median_processed_tokens": 223.0,
+  "vocab_unique": 150424,
+  "vocab_stemmed": 149771,
+  "slice_n": null,
+  "workers": 10,
+  "seconds": {
+    "clean": 2.9,
+    "stem": 3396.0,
+    "mask": 6.5,
+    "total": 3422.4
+  },
+  "catalog_path": "data/processed/indo/catalog.parquet",
+  "catalog_sha256": "971c4db2853735b4c7627d0e119a8624bc6d1cd95121f61ee72066ade5836bca"
+}
