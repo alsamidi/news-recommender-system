@@ -222,7 +222,13 @@ def test_empty_history_state(client, register):
 # ---------------------------------------------------------------------------
 
 def test_no_fabricated_metadata_anywhere(client, register):
-    """TEST-AC-080..083, 086: no image, publisher, author, date, fake count."""
+    """TEST-AC-080 / 082 / 086: nothing invented, and no fake counts.
+
+    PRD v1.1 addendum §L reverses the date half of the old criterion: the
+    active corpus really has a publication date, so `Tanggal:` must appear.
+    What must never appear is content the corpus does not have — images, an
+    author, or an external portal link — plus any hardcoded article count.
+    """
     register()
     nid = re.findall(r"/berita/([NI][0-9a-zA-Z]+)", client.get("/").text)[0]
     pages = {
@@ -235,8 +241,8 @@ def test_no_fabricated_metadata_anywhere(client, register):
         assert "<img" not in low, name
         assert "detik.com" not in low and "msn.com" not in low, name
         assert "penulis:" not in low, name
-        assert "tanggal:" not in low, name
         assert "93.698" not in low and "93698" not in low, name
+    assert "tanggal:" in pages["detail"].lower()
 
 
 def test_no_score_rendering(client, register):
@@ -416,15 +422,24 @@ def test_card_title_typography():
     assert "18px" in block and "500" in block
 
 
-def test_cards_show_only_category_meta():
-    """TEST-AC-221."""
-    body = (TEMPLATES / "feed.html").read_text()
-    assert "card-category" in body
-    assert "card-title" in body
-    # No author/date/publisher placeholders in the card template.
-    low = body.lower()
-    for word in ("penulis", "tanggal", "sumber", "penerbit"):
-        assert word not in low
+def test_cards_show_category_source_and_date(client, register):
+    """TEST-AC-221 (PRD v1.1 addendum §L): card meta = category + source + date.
+
+    The card carries exactly the three meta fields the active corpus really
+    has. Author and publisher stay absent — the corpus has neither, and
+    inventing one is forbidden (PRD §10.3).
+    """
+    register()
+    body = client.get("/").text
+
+    card = re.search(r'<a class="card".*?</a>', body, re.S).group(0)
+    assert "card-category" in card                      # category
+    assert "Sumber: " in card                           # source
+    assert re.search(r"\b\d{1,2} (Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agu|Sep|Okt|Nov|Des) \d{4}\b", card)
+    for word in ("Penulis", "Penerbit", "detik.com", "tempo.co", "kompas.com"):
+        assert word not in card, word
+    # A card is title + meta only (PRD §10.2): no body excerpt.
+    assert "card-abstract" not in card
 
 
 def test_processed_text_never_rendered():
@@ -546,11 +561,20 @@ def test_persona_payload_uses_user_id(client, register):
 
 
 def test_thin_metadata_never_leaks():
-    """TEST-AC-081 / 082 / 083 / 222: no publisher, author, or date anywhere."""
+    """TEST-AC-081 / 083 / 222 (PRD v1.1 addendum §L, partly reversed).
+
+    Source and publication date are now *required* when the corpus has them.
+    What stays forbidden is everything the corpus does not have: author,
+    publisher, and any external portal link.
+    """
     for t in (WEB / "templates").glob("*.html"):
-        low = t.read_text().lower()
-        for word in ("detik", "msn", "penulis", "tanggal", "penerbit", "sumber:"):
-            assert word not in low, f"{t.name} contains {word!r}"
+        body = t.read_text()
+        assert "Penulis" not in body, t.name
+        assert "Penerbit" not in body, t.name
+        # No portal URL may be rendered as a link or shown as text.
+        assert "href=\"http" not in body, t.name
+        for domain in ("detik.com", "tempo.co", "kompas.com", "msn.com"):
+            assert domain not in body, f"{t.name} contains {domain!r}"
 
 
 def test_no_row_count_claim():
@@ -612,13 +636,19 @@ def test_state_surfaces_use_documented_tokens():
     assert "var(--color-on-primary)" in err
 
 
-def test_author_and_date_absent():
-    """TEST-AC-082 / TEST-AC-083 / TEST-AC-222: explicit per-field checks."""
-    for t in (WEB / "templates").glob("*.html"):
-        body = t.read_text()
-        assert "Penulis:" not in body, t.name
-        assert "Tanggal:" not in body, t.name
-        assert "detik.com" not in body, t.name
+def test_author_absent_and_source_date_labelled(client, register):
+    """TEST-AC-082 / 083 / 222 (addendum §L): per-field checks on the detail page.
+
+    The detail page must label `Sumber:` and `Tanggal:` because the corpus has
+    both values; an unlabelled bare string would not tell a reader what it is.
+    """
+    register()
+    nid = re.findall(r"/berita/([NI][0-9a-zA-Z]+)", client.get("/").text)[0]
+    body = client.get(f"/berita/{nid}").text
+    assert "Sumber: " in body
+    assert "Tanggal: " in body
+    assert "Penulis" not in body
+    assert "detik.com" not in body
 
 
 def test_feed_and_detail_do_not_scale_with_history(client, register):
@@ -733,9 +763,10 @@ def test_cards_show_unique_reader_counts(client, register):
     """TEST-AC-254 / TEST-AC-256: both counts render, labelled by source."""
     register()
     body = client.get("/").text
-    # At least one card carries a dataset count (13.9% of the catalogue has one).
-    assert "× via MIND" in body
-    counts = re.findall(r'>(\d+)× via MIND<', body)
+    # At least one card carries a dataset count; the label names the source
+    # the counts come from, which under the indo corpus is the simulation.
+    assert "× via simulasi" in body
+    counts = re.findall(r'>(\d+)× via simulasi<', body)
     assert counts, "no dataset counts rendered"
     assert all(int(c) >= 1 for c in counts), "zero must be hidden, not printed"
 
@@ -761,5 +792,5 @@ def test_zero_reader_counts_are_hidden(client, register):
     body = client.get("/").text
     # Match the rendered text exactly: a bare substring test would also match
     # "10 pembaca dataset" and fail for the wrong reason.
-    assert not re.search(r">0× via MIND<", body)
+    assert not re.search(r">0× via simulasi<", body)
     assert not re.search(r">0× via web<", body)

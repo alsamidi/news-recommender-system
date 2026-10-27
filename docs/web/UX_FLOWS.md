@@ -122,7 +122,7 @@ Persona account ──► Login ──► Feed (warm, from dataset profile)
 | Very long history | Send the last 50 unique `nid`, then filter against the **full** history (§`RECOMMENDATION_INTEGRATION.md` §5.4) |
 | Dataset persona account | Warm feed via `user_id`; app history still recorded but never mixed into the warm payload |
 | Persona invalid (404) | Fall back to history if present; otherwise a controlled error page |
-| Article with no `abstract` (5.0%) | Detail renders `title` + category with "Ringkasan tidak tersedia untuk berita ini." |
+| Article with empty content (0.01% in the indo corpus) | Detail renders `title` + meta only — no substitute paragraph (PRD v1.1 §10.2/§16). The old MIND-era "Ringkasan tidak tersedia" callout is gone: the active corpus has `content`, not an abstract, so an empty body is shown as empty. |
 | Unknown `nid` | 404 from the API → friendly "article not found" page; **no** interaction row written |
 | Expired login session | Redirect to Login, preserving the target URL |
 

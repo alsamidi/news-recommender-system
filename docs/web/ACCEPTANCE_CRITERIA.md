@@ -225,7 +225,7 @@ functional criteria in `TEST-AC-001…199`. `[P]` = MVP-mandatory.
 
 ---
 
-## L. Corpus transition addendum (2026-10-27 — DRAFT, PRD v1.1)
+## L. Corpus transition addendum (2026-10-27 — EFFECTIVE, PRD v1.1 disetujui)
 
 Kriteria §A–K ditulis terhadap implementasi era MIND yang berjalan hari ini dan
 tetap benar sampai migrasi fase-2 dieksekusi. Setelah korpus aktif berganti
@@ -245,8 +245,28 @@ bisa lolos tanpa jejak:
 | TEST-AC-255/256 | Label reader-count sumber dataset `× via MIND` → sumber baru dihitung dari interaksi simulasi korpus aktif; aturan zero-count (D30) tetap | D29 berlanjut dengan data simulasi |
 | TEST-AC-049 | Feed populer bersumber dari statistik interaksi train hasil simulasi | Label "Berita populer" tidak berubah |
 
-Tidak ada satu pun baris di addendum ini yang efektif sebelum PRD v1.1
-disetujui dan `data/DATASET_LOCK_INDO.md` lepas dari status TBC.
+**Status pelaksanaan (2026-10-27):** PRD v1.1 disetujui dan
+`data/DATASET_LOCK_INDO.md` sudah lepas dari status TBC, sehingga seluruh
+baris di atas **efektif**. Implementasinya terpetakan sebagai berikut:
+
+| Kriteria | Test yang menjalankannya |
+|---|---|
+| TEST-AC-060 | `tests/web/test_addendum_l_indo_ui.py::test_detail_shows_full_content_source_and_date` |
+| TEST-AC-065 | `…::test_short_or_empty_content_renders_cleanly` |
+| TEST-AC-081 | `…::test_rendered_source_matches_catalog` + `test_no_fabricated_metadata_anywhere` |
+| TEST-AC-083 | `…::test_rendered_date_matches_catalog` |
+| TEST-AC-085 | `…::test_rendered_categories_are_served_catalog_values` |
+| TEST-AC-086 | `…::test_no_hardcoded_article_count_anywhere` |
+| TEST-AC-221 | `…::test_card_meta_is_category_source_and_date_only` + `test_cards_show_category_source_and_date` |
+| TEST-AC-222 | `…::test_no_author_no_portal_link_but_source_and_date_labelled` |
+| TEST-AC-255/256 | `test_traceability.py::test_zero_reader_counts_are_hidden` / `…::test_cards_show_unique_reader_counts` (label era-aware: `× via simulasi` untuk korpus indo, `× via MIND` untuk era MIND) |
+| TEST-AC-257 | `tests/web/test_addendum_l_indo_ui.py::test_history_row_keeps_four_grid_cells` |
+
+**Kriteria yang dibalik/diamendemen (bukan sekadar ditambah):** baris §A–K
+`TEST-AC-081`, `TEST-AC-083`, `TEST-AC-221`, `TEST-AC-222` semula melarang
+sumber dan tanggal; addendum ini membalik keduanya menjadi **wajib bila
+korpus memilikinya**. `TEST-AC-051` (tiga label feed) tidak berubah karena
+addendum pilih-topik (PRD v1.2) belum disetujui.
 
 ---
 

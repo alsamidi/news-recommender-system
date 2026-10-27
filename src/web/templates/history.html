@@ -6,19 +6,26 @@
 {% if articles %}
   <ol class="history-list">
   {% for a in articles %}
+    {# One grid row = exactly four children, matching
+       `.history-row`'s four fixed columns (app.css). Category, catalogue
+       source, and publication date share ONE cell: adding more children
+       would spill into an implicit second row and shift the columns between
+       rows (TEST-AC-257). #}
     <li class="history-row">
       <a href="/berita/{{ a.nid }}?from=history">
         <span class="history-title">{{ a.title or a.nid }}</span>
       </a>
-      <span class="history-cat">{{ a.category or 'umum' }}</span>
+      <span class="history-cat">
+        {{ a.category or 'umum' }}
+        {% if a.source_label %}<span class="history-sub">Sumber: {{ a.source_label }}</span>{% endif %}
+        {% if a.published_text %}<span class="history-sub">{{ a.published_text }}</span>{% endif %}
+      </span>
       <time class="history-time">Dibaca {{ a.viewed_at }}</time>
-      {% if a.dataset_readers or a.app_readers %}
       <span class="history-readers">
-        {% if a.dataset_readers %}<span title="Pembaca unik di sampel dataset MIND (train+dev)">{{ a.dataset_readers }}× via MIND</span>{% endif %}
+        {% if a.dataset_readers %}<span title="{{ request.app.state.dataset_readers_title }}">{{ a.dataset_readers }}{{ request.app.state.dataset_readers_label }}</span>{% endif %}
         {% if a.dataset_readers and a.app_readers %}<span aria-hidden="true">·</span>{% endif %}
         {% if a.app_readers %}<span title="Akun unik yang membuka berita ini di web ini">{{ a.app_readers }}× via web</span>{% endif %}
       </span>
-      {% endif %}
     </li>
   {% endfor %}
   </ol>

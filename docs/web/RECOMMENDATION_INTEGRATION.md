@@ -299,6 +299,24 @@ All integration decisions are **settled** (2026-10-20).
   content, source, published_at` (tanpa abstract/subkategori).
 - Interaksi CF berasal dari simulasi akun dummy (`view` saja). Reader-count
   era MIND (`× via MIND`) diganti sumbernya ke unik-pembaca simulasi; label
-  produk menyesuaikan (PRD v1.1 §18; TEST-AC-255/256 menyusul).
+  produk menyesuaikan (PRD v1.1 §18; TEST-AC-255/256).
+  **Label yang dipakai (diputuskan saat implementasi, 2026-10-27):**
+  korpus indo merender `× via simulasi` dengan tooltip
+  "Akun simulasi unik yang membaca berita ini di dataset (train+dev); bukan
+  pembaca nyata"; era MIND (`SERVING_ERA=mind`) tetap `× via MIND`.
+  Keduanya dipilih dari `recommender_data["era"]`, bukan dari cabang di
+  template per halaman.
+- **Sumber & tanggal terbit (PRD v1.1 §10.2).** Kontrak API v1.0.0 tidak
+  punya field untuk keduanya (`ArticleDetailResponse` hanya
+  title/abstract/category/subcategory), dan menambahnya butuh bump versi.
+  Karena itu web membaca katalog aktif langsung (`src/web/services/
+  catalog_meta.py`, pola yang sama dengan `popular.py`/`stats.py`), sekali
+  saat startup: `nid → source, published_text`. Tidak ada skor, tidak ada
+  penulis, tidak ada tautan portal, dan tidak ada angka jumlah artikel yang
+  ditulis di kode.
+- **Kartu = judul + meta (kategori/sumber/tanggal).** PRD §10.2 melarang
+  cuplikan isi di kartu, karena korpus tidak punya abstrak. Kartu feed,
+  blok "Berita serupa", dan baris histori memakai satu partial
+  (`templates/_card.html`) agar tidak ada varian kartu ketiga.
 - Semua aturan web-side seperti routing, top_k=30, filter histori penuh,
   dedupe, tanpa skor — **tidak diubah** oleh migrasi ini.

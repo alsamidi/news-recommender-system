@@ -2,7 +2,7 @@
 
 **Versi:** 1.1  
 **Tanggal:** 20 Oktober 2026 · disetujui 21 Oktober 2026 · **revisi korpus 27 Oktober 2026**  
-**Status:** v1.0 **disetujui dan diimplementasikan** (`src/web/`, 193 tes, `scripts/smoke_web.sh`, `scripts/audit_freeze.sh`). **Revisi v1.1 (peralihan korpus + interaksi simulasi) adalah draf yang menunggu persetujuan pembimbing**; setelah disetujui, keputusan §18 mengikat.  
+**Status:** v1.0 **disetujui dan diimplementasikan** (`src/web/`, 193 tes, `scripts/smoke_web.sh`, `scripts/audit_freeze.sh`). **Revisi v1.1 (peralihan korpus + interaksi simulasi) disetujui 27 Oktober 2026** — dikonfirmasi owner pada sesi kerja 2026-10-27 — dan **diimplementasikan** (artefak fase-2, `SERVING_ERA` default indo, addendum AC §L). Keputusan §18 mengikat untuk korpus aktif.  
 **Bahasa produk:** Bahasa Indonesia  
 **Tujuan:** Menjadi sumber kebenaran utama bagi coding agent saat membangun lapisan web di atas sistem rekomendasi yang sudah ada.
 

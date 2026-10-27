@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
+from ..services.catalog_meta import attach_article_meta
 from ..services.feed import build_feed
 from ..services.stats import attach_reader_counts
 
@@ -51,6 +52,8 @@ SOURCE_LABELS = {
 async def feed(request: Request):
     result = await build_feed(request)
     attach_reader_counts(request, result.articles)
+    attach_article_meta(request.app.state.article_meta, result.articles,
+                        cards=True)
     return request.app.state.templates.TemplateResponse(
         request, "feed.html",
         {
@@ -85,6 +88,10 @@ async def history(request: Request):
         articles.append({**detail, "viewed_at": format_viewed_at(row["created_at"]),
                          "source": row["source"]})
     attach_reader_counts(request, articles)
+    # History rows are list rows, not cards: they keep a compact meta line.
+    # `source` is already the *interaction* source (feed/similar/...), so the
+    # catalogue source lands in `source_label` and cannot collide.
+    attach_article_meta(request.app.state.article_meta, articles, cards=True)
     return request.app.state.templates.TemplateResponse(
         request, "history.html",
         {"config": request.app.state.config, "user": request.state.user,

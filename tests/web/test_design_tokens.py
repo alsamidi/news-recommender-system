@@ -289,30 +289,3 @@ def test_picker_list_scrolls_and_says_so():
     assert "Gulir daftar" in template
 
 
-def test_card_abstract_ends_on_a_word_boundary():
-    """The CSS clamp must never be the thing that cuts the text.
-
-    Before the filter, a 2-line clamp produced "...selama kalahah h..." which
-    reads as unfinished. The filter trims at a space first, so the clamp has
-    nothing left to cut.
-    """
-    from web.app import truncate_words
-
-    long_text = "Pemain depan Golden State Warriors Draymond Green membuat sejarah Chase Center selama kalahahan hebat di musim ini"
-    out = truncate_words(long_text, 85)
-    assert out.endswith("…")
-    assert len(out) <= 86
-    # The character before the ellipsis is never mid-word punctuation.
-    assert not out[:-1].endswith((" ", ",", ";", ":"))
-    # Short text is untouched and gets no ellipsis.
-    assert truncate_words("Pendek saja", 85) == "Pendek saja"
-    assert truncate_words("", 85) == ""
-    # Whitespace is normalised so the ellipsis does not follow a double space.
-    assert "  " not in truncate_words("a  b  c " + "x " * 100, 85)
-
-
-def test_card_abstract_is_pre_trimmed_not_clamped_mid_word():
-    """Templates must use the filter, not rely on the CSS clamp alone."""
-    for name in ("feed.html", "article.html"):
-        body = read(TEMPLATES / name)
-        assert "truncate_words(85)" in body, name

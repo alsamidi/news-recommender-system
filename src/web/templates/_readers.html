@@ -1,13 +1,17 @@
-{# Reader counts for one card. Included by feed.html, article.html (related
-   cards) and history.html so the copy and the labels cannot drift apart.
+{# Reader counts for one card. Included by _card.html and history.html so the
+   copy and the labels cannot drift apart.
 
-   Zero is never printed: only 13.9% of catalogue nids appear in the
+   Zero is never printed: only a fraction of catalogue nids appear in the
    interactions at all, so "0 pembaca" would assert something the data cannot
    support (TEST-AC-255). The two sources are labelled separately so a dataset
-   sample is not mistaken for total readership (TEST-AC-256). #}
+   sample is not mistaken for total readership (TEST-AC-256).
+
+   The dataset label is era-aware (PRD v1.1 §18): under the indo corpus the
+   counts come from simulated dummy accounts, so calling them "MIND" would be
+   a lie. `app.state.dataset_readers_label` / `..._title` pick the wording. #}
 {% if a.dataset_readers or a.app_readers %}
 <span class="card-readers" aria-label="Jumlah pembaca">
-  {% if a.dataset_readers %}<span title="Pembaca unik di sampel dataset MIND (train+dev)">{{ a.dataset_readers }}× via MIND</span>{% endif %}
+  {% if a.dataset_readers %}<span title="{{ request.app.state.dataset_readers_title }}">{{ a.dataset_readers }}{{ request.app.state.dataset_readers_label }}</span>{% endif %}
   {% if a.dataset_readers and a.app_readers %}<span aria-hidden="true">·</span>{% endif %}
   {% if a.app_readers %}<span title="Akun unik yang membuka berita ini di web ini">{{ a.app_readers }}× via web</span>{% endif %}
 </span>

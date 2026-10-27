@@ -11,17 +11,7 @@
 {% if articles %}
   <div class="card-grid">
   {% for a in articles %}
-    <a class="card" href="/berita/{{ a.nid }}?from=feed">
-      <span class="card-eyebrow">
-        <span class="card-category">{{ a.category or 'umum' }}</span>
-        {% if a.subcategory %}<span class="card-sub">{{ a.subcategory }}</span>{% endif %}
-      </span>
-      <h2 class="card-title">{{ a.title or a.nid }}</h2>
-      {% if a.abstract %}<p class="card-abstract">{{ a.abstract|truncate_words(85) }}</p>{% endif %}
-      <span class="card-meta">
-        {% include "_readers.html" %}
-      </span>
-    </a>
+    {% with from_source = 'feed' %}{% include "_card.html" %}{% endwith %}
   {% endfor %}
   </div>
 {% else %}

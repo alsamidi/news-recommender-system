@@ -23,8 +23,8 @@ An Indonesian-language news recommendation system for a thesis (Tugas Akhir):
   Riset v1 (MIND) tetap beku; angkanya tetap sumber kebenaran untuk dokumen lama.
 - Serving layer: FastAPI + `HybridRecommender` over frozen artifacts.
 - The web application layer (auth, feed, history, profile) **sudah diimplementasikan
-  dan melebur ke `develop`** (PRD v1.0; lihat §6.4 koreksi status; PRD v1.1 adalah
-  draft peralihan korpus yang menunggu persetujuan).
+  dan melebur ke `develop`** (PRD v1.0; lihat §6.4 koreksi status; **PRD v1.1
+  disetujui 2026-10-27** dan sudah diimplementasikan di `feat/dataset-indo-news`).
 
 ## 2. Repository Map
 
@@ -32,7 +32,7 @@ An Indonesian-language news recommendation system for a thesis (Tugas Akhir):
 |------|----------|--------|
 | `README.md` | Research summary, results, reproduction steps | Frozen (facts) |
 | `data/DATASET_LOCK.md` | Official dataset pairs + sha256 + split rules | **Frozen** |
-| `data/DATASET_LOCK_INDO.md` | Phase-2 aktif: korpus portal Indonesia + interaksi simulasi; hash, skema katalog turunan, aturan split | **Draft — menunggu persetujuan PRD v1.1** |
+| `data/DATASET_LOCK_INDO.md` | Phase-2 aktif: korpus portal Indonesia + interaksi simulasi; hash, skema katalog turunan, aturan split | **Terkunci 2026-10-27** (Gate A/B/C + split + evaluasi + serving) |
 | `docs/API_CONTRACT.md` | API contract v1.0.0 | **Frozen** |
 | `docs/openapi.json` | OpenAPI snapshot v1.0.0 | **Frozen** (regenerate only on version bump) |
 | `docs/RESEARCH_FREEZE.md` | P3.4 freeze audit | **Frozen** |
@@ -395,7 +395,7 @@ Do not reopen these without explicit approval. Implementation must follow them.
 | Error color | `--color-error` = `signature-coral` #aa2d00 (D25). |
 | Article body | 16px/1.6 via `.article-body`; all else keeps tokens (D26). |
 | Hover | Five token-only changes, ≤ 120 ms; focus always visible (D27). |
-| Korpus fase 2 | PRD v1.1 (2026-10-27): korpus portal Indonesia + interaksi simulasi dummy (`view` saja, tanpa like/durasi/rating); kontrak API dan field `nid` dipertahankan. PRD v1.0 tetap mengikat untuk korpus MIND yang beku. Status: **menunggu persetujuan pembimbing**. |
+| Korpus fase 2 | PRD v1.1 (2026-10-27): korpus portal Indonesia + interaksi simulasi dummy (`view` saja, tanpa like/durasi/rating); kontrak API dan field `nid` dipertahankan. PRD v1.0 tetap mengikat untuk korpus MIND yang beku. Status: **disetujui 2026-10-27**; implementasi fase-2 selesai (Task 0–14 plan fase-2). |
 
 ## 7. Definition of Done for Web-Layer Work
 

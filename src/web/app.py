@@ -31,30 +31,13 @@ from .db import Store  # noqa: E402
 from .csrf import issue as issue_csrf  # noqa: E402
 from .security import token_hash  # noqa: E402
 from .clients.rec_api import RecClient  # noqa: E402
+from .services.catalog_meta import build_article_meta  # noqa: E402
 from .services.popular import Popularity  # noqa: E402
 from .services.stats import build_dataset_readers  # noqa: E402
 from .throttle import IP_MAX_FAILURES, LoginThrottle  # noqa: E402
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
-
-
-def truncate_words(text: str, limit: int) -> str:
-    """Shorten at a word boundary, appending an ellipsis only if it cut.
-
-    CSS line-clamp broke abstracts mid-word ("...selama kalahah h...").
-    Trimming the string first means the clamp never has to cut, so what the
-    reader sees always ends on a whole word. The limit is generous enough to
-    fill two lines at the measured width (~49 chars/line on desktop, fewer on
-    a phone, where the clamp still applies).
-    """
-    if not text:
-        return ""
-    text = " ".join(text.split())
-    if len(text) <= limit:
-        return text
-    cut = text[:limit].rsplit(" ", 1)[0].rstrip(" ,.;:—-")
-    return f"{cut}…" if cut else text[:limit] + "…"
 
 
 class RevalidatingStaticFiles(StaticFiles):
@@ -104,6 +87,20 @@ async def lifespan(app: FastAPI):
 
     app.state.config = cfg
     app.state.recommender_data = rec._d
+    # Display metadata (source + publication date) for the active corpus,
+    # built once at startup like the popularity list. Empty under the MIND
+    # era, which has neither field.
+    app.state.article_meta = build_article_meta()
+    # Reader-count label: the dataset sample is simulated under the indo
+    # corpus, so the card must not claim "MIND" there (PRD v1.1 §18;
+    # TEST-AC-256 is about labelling the source, not about the word MIND).
+    era = rec._d.get("era")
+    app.state.dataset_readers_label = (
+        "× via MIND" if era == "mind" else "× via simulasi")
+    app.state.dataset_readers_title = (
+        "Pembaca unik di sampel dataset MIND (train+dev)" if era == "mind"
+        else "Akun simulasi unik yang membaca berita ini di dataset "
+             "(train+dev); bukan pembaca nyata")
     # Unique dataset readers per nid, built once (~0.25 s) from the frozen
     # interaction parquet. Read-only for the life of the process.
     app.state.dataset_readers = build_dataset_readers()
@@ -126,7 +123,6 @@ def create_app() -> FastAPI:
     )
     app.mount("/static", RevalidatingStaticFiles(directory=str(STATIC_DIR)), name="static")
     app.state.templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
-    app.state.templates.env.filters["truncate_words"] = truncate_words
 
     from .routes import article, auth, feed
 

@@ -13,6 +13,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from ..clients.rec_api import RecAPIError
+from ..services.catalog_meta import attach_article_meta
 from ..services.stats import attach_reader_counts
 
 router = APIRouter()
@@ -49,6 +50,9 @@ async def article_detail(request: Request, nid: str):
     # a reader comparing them deserves the same context.
     related = [r for r in related if r["nid"] != nid]
     attach_reader_counts(request, related)
+    attach_article_meta(request.app.state.article_meta, related, cards=True)
+    # Detail page keeps the full body (cards=False): only meta is merged.
+    attach_article_meta(request.app.state.article_meta, [article], cards=False)
 
     return request.app.state.templates.TemplateResponse(
         request, "article.html",

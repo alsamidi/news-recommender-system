@@ -1,0 +1,29 @@
+{# Article card, shared by the feed and the "Berita serupa" block so a card
+   cannot mean two different things on two pages.
+
+   PRD v1.1 §10.2: a card carries title + meta only. The meta line is
+   category + source + publication date — the three fields the active corpus
+   actually has. No excerpt: the corpus has `content` (full text), not an
+   abstract, and a truncated body is not a stand-in for one.
+
+   Under the MIND era `source_label`/`published_text` are empty (that corpus
+   has neither), so the source line collapses and the card keeps its old
+   shape. Requires `a` in context; optional `from_source` for the click
+   provenance query parameter.
+#}
+<a class="card" href="/berita/{{ a.nid }}?from={{ from_source|default('feed') }}">
+  <span class="card-eyebrow">
+    <span class="card-category">{{ a.category or 'umum' }}</span>
+    {% if a.subcategory %}<span class="card-sub">{{ a.subcategory }}</span>{% endif %}
+  </span>
+  <h2 class="card-title">{{ a.title or a.nid }}</h2>
+  {% if a.source_label or a.published_text %}
+  <span class="card-source">
+    {% if a.source_label %}<span>Sumber: {{ a.source_label }}</span>{% endif %}
+    {% if a.published_text %}<span>{{ a.published_text }}</span>{% endif %}
+  </span>
+  {% endif %}
+  <span class="card-meta">
+    {% include "_readers.html" %}
+  </span>
+</a>

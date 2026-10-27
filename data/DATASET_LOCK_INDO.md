@@ -196,6 +196,22 @@ versi 1 yang sudah beku.
 - Verifikasi waktu: generated_at_utc instrumen eval ≥ waktu commit cutoff
   (Task 9) — lulus (10:47 vs 10:03 +07).
 
+## Serving web (Task 13–14, 2026-10-27)
+- `configs/indo_serving.yaml` = sumber tunggal alpha dan path artefak untuk
+  serving. `cf_weight = 0.8` (pemenang grid Task 11). Web **tidak pernah**
+  mengirim atau menimpa alpha (PRD AC-02); nilai tak cocok file ini = bug.
+- `src/phase2/serving.py::IndoHybridRecommender` mereproduksi ranker yang
+  dievaluasi: `0.8·minmax(ALS dot) + 0.2·minmax(TF-IDF cosine)`, min-max
+  penuh katalog; item tanpa faktor dipaku ke floor −1.0 (bukan faktor
+  palsu), sama dengan `src/phase2/evaluate.py`.
+- Era switch: `SERVING_ERA=mind` memuat jalur MIND beku persis seperti
+  sebelumnya; selain itu (termasuk unset) = korpus indo. Tidak ada era ketiga.
+- Angka yang dilayani saat ini (bukti runtime `/health`): alpha 0.8,
+  `catalog_size` 67.381, `als_items` 13.881.
+- Konsekuensi yang wajib dikutip bersama angka evaluasi: urutan sistem
+  popularity > ALS > hybrid > CBF di 9 titik adalah properti interaksi
+  simulasi, bukan klaim kualitas model (lihat caveat di §Evaluasi).
+
 ## Aturan campur
 - Larangan campur: MIND split/join/jumlah NID tidak boleh dipakai untuk
   korpus ini dan sebaliknya. `data/DATASET_LOCK.md` tetap memaku riset v1.
