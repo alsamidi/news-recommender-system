@@ -59,8 +59,8 @@ validasi, dan semua seam arsitektur tidak berubah.
 
 ## 3. Proposed Directory Structure
 
-Aligned with `PRD_Web_Rekomendasi_Berita.md` (no topic onboarding) and
-`DESIGN.md` (token-driven styling).
+Aligned with `PRD_Web_Rekomendasi_Berita.md` v1.2 (optional, 0-view-only topic
+onboarding; see §0b) and `DESIGN.md` (token-driven styling).
 
 ```
 src/web/
@@ -74,25 +74,30 @@ src/web/
   seed_persona.py       # idempotent persona account seeding (CLI)
   routes/
     auth.py             # /register /login /login/persona /logout
+    onboarding.py       # /onboarding/topik (v1.2, once per account)
     feed.py             # / (feed), /histori
     article.py          # /berita/{nid}
   services/
-    feed.py             # decision tree: persona -> history -> popular
+    feed.py             # decision tree: persona -> history -> topic -> popular
+    topics.py           # 12 measured chips + candidate slicing (v1.2)
     popular.py          # train click-count popularity for the no-history feed
     persona.py          # eligible dataset users for the picker
+    catalog_meta.py     # source + publication date + category (display only)
     stats.py            # unique reader counts (dataset + app)
   clients/
     rec_api.py          # thin client to the frozen API (in-process)
   templates/
     base.html, landing.html, login.html, persona_picker.html,
-    register.html, feed.html, article.html, history.html, error.html
+    register.html, onboarding_topics.html, feed.html, _card.html,
+    _readers.html, article.html, history.html, error.html
   static/
     tokens.css          # DESIGN.md tokens as CSS custom properties
     app.css             # layout + components built from tokens
     goodnews.svg        # wordmark, inlined into the nav
 tests/web/
   test_auth.py, test_feed.py, test_popular.py, test_article.py,
-  test_units.py, test_design_tokens.py, test_traceability.py
+  test_units.py, test_design_tokens.py, test_traceability.py,
+  test_topics.py, test_addendum_l_indo_ui.py, test_seed_persona.py
 ```
 
 There is no `schemas.py` and no `services/store.py`: SQLite access lives on the
@@ -100,8 +105,12 @@ There is no `schemas.py` and no `services/store.py`: SQLite access lives on the
 models rather than duplicating them.
 
 Notes:
-- `onboarding.py` / `topics.py` / `topics.html` from the earlier draft are
-  **removed** — topic selection is out of MVP scope (PRD §5.2).
+- `routes/onboarding.py`, `services/topics.py`, and
+  `templates/onboarding_topics.html` exist since v1.2. They are deliberately
+  narrow: candidate selection over the frozen popularity ranking, gated to
+  0-view users, no model/API involvement (PRD-AC-57). The *earlier draft* of
+  these files (topic-seeded recommendations, editable preference page) stays
+  removed — that mechanism was rejected.
 - `tokens.css` is generated **by hand** from the `DESIGN.md` front matter. Do
   not add a build step or a CDN; the token file is committed as plain CSS.
 - `src/api/` is **not touched**. `src/web/` is a new package.

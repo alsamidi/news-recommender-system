@@ -29,7 +29,7 @@ All frames are **1440 × 1024** except the two long pages.
 | 1 | `Landing` | 1440×1024 | Page | **Contains only `Rectangle 1`** — effectively empty |
 | 2 | `Login (can be adjusted again whether using email or username to login)` | 1440×1024 | Page | Login card |
 | 3 | `Register (can be adjusted again the field needed to register)` | 1440×1024 | Page | Register card |
-| 4 | `Pilih Topik` | 1440×1024 | Page | Topic onboarding — **not built in MVP** (PRD §5.2); kept here as reference only |
+| 4 | `Pilih Topik` | 1440×1024 | Page | Topic onboarding — **built in v1.2** as a narrow revival: 12 measured chips, optional/skippable, 0-view users only (PRD §0b; §5.3 explains why the original reason for cutting it no longer holds) |
 | 5 | `rekomendasi awal (only for references)` | 1440×1369 | Long page | Recommendation feed |
 | 6 | `halaman collaborative filtering (only for references)` | 1440×1369 | Long page | Feed variant (CF label) |
 | 7 | `(example only! adjust based to available feature on codebase!)isi berita` | 1440×2187 | Long page | Article detail |
@@ -49,7 +49,7 @@ intended to be adapted to what the code can do.
 `REGISTER` (heading) · `goodnews` · `Nama` · `Email` · `Password` ·
 `Ulangi Password` · `REGISTER` (button) · `Rectangle 2..8`.
 
-**Pilih Topik** — *reference only; not implemented* — header + card:
+**Pilih Topik** — *implemented in v1.2 with different content* — header + card:
 `Pertama, pilih beberapa topik favorit kamu!` (heading) ·
 `Kami menggunakan topik yang kamu pilih untuk memberikan rekomendasi berita yang
 sesuai dengan minat kamu!` (description) ·
@@ -206,10 +206,30 @@ ALS space (3,394 items, 5.2% of the catalog):
 | Teknologi (keywords) | 320 | 15 (4.7%) |
 | Pendidikan (keywords) | 2,187 | 100 (4.6%) |
 
-Consequence (and the reason topics were dropped from the MVP): 3 of the 5 Figma
-chips have no valid `category` counterpart, and even the two that do map mostly
-to non-ALS items — so a topic-seeded feed would frequently fall back to
-content-only. **Decision: topic onboarding is out of MVP scope** (PRD §5.2, §18).
+Consequence **in the MIND era**: 3 of the 5 Figma chips had no valid `category`
+counterpart, and even the two that mapped mostly to non-ALS items — so a
+topic-seeded feed would frequently have fallen back to content-only. That is why
+topic onboarding was dropped from the v1.0/v1.1 MVP.
+
+**Revival in v1.2 (2026-10-27), with a different mechanism.** The analysis above
+was about *seeding the recommender* with a topic. The active indo corpus breaks
+the data objection: `category` comes from a documented URL-section mapping with
+**measured 100% coverage** (`data/DATASET_LOCK_INDO.md`), so every catalogue item
+has a real category. v1.2 therefore does **not** re-introduce topic seeding:
+
+- it is **candidate selection over the frozen popularity ranking** — no
+  `/recommend` call, no α, no score, no re-ranking (PRD-AC-57);
+- only a **0-view** regular user sees it, once, and it is skippable
+  (PRD-AC-55, C2);
+- chips are the **12 measured labels** (`seen ≥ 50`, minus `Berita`,
+  `Info Tempo`, `Bersponsor`), not the 5 Figma chips — `Kesehatan`,
+  `Pendidikan`, and `Teknologi Informasi` are not offered because the active
+  corpus has no such categories (PRD-AC-59);
+- the label is **"Populer di topik pilihanmu"**, never a model claim (C7).
+
+After the first `view`, the v1.1 priority order returns and the preference
+becomes inert (C6). Full scope: `PRD_Addendum_v1.2_Pilih_Topik_Cold_Start.md`;
+tests: `TEST-AC-259…266`.
 
 ### 5.4 Figma Elements That Need New Meaning
 
@@ -218,7 +238,7 @@ content-only. **Decision: topic onboarding is out of MVP scope** (PRD §5.2, §1
 | `Orang lain juga membaca:` | The model has no "other users read this" path. What exists is TF-IDF similarity (`/similar`) | Rename to **"Berita serupa"**, sourced from `/similar/{nid}` |
 | `Berita yang disukai oleh pengguna yang mirip denganmu` | ALS does capture implicit similarity, but it is not exposed as a "similar users" list | Make it the main feed rather than an explicit claim about "similar users" |
 | `Berikan rating agar kami bisa memberikan rekomendasi yang lebih menarik` | The frozen model does not use ratings, and ratings are out of MVP scope | **Do not use this string.** Remove the rating control entirely |
-| `Berdasarkan topik yang kamu pilih...` | There is no topic selection in the MVP, so this copy is false | **Do not use this string.** Replace with PRD §16 copy: "Berita populer" or "Rekomendasi dari riwayat bacaanmu" |
+| `Berdasarkan topik yang kamu pilih...` | Was false while there was no topic selection; v1.2 does store preferences, but the feed is a popularity slice, not model output — so this wording still overclaims | **Do not use this string.** Use PRD §16 copy: "Populer di topik pilihanmu" (topic feed), "Berita populer", or "Rekomendasi dari riwayat bacaanmu" |
 
 ### 5.5 Other Mismatches
 
