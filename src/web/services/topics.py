@@ -55,6 +55,10 @@ TOPIC_LABELS: tuple[str, ...] = (
     "Cek Fakta",
 )
 
+# Upper bound, not an optimum: with a 10-card feed and q = ceil(10/m), past
+# m = 5 an extra topic only reshuffles a card, and past m = 10 a chosen topic
+# can receive none. 3 sits below both with margin. Full argument, with the
+# measured per-topic distribution for m = 1..12: PRD addendum v1.2 §4.1.
 MAX_TOPICS = 3
 FEED_SIZE = 10
 
