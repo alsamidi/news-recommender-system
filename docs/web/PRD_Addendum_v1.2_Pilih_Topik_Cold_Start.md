@@ -108,6 +108,51 @@ yang pernah dibuka (aturan v1.1 §8.3 tidak berubah):
 Kedalaman pool terjamin: chip terkecil (Cek Fakta) ber-pool3 54 item —
 jauh di atas kuota maksimum 10 setelah filter riwayat user baru (0 item).
 
+### 4.1 Mengapa batas 3 topik (jawaban untuk pertanyaan penguji)
+
+Batas `m ≤ 3` bukan angka bulat yang dipilih tanpa dasar: ia ditentukan oleh
+**interaksi antara ukuran feed dan kuota `q = ceil(10/m)`**, dan bisa
+dipertanggungjawabkan dengan membalik pertanyaannya — apa yang terjadi kalau
+batasnya dilonggarkan? Diukur pada list popularitas beku yang sama
+(`slice_by_topic`, katalog efektif 17.584 item):
+
+| `m` | `q = ceil(10/m)` | Kartu per topik (urutan kanonik) | Kartu terpakai |
+|---|---|---|---|
+| 1 | 10 | 10 | 10 |
+| 2 | 5 | 5, 5 | 10 |
+| **3** | **4** | **4, 3, 3** | **10** |
+| 4 | 3 | 3, 3, 2, 2 | 10 |
+| 5 | 2 | 2, 2, 2, 2, 2 | 10 |
+| 6 | 2 | 2, 2, 2, 2, 1, 1 | 10 |
+| 10 | 1 | 1 × 10 | 10 |
+| 11 | 1 | 1 × 10 + **1 topik kosong** | 10 |
+| 12 | 1 | 10 topik × 1 + **2 topik kosong** | 10 |
+
+Tiga alasan, semuanya terukur:
+
+1. **Feed hanya 10 kartu (PRD §18).** Setiap topik tambahan mengurangi kuota
+   per topik. Pada `m = 3` tiap topik masih mendapat 3–4 kartu — cukup untuk
+   menunjukkan topik itu memang hadir. Pada `m ≥ 5` tiap topik tinggal 1–2
+   kartu: preferensi keenam tidak lagi mengubah apa pun yang bisa dibaca user,
+   hanya menggeser satu kartu.
+2. **Di atas 10 topik, preferensi mulai kosong secara struktural.** Dengan
+   `q = 1` dan feed 10 kartu, `m = 11` menyisakan 1 topik tanpa satu kartu pun,
+   `m = 12` menyisakan 2. User memilih topik lalu tidak melihatnya sama sekali —
+   itu janji yang dilanggar oleh desainnya sendiri.
+3. **Layar dan skema tetap ringkas.** Onboarding adalah satu grid 12 chip yang
+   dipindai sekali; membatasi pilihan ke 3 menjaga keputusan itu tetap cepat,
+   dan tabel `user_topics` tetap ≤ 3 baris per user (keputusan skema §5 —
+   halaman edit preferensi tidak ada di scope ini).
+
+Konsekuensi yang harus disebut jujur: batas ini adalah **keputusan desain
+produk, bukan hasil optimasi**. Kami tidak mengukur bahwa 3 lebih baik daripada
+2 atau 4 terhadap kepuasan pengguna — tidak ada data user nyata untuk itu
+(interaksi korpus adalah simulasi). Yang bisa dipertanggungjawabkan adalah
+batas atas: mulai `m = 5` preferensi tambahan berhenti berpengaruh, dan mulai
+`m = 11` ada topik yang tidak terwakili sama sekali. Angka 3 dipilih karena
+berada di bawah kedua ambang itu dengan margin, sekaligus memberi user ruang
+menyatakan lebih dari satu minat.
+
 ## 5. Skema Database (SQLite `data/web.db`)
 
 Tabel baru `user_topics` (menghidupkan nama yang di v1.0/v1.1 sengaja
