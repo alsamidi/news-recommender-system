@@ -118,3 +118,76 @@ def test_full_csv_category_coverage_100pct():
     assert set(sections) <= set(SECTION_TO_LABEL)
     per_src = build_category_map(df)
     assert set(per_src) == {"kompas", "tempo", "detik"}
+
+
+# ---------------------------------------------------------------------------
+# Task 5: boilerplate stripping
+# ---------------------------------------------------------------------------
+
+from src.phase2.corpus import strip_boilerplate, strip_corpus
+
+
+def test_strip_tempo_banners():
+    raw = ("Baca berita dengan sedikit iklan,  klik di sini  TEMPO.CO, Jakarta - "
+           "Isi berita.  Scroll ke bawah untuk melanjutkan membaca   Baca berita "
+           "dengan sedikit iklan,  klik di sini  Isi lanjutan. Pilihan Editor: X")
+    out = strip_boilerplate(raw, "tempo")
+    assert "Baca berita" not in out and "klik di sini" not in out
+    assert "Scroll ke bawah" not in out
+    assert "Isi berita." in out and "Isi lanjutan." in out
+
+
+def test_strip_detik_gambas_and_linkblog_tail():
+    raw = ("Isi berita utama di sini.  Lihat juga Video Sosok X  [Gambas:Video 20detik]  "
+           "Isi akhir.   Simak juga, Video: Y [Gambas:Photo 20detik]")
+    out = strip_boilerplate(raw, "detik")
+    assert "[Gambas:" not in out
+    assert "Simak juga" not in out and "Lihat juga" not in out
+    assert "Isi berita utama di sini." in out and "Isi akhir." in out
+
+
+def test_detik_linkblog_midbody_without_gambas_is_kept():
+    # measured corner case (1 article, 3 dup rows): fragment mid-body, no
+    # placeholder — must NOT eat the following body text
+    raw = ("Isi berita utama di sini.  Tonton juga video \"Cerita X\" di sini:     "
+           "Masih di Jalan TB Simatupang, jalanan macet total.")
+    out = strip_boilerplate(raw, "detik")
+    assert "Masih di Jalan TB Simatupang" in out
+
+
+def test_strip_kompas_dateline_byline():
+    raw = (" JAKARTA, KOMPAS.com -\xa0Isi berita yang panjang hingga akhir paragraf. "
+           "(Reporter: Sinta | Editor: Budi)")
+    out = strip_boilerplate(raw, "kompas")
+    assert "KOMPAS.com" not in out and "JAKARTA" not in out
+    assert "Reporter:" not in out
+    assert out.startswith("Isi berita")
+
+
+def test_strip_unknown_source_raises():
+    import pytest as _pytest
+    with _pytest.raises(ValueError):
+        strip_boilerplate("x", "cnn")
+
+
+def test_strip_corpus_keeps_short_and_median_gt_1000():
+    df = pd.read_csv("data/raw/final_merge_dataset.csv",
+                     usecols=["Content", "source"]).sample(3000, random_state=3)
+    out = strip_corpus(df)
+    assert len(out) == len(df)  # no row dropped, short contents kept
+    lens = out["Content"].str.len()
+    assert (lens > 0).all()
+    assert lens.median() > 1_000
+    short_before = (df["Content"].fillna("").astype(str).str.len() < 200).sum()
+    if short_before:
+        assert (out["Content"].str.len() < 200).sum() >= 1  # short kept, not dropped
+
+
+def test_full_csv_strip_median_and_length_gain():
+    df = pd.read_csv("data/raw/final_merge_dataset.csv",
+                     usecols=["Content", "source"])
+    out = strip_corpus(df)
+    raw_med = df["Content"].fillna("").astype(str).str.len().median()
+    strip_med = out["Content"].str.len().median()
+    print(f"median raw={raw_med:.0f} stripped={strip_med:.0f}")
+    assert strip_med > 1_000 and strip_med <= raw_med

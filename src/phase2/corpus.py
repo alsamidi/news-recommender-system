@@ -169,3 +169,89 @@ def add_categories(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     out["category"] = [SECTION_TO_LABEL[s] for s in sections]
     return out
+
+
+# ---------------------------------------------------------------------------
+# Task 5: per-source boilerplate stripping
+# ---------------------------------------------------------------------------
+
+import re as _re
+
+# Normalized single-space running text; nbsp collapsed for phrase matching.
+_NSP = _re.compile(r"\s+")
+_KOMPAS_DATELINE = _re.compile(
+    r"^\s*(?:[A-Z][A-Za-z .,]*,\s*)?KOMPAS\.com\s*[–—-]+[\s\xa0]*")
+_KOMPAS_BYLINE = _re.compile(r"\s*\(Reporter: [^)]*\)")
+_GAMBAS = _re.compile(r"\s*\[Gambas:[^\]]*\]\s*")
+_JUGA_PHRASE = _re.compile(r"(Simak juga|Lihat juga|Tonton juga)")
+
+
+def _cut_detik_linkblog(t: str) -> str:
+    """Cut detik link-blog fragments ("Simak/Lihat/Tonton juga ...").
+
+    Measured behavior: a fragment introduces a related-video link — either a
+    "[Gambas:...]" placeholder follows within ~300 chars (5,353 occurrences;
+    cut from phrase through the placeholder) or the fragment dangles at the
+    tail (39 occurrences; cut to end). Mid-body fragments with no placeholder
+    (one measured article, 3 duplicate rows) are left in place: cutting their
+    span to the end would eat real body text.
+    """
+    cuts: list[tuple[int, int]] = []
+    for m in _JUGA_PHRASE.finditer(t):
+        gambas = _GAMBAS.search(t, m.end(), m.end() + 300)
+        if gambas:
+            cuts.append((m.start(), gambas.end()))
+        elif m.start() >= 0.85 * len(t):
+            cuts.append((m.start(), len(t)))
+    for a, b in reversed(cuts):
+        t = t[:a] + " " + t[b:]
+    return t
+
+# Measured on the full CSV (query 2026-10-27):
+#   tempo : "Baca berita dengan sedikit iklan"+"klik di sini" banners 94.1%
+#           (start AND repeated mid/end), "Scroll ke bawah untuk melanjutkan
+#           membaca" 89.1% (start and mid).
+#   detik : "[Gambas:Video 20detik]" video placeholders 34.7%; link-blog
+#           fragments ("Simak juga", "Lihat juga", "Tonton juga") 11.0%/9.9%
+#           /6.4% of rows — fragment→[Gambas] pairs cut as one span, tail
+#           danglers cut to end (39 occ.), mid-body without placeholder kept
+#           (measured 1 article = 3 dup rows).
+#   kompas: leading "JAKARTA, KOMPAS.com -" dateline 93.4% of rows
+#           (replaceable prefix, no proxy ties), bylines 0.6% — both cut.
+def strip_boilerplate(text: str, source: str) -> str:
+    """Strip measured per-source boilerplate from one article body."""
+    if not isinstance(text, str):
+        return ""
+    t = text.replace("\xa0", " ")
+    if source == "tempo":
+        t = t.replace("Scroll ke bawah untuk melanjutkan membaca", " ")
+        t = t.replace("Baca berita dengan sedikit iklan", " ")
+        t = t.replace("klik di sini", " ")
+    elif source == "detik":
+        t = _cut_detik_linkblog(t)
+        t = _GAMBAS.sub(" ", t)
+    elif source == "kompas":
+        t = _KOMPAS_DATELINE.sub("", t)
+        t = _KOMPAS_BYLINE.sub("", t)
+    else:
+        raise ValueError(f"unknown source: {source!r}")
+    return _NSP.sub(" ", t).strip()
+
+
+def strip_corpus(df: pd.DataFrame) -> pd.DataFrame:
+    """Return df with `Content` boilerplate-stripped per source.
+
+    Rows are never dropped: short contents (<200 chars, 0.027% measured)
+    are kept as-is (rendered meta-only downstream, PRD v1.1).
+    """
+    out = df.copy()
+    out["Content"] = [
+        strip_boilerplate(c, s)
+        for c, s in zip(out["Content"], out["source"])
+    ]
+    lens = out["Content"].str.len()
+    median = float(lens.median())
+    if not median > 1_000:
+        raise ValueError(
+            f"post-strip median content length {median:.0f} <= 1000")
+    return out
