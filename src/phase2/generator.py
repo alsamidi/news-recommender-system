@@ -1,10 +1,11 @@
 """View-only interaction generator for the Indo corpus (Gate B).
 
 Behavior model (documented, simulated — no real interactions exist):
-  - Each dummy account draws a latent category profile from a Dirichlet
-    (small alpha => concentrated tastes); softmax-style normalization turns
-    it into category weights. `category_drift` blends in a fresh Dirichlet
-    draw with that probability per read (session drift).
+  - Each dummy account's latent category profile = catalog base rates
+    (category availability) x an idiosyncratic Dirichlet tilt (alpha=0.3
+    vector, renormalized). Small relative alpha => concentrated tastes.
+    `category_drift` blends in a fresh tilted draw with that probability
+    per read (session drift).
   - Item-within-category sampling follows a two-pass power-law scheme:
     pass 1 sees a uniform prior (count=1), pass 2 reweights items by their
     accumulated view counts ** (1/s) — preferential attachment that yields a
@@ -40,6 +41,14 @@ def generate_interactions(catalog_meta: pd.DataFrame,
                           cfg: config.GeneratorConfig) -> pd.DataFrame:
     """Simulate view events for dummy accounts; deterministic in cfg.seed.
 
+    Per-account taste profile = catalog base rates (category availability)
+    multiplied by an idiosyncratic Dirichlet tilt (alpha=0.3 vector),
+    re-normalized. This keeps each account concentrated (one dominant
+    category via the tilt) while the POPULATION mixture tracks the catalog
+    composition — a plain per-account Dirichlet(a=0.3) makes 600 accounts
+    argmax-cover all 17 categories and yields a flat aggregate share
+    irrespective of availability (measured 2026-10-27).
+
     Returns columns: dummy_user_id, nid, event ("view"), occurred_at.
     """
     validate_metadata_only(catalog_meta)
@@ -47,6 +56,11 @@ def generate_interactions(catalog_meta: pd.DataFrame,
     cats = sorted(catalog_meta["category"].unique().tolist())
     meta = catalog_meta.reset_index(drop=True).copy()
     meta["cat_i"] = meta["category"].map({c: i for i, c in enumerate(cats)})
+    # population base rates from catalog availability (EVALUATION ground:
+    # category coverage is judged against this mixture)
+    cat_counts = meta["category"].value_counts()
+    base = np.array([float(cat_counts.get(c, 0)) for c in cats])
+    base /= base.sum()
     n_items = len(meta)
     item_cats = meta["cat_i"].to_numpy()
     cat_items = {i: np.flatnonzero(item_cats == i) for i in range(len(cats))}
@@ -65,11 +79,17 @@ def generate_interactions(catalog_meta: pd.DataFrame,
     pop = np.ones(n_items, dtype=float)  # pass-1: uniform prior
     pos = 0
 
+    def _tilted_profile() -> np.ndarray:
+        """base rates x idiosyncratic tilt, normalized (per fresh profile)."""
+        tilt = rng.dirichlet(np.full(len(cats), 0.3)) * len(cats)
+        p = base * tilt
+        return p / p.sum()
+
     for acct in range(cfg.n_accounts):
-        profile = rng.dirichlet(np.full(len(cats), 0.3))
+        profile = _tilted_profile()
         for _ in range(int(reads[acct])):
             if rng.random() < cfg.category_drift:
-                profile = 0.5 * profile + 0.5 * rng.dirichlet(np.full(len(cats), 0.3))
+                profile = 0.5 * profile + 0.5 * _tilted_profile()
                 profile = profile / profile.sum()
             cat = int(rng.choice(len(cats), p=profile))
             cand = cat_items[cat]

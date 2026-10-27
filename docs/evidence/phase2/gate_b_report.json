@@ -1,0 +1,150 @@
+{
+  "powerlaw": {
+    "exponent": 0.743329238000071,
+    "r2": 0.7828426417301579
+  },
+  "item_coverage": {
+    "items_ge1_view": 0.8266606005459509,
+    "items_ge3_views": 0.5398089171974523,
+    "n_items": 17584
+  },
+  "accounts": {
+    "n_accounts": 600,
+    "pct_accounts_ge10_reads": 1.0
+  },
+  "category_coverage": {
+    "Berita": {
+      "profile_share": 0.27650136487716104,
+      "viewed_share": 0.2039037121359358
+    },
+    "Bersponsor": {
+      "profile_share": 0.0043221110100090995,
+      "viewed_share": 0.006927284337951523
+    },
+    "Cek Fakta": {
+      "profile_share": 0.005118289353958144,
+      "viewed_share": 0.007371519004914346
+    },
+    "Ekonomi": {
+      "profile_share": 0.10361692447679709,
+      "viewed_share": 0.10328456006885638
+    },
+    "Hiburan": {
+      "profile_share": 0.0474294813466788,
+      "viewed_share": 0.0585834467057223
+    },
+    "Hukum": {
+      "profile_share": 0.11732256596906278,
+      "viewed_share": 0.11780548074520365
+    },
+    "Info Tempo": {
+      "profile_share": 0.06983621474067334,
+      "viewed_share": 0.07881000638587334
+    },
+    "Internasional": {
+      "profile_share": 0.04424476797088262,
+      "viewed_share": 0.05207263236804842
+    },
+    "Investigasi": {
+      "profile_share": 0.0005118289353958144,
+      "viewed_share": 0.0007218813338145876
+    },
+    "Kolom": {
+      "profile_share": 0.009895359417652412,
+      "viewed_share": 0.013479745675653163
+    },
+    "Lingkungan": {
+      "profile_share": 0.02388535031847134,
+      "viewed_share": 0.03137407335424938
+    },
+    "Multimedia": {
+      "profile_share": 0.06801637852593266,
+      "viewed_share": 0.0762695393841797
+    },
+    "Olahraga": {
+      "profile_share": 0.048908098271155595,
+      "viewed_share": 0.05820862370547242
+    },
+    "Otomotif": {
+      "profile_share": 0.001421747042766151,
+      "viewed_share": 0.0020545853347030568
+    },
+    "Politik": {
+      "profile_share": 0.13301865332120108,
+      "viewed_share": 0.12630146875086765
+    },
+    "Tekno-Sains": {
+      "profile_share": 0.022463603275705187,
+      "viewed_share": 0.03151289668767526
+    },
+    "Teroka": {
+      "profile_share": 0.023487261146496817,
+      "viewed_share": 0.03131854402087903
+    }
+  },
+  "config": {
+    "n_accounts": 600,
+    "reads_per_account": [
+      60,
+      180
+    ],
+    "powerlaw_s": 1.1,
+    "recency_days": 180,
+    "category_drift": 0.2,
+    "seed": 42
+  },
+  "gate_b_decision": {
+    "targets": {
+      "items_ge1": 0.6,
+      "items_ge3": 0.3
+    },
+    "accepted": {
+      "n_accounts": 600,
+      "reads_per_account": [
+        60,
+        180
+      ],
+      "powerlaw_s": 1.1,
+      "recency_days": 180,
+      "category_drift": 0.2,
+      "seed": 42
+    },
+    "attempts": [
+      {
+        "n_accounts": 300,
+        "reads_per_account": [
+          40,
+          120
+        ],
+        "powerlaw_s": 1.1,
+        "recency_days": 180,
+        "category_drift": 0.2,
+        "seed": 42,
+        "items_ge1_view": 0.5874658780709736,
+        "items_ge3_views": 0.19216333030027297,
+        "acc_ge10": 1.0
+      },
+      {
+        "n_accounts": 600,
+        "reads_per_account": [
+          60,
+          180
+        ],
+        "powerlaw_s": 1.1,
+        "recency_days": 180,
+        "category_drift": 0.2,
+        "seed": 42,
+        "items_ge1_view": 0.8266606005459509,
+        "items_ge3_views": 0.5398089171974523,
+        "acc_ge10": 1.0
+      }
+    ]
+  },
+  "effective_catalog_rule": {
+    "date_since": "2025-09-01",
+    "categories": null,
+    "full": false,
+    "n_items": 17584
+  },
+  "generated_at_utc": "2026-10-27T02:54:11.485115+00:00"
+}
