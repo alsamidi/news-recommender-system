@@ -360,17 +360,20 @@ git rm --cached data/web.db
 
 ### Branch policy
 
-| Branch | Purpose |
-|--------|---------|
-| `develop` | Pre-web-MVP state. **Must not** receive the `docs/web/` work or the web implementation. |
-| `feat/web-mvp-docs` | Documentation set for the web MVP (`AGENTS.md`, `.env.example`, `.gitignore`, `docs/web/**`) |
-| `feat/web-mvp` (next) | Implementation; branch from `feat/web-mvp-docs` after review |
+| Branch | Purpose | Status |
+|--------|---------|--------|
+| `develop` | Mainline: riset v1 (MIND, beku) + web MVP v1.0/v1.1. Menerima pekerjaan fase-2 dan web **setelah** direview. | aktif |
+| `feat/dataset-indo-news` | Korpus fase-2: `src/phase2/**`, `data/DATASET_LOCK_INDO.md`, gate reports, `models/indo_*`. Bercabang dari `develop`. | selesai, sudah masuk `feat/web-mvp`; menunggu merge ke `develop` |
+| `feat/web-mvp` | Fitur web PRD v1.2 (onboarding topik). Bercabang dari `feat/dataset-indo-news`, sehingga memuat seluruh fase-2. | selesai; menunggu merge ke `develop` |
+| `feat/web-mvp-docs` | Dokumentasi web MVP awal (`AGENTS.md`, `.env.example`, `.gitignore`, `docs/web/**`). | historis (sudah melebur) |
 
-**Rules (koreksi status 2026-10-27): pekerjaan web MVP sudah melebur ke
-`develop`; korpus fase-2 dieksekusi di `feat/dataset-indo-news` dari `develop`.**
-- Do not merge the docs branch into `develop` until the documents are approved.
-- Implementation work starts from the docs branch, not from `develop`.
-- Never force-push or rewrite `develop`.
+**Rules:**
+- Feature work branches from `develop`; `feat/web-mvp` (v1.2) branched from
+  `feat/dataset-indo-news` because it depends on the indo artifacts.
+- Merge ke `develop` hanya setelah dokumen dan gate direview; `develop` tidak
+  pernah di-force-push atau ditulis ulang.
+- `feat/dataset-indo-news` adalah ancestor `feat/web-mvp`, jadi merging
+  `feat/web-mvp` membawa keduanya sekaligus (fast-forward, tanpa merge commit).
 
 ## 6.5 Settled decisions (2026-10-20)
 
