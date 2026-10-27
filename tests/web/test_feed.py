@@ -5,7 +5,7 @@ import re
 
 from web.clients.rec_api import RecClient
 
-NID = re.compile(r'/berita/(N\d+)')
+NID = re.compile(r'/berita/([NI][0-9a-zA-Z]+)')
 
 
 def feed_nids(client) -> list[str]:
@@ -110,7 +110,9 @@ def test_order_matches_api_response(client, register, monkeypatch):
     """The feed renders API order, minus already-read nids (TEST-AC-042)."""
     register()
     store = client.app.state.store
-    store.add_view(_uid(client), "N44146", "feed")   # one pre-read item
+    # era-agnostic: a real catalog nid (MIND N##### or indo I...)
+    pre_read = client.app.state.recommender_data["full_nids"][0]
+    store.add_view(_uid(client), pre_read, "feed")
 
     captured: list[list[str]] = []
     original = RecClient.recommend
@@ -124,7 +126,7 @@ def test_order_matches_api_response(client, register, monkeypatch):
     rendered = feed_nids(client)
 
     assert captured
-    expected = [n for n in captured[-1] if n != "N44146"][:10]
+    expected = [n for n in captured[-1] if n != pre_read][:10]
     assert rendered == expected
 
 
@@ -135,7 +137,7 @@ def test_persona_404_falls_back_to_history(client, register):
     uid = _uid(client)
     with store.connect() as conn:
         conn.execute("UPDATE users SET persona_user_id = 'U000_nope' WHERE id = ?", (uid,))
-    store.add_view(uid, "N44146", "feed")
+    store.add_view(uid, client.app.state.recommender_data["full_nids"][0], "feed")
 
     r = client.get("/")
     assert r.status_code == 200

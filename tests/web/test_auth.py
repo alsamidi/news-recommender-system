@@ -422,7 +422,9 @@ def test_persona_picker_rejects_unknown_ids(client):
                         follow_redirects=False)
         assert r.status_code == 400, bogus
 
-    no_csrf = client.post("/login/persona", data={"persona_user_id": "U10022"},
+    valid_persona = sorted(client.app.state.recommender_data["user_map"])[0]
+    no_csrf = client.post("/login/persona",
+                          data={"persona_user_id": valid_persona},
                           follow_redirects=False)
     assert no_csrf.status_code == 403
 
@@ -432,7 +434,7 @@ def test_persona_picker_lists_only_eligible_users(client):
     _enable_picker(client)
 
     page = client.get("/login/persona")
-    ids = re.findall(r'name="persona_user_id" value="(U\d+)"', page.text)
+    ids = re.findall(r'name="persona_user_id" value="([^"]+)"', page.text)
     assert ids, "picker rendered no personas"
     user_map = client.app.state.recommender_data["user_map"]
     assert all(i in user_map for i in ids)
@@ -464,7 +466,9 @@ def test_picker_login_is_idempotent_and_reaches_the_warm_path(client):
     """
     _enable_picker(client)
     store = client.app.state.store
-    persona = "U10022"
+    # era-agnostic: pick a real account that has ALS factors (MIND U##### or
+    # indo dummy_NNNN) — the invariant under test is one-account-per-persona.
+    persona = sorted(client.app.state.recommender_data["user_map"])[0]
 
     def login():
         page = client.get("/login/persona")

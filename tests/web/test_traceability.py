@@ -16,6 +16,20 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
+
+
+def _catalog_categories(data: dict) -> set[str]:
+    """Category values of the served catalog (era-aware).
+
+    Indo era: the catalog parquet's `category` column. MIND era: the news
+    frame carried inside the recommender data.
+    """
+    import pandas as pd
+    if data.get("era") == "indo":
+        cat = pd.read_parquet(REPO / "data/processed/indo/catalog.parquet",
+                              columns=["category"])
+        return set(cat["category"].unique())
+    return set(data["news"]["category"].unique())
 SRC = REPO / "src"
 WEB = SRC / "web"
 DOCS = REPO / "docs" / "web"
@@ -91,7 +105,9 @@ def test_feed_data_originates_from_recommend_or_catalog(client, register):
     register()
     store = client.app.state.store
     uid = int(store.get_user_by_email("budi@example.com")["id"])
-    store.add_view(uid, "N44146", "feed")
+    # era-agnostic catalog nid (MIND N##### / indo I...) so the replay payload
+    # stays servable — the invariant under test is provenance, not the id.
+    store.add_view(uid, client.app.state.recommender_data["full_nids"][0], "feed")
 
     from web.clients.rec_api import RecClient
     seen: list[dict] = []
@@ -107,7 +123,7 @@ def test_feed_data_originates_from_recommend_or_catalog(client, register):
     finally:
         RecClient.recommend = original
 
-    rendered = re.findall(r"/berita/(N\d+)", body)
+    rendered = re.findall(r"/berita/([NI][0-9a-zA-Z]+)", body)
     assert seen, "expected a /recommend call"
 
     # Every rendered nid must appear in the API's own response for that payload.
@@ -121,7 +137,7 @@ def test_feed_data_originates_from_recommend_or_catalog(client, register):
 def test_cold_payload_uses_history(client, register, monkeypatch):
     """TEST-AC-043: a user with history is served by the cold path."""
     register()
-    nid = re.findall(r"/berita/(N\d+)", client.get("/").text)[0]
+    nid = re.findall(r"/berita/([NI][0-9a-zA-Z]+)", client.get("/").text)[0]
     client.get(f"/berita/{nid}")
 
     from web.clients.rec_api import RecClient
@@ -147,7 +163,7 @@ def test_source_label_is_always_present(client, register):
     body = client.get("/").text
     assert sum(l in body for l in labels) == 1
 
-    nid = re.findall(r"/berita/(N\d+)", body)[0]
+    nid = re.findall(r"/berita/([NI][0-9a-zA-Z]+)", body)[0]
     client.get(f"/berita/{nid}")
     body = client.get("/").text
     assert sum(l in body for l in labels) == 1
@@ -160,7 +176,7 @@ def test_source_label_is_always_present(client, register):
 def test_detail_fields_come_from_article_endpoint(client, register):
     """TEST-AC-061: rendered fields match GET /article/{nid} exactly."""
     register()
-    nid = re.findall(r"/berita/(N\d+)", client.get("/").text)[0]
+    nid = re.findall(r"/berita/([NI][0-9a-zA-Z]+)", client.get("/").text)[0]
 
     api = client.get(f"/article/{nid}")
     assert api.status_code == 200
@@ -183,7 +199,7 @@ def test_detail_fields_come_from_article_endpoint(client, register):
 def test_history_lists_opened_articles_newest_first(client, register):
     """TEST-AC-070 / TEST-AC-071."""
     register()
-    first, second = re.findall(r"/berita/(N\d+)", client.get("/").text)[:2]
+    first, second = re.findall(r"/berita/([NI][0-9a-zA-Z]+)", client.get("/").text)[:2]
     client.get(f"/berita/{first}")
     time.sleep(1.05)                      # distinct ISO timestamps
     client.get(f"/berita/{second}")
@@ -208,7 +224,7 @@ def test_empty_history_state(client, register):
 def test_no_fabricated_metadata_anywhere(client, register):
     """TEST-AC-080..083, 086: no image, publisher, author, date, fake count."""
     register()
-    nid = re.findall(r"/berita/(N\d+)", client.get("/").text)[0]
+    nid = re.findall(r"/berita/([NI][0-9a-zA-Z]+)", client.get("/").text)[0]
     pages = {
         "feed": client.get("/").text,
         "detail": client.get(f"/berita/{nid}").text,
@@ -232,17 +248,20 @@ def test_no_score_rendering(client, register):
 
 
 def test_rendered_categories_are_dataset_values(client, register):
-    """TEST-AC-085: categories come from the 18 known values."""
+    """TEST-AC-085: categories come from the served catalog, never invented.
+
+    Rewritten for the indo corpus (was: the 18 fixed MIND values). The
+    invariant is unchanged and stronger: every rendered category must be a
+    category that exists in the served catalog itself.
+    """
     register()
-    known = {
-        "autos", "entertainment", "finance", "foodanddrink", "games", "health",
-        "kids", "lifestyle", "middleeast", "movies", "music", "news",
-        "northamerica", "sports", "travel", "tv", "video", "weather",
-    }
     body = client.get("/").text
     rendered = set(re.findall(r'class="card-category">([^<]+)<', body))
     assert rendered, "no category tags rendered"
-    assert {c.strip().lower() for c in rendered} <= known
+    catalog = client.app.state.recommender_data
+    served = {c.strip().lower() for c in
+              set(_catalog_categories(catalog))}
+    assert {c.strip().lower() for c in rendered} <= served
 
 
 # ---------------------------------------------------------------------------
@@ -544,7 +563,7 @@ def test_no_row_count_claim():
 def test_bad_payload_falls_back_to_popular(client, register, monkeypatch):
     """TEST-AC-091: a 400 from /recommend must not surface to the user."""
     register()
-    nid = re.findall(r"/berita/(N\d+)", client.get("/").text)[0]
+    nid = re.findall(r"/berita/([NI][0-9a-zA-Z]+)", client.get("/").text)[0]
     client.get(f"/berita/{nid}")
 
     from web.clients.rec_api import RecAPIError, RecClient
@@ -633,7 +652,7 @@ def test_feed_and_detail_do_not_scale_with_history(client, register):
     # lookup, so 200 reads must not cost meaningfully more than 0.
     assert long < max(short * 3, 150), f"short={short:.0f}ms long={long:.0f}ms"
 
-    nid = re.findall(r"/berita/(N\d+)", client.get("/").text)[0]
+    nid = re.findall(r"/berita/([NI][0-9a-zA-Z]+)", client.get("/").text)[0]
     detail = median_ms(f"/berita/{nid}", runs=5)
     # Generous absolute ceiling: catches an accidental O(catalog) per request
     # without failing on a busy host.
@@ -660,7 +679,7 @@ def test_history_is_a_list_not_a_card_grid(client, register):
     A list keeps every headline whole and needs no truncation.
     """
     register()
-    first = re.findall(r"/berita/(N\d+)", client.get("/").text)[0]
+    first = re.findall(r"/berita/([NI][0-9a-zA-Z]+)", client.get("/").text)[0]
     client.get(f"/berita/{first}")
     body = client.get("/histori").text
 
@@ -705,7 +724,7 @@ def test_history_time_is_rendered_in_wib():
 
 def test_history_page_shows_wib(client, register):
     register()
-    nid = re.findall(r"/berita/(N\d+)", client.get("/").text)[0]
+    nid = re.findall(r"/berita/([NI][0-9a-zA-Z]+)", client.get("/").text)[0]
     client.get(f"/berita/{nid}")
     assert "WIB" in client.get("/histori").text
 
@@ -724,7 +743,7 @@ def test_cards_show_unique_reader_counts(client, register):
 def test_app_reader_count_is_unique_per_user(client, register):
     """TEST-AC-254: opening the same article twice must not count twice."""
     register()
-    nid = re.findall(r"/berita/(N\d+)", client.get("/").text)[0]
+    nid = re.findall(r"/berita/([NI][0-9a-zA-Z]+)", client.get("/").text)[0]
     store = client.app.state.store
     uid = int(store.get_user_by_email("budi@example.com")["id"])
 

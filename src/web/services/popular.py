@@ -10,6 +10,7 @@ Approved decision (2026-10-20):
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -19,6 +20,19 @@ TRAIN_INTERACTIONS = Path("data/processed/interactions_train.parquet")
 
 class PopularityUnavailable(RuntimeError):
     """Raised when the popularity source cannot be built at startup."""
+
+
+def _era_source() -> tuple[Path, str]:
+    """(parquet path, weight column) for the serving era.
+
+    SERVING_ERA=mind keeps the frozen MIND train parquet (`weight` =
+    summed click weights); default = indo corpus, where every view is one
+    event, so the weight column is derived as 1 per row — identical to the
+    evaluated popularity baseline (train view counts desc, nid asc).
+    """
+    if os.environ.get("SERVING_ERA", "").lower() == "mind":
+        return Path("data/processed/interactions_train.parquet"), "weight"
+    return Path("data/processed/indo/interactions_train.parquet"), None
 
 
 class Popularity:
@@ -35,16 +49,24 @@ class Popularity:
         return self._ranked
 
     @classmethod
-    def build(cls, interactions_path: Path | str = TRAIN_INTERACTIONS,
+    def build(cls, interactions_path: Path | str | None = None,
               catalog_nids: set[str] | None = None) -> "Popularity":
-        path = Path(interactions_path)
+        if interactions_path is None:
+            path, weight_col = _era_source()
+        else:
+            path, weight_col = Path(interactions_path), "weight"
         if not path.exists():
             raise PopularityUnavailable(
                 f"popularity source missing: {path}. "
-                "Generate data/processed/interactions_train.parquet first."
+                "Generate the train interactions parquet first."
             )
         try:
-            df = pd.read_parquet(path, columns=["nid", "weight"])
+            if weight_col:
+                df = pd.read_parquet(path, columns=["nid", weight_col]) \
+                       .rename(columns={weight_col: "weight"})
+            else:
+                df = pd.read_parquet(path, columns=["nid"])
+                df["weight"] = 1  # indo: one view = one event
         except Exception as exc:  # corrupt/partial file
             raise PopularityUnavailable(
                 f"cannot read popularity source {path}: {exc}"

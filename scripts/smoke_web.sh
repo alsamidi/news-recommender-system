@@ -39,7 +39,7 @@ trap cleanup EXIT
 
 echo "=== [1] start web app (port $PORT, db $DB) ==="
 WEB_DB_PATH="$DB" \
-WEB_DEMO_PERSONA_USER_ID=U10045 \
+WEB_DEMO_PERSONA_USER_ID=dummy_0000 \
 WEB_DEMO_PERSONA_EMAIL=demo@example.com \
 WEB_DEMO_PERSONA_PASSWORD="$DEMO_PASSWORD" \
   uvicorn web.app:app --app-dir src --port "$PORT" > "$OUT/uvicorn.log" 2>&1 &
@@ -55,7 +55,7 @@ curl -sf "localhost:$PORT/health" | tee "$OUT/health.json" | python -m json.tool
 python - <<'EOF'
 import json
 h = json.load(open('/tmp/opencode/smoke_web/health.json'))
-assert h == {"status": "ok", "alpha": 0.4, "catalog_size": 93698, "als_items": 3394}, h
+assert h == {"status": "ok", "alpha": 0.8, "catalog_size": 67381, "als_items": 13881}, h
 print("frozen contract intact: OK")
 EOF
 
@@ -87,7 +87,7 @@ post("/register", {"name": "Demo User", "email": "user@example.com",
 
 feed = get("/")
 assert "Berita populer" in feed, "expected popular label on first feed"
-nids = re.findall(r'/berita/(N\d+)', feed)
+nids = re.findall(r'/berita/([NI][0-9a-zA-Z]+)', feed)
 assert len(nids) == 10, f"expected 10 cards, got {len(nids)}"
 print(f"feed populer: {len(nids)} kartu, label OK")
 
@@ -101,7 +101,7 @@ print(f"event view tercatat: {views}")
 
 feed2 = get("/")
 assert "Rekomendasi dari riwayat bacaanmu" in feed2, "expected cold label"
-nids2 = re.findall(r'/berita/(N\d+)', feed2)
+nids2 = re.findall(r'/berita/([NI][0-9a-zA-Z]+)', feed2)
 assert not (set(nids2) & set(nids[:2])), "already-read article reappeared"
 assert len(nids2) <= 10
 print(f"feed cold: {len(nids2)} kartu, tanpa artikel yang sudah dibaca")
@@ -113,7 +113,7 @@ EOF
 
 echo "=== [4] scenario B: dataset persona ==="
 WEB_DB_PATH="$DB" \
-WEB_DEMO_PERSONA_USER_ID=U10045 \
+WEB_DEMO_PERSONA_USER_ID=dummy_0000 \
 WEB_DEMO_PERSONA_EMAIL=demo@example.com \
 WEB_DEMO_PERSONA_PASSWORD="$DEMO_PASSWORD" \
   python -m src.web.seed_persona | tee "$OUT/seed.txt"
@@ -139,7 +139,7 @@ post("/login", {"email": "demo@example.com", "password": demo_password,
                 "csrf_token": token})
 feed = get("/")
 assert "Rekomendasi berdasarkan profil dataset demo" in feed, "expected warm label"
-nids = re.findall(r'/berita/(N\d+)', feed)
+nids = re.findall(r'/berita/([NI][0-9a-zA-Z]+)', feed)
 assert len(nids) == 10, f"expected 10 warm cards, got {len(nids)}"
 print(f"feed warm: {len(nids)} kartu, label OK")
 

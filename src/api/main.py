@@ -6,8 +6,9 @@ No retraining at serve time. No per-request alpha override: served results
 always match the evaluated configuration.
 """
 from contextlib import asynccontextmanager
-from pathlib import Path
+import os
 import sys
+from pathlib import Path
 from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # src/
@@ -29,11 +30,26 @@ demo_presets: dict | None = None
 def resolve_presets(data: dict) -> dict:
     """Deterministic demo fixtures from frozen artifacts (P3.2).
 
-    Same selection rule as scripts/smoke_demo.sh: first eligible warm user,
-    first usable cold session (with pseudo-CF), first catalog nids outside
-    ALS space (content-only fallback case).
+    MIND era: same selection rule as scripts/smoke_demo.sh. Indo era: no
+    MIND parquets exist — derive presets from the indo interactions
+    (warm = account with most dev-only items; cold = another account's
+    dev-session; fallback = effective-catalog nids without ALS factors).
     """
     import pandas as pd
+
+    if data.get("era") == "indo":
+        dv = pd.read_parquet("data/processed/indo/interactions_dev.parquet")
+        tr = pd.read_parquet("data/processed/indo/interactions_train.parquet")
+        tr_sets = tr.groupby("dummy_user_id")["nid"].apply(set).to_dict()
+        dv_sets = dv.groupby("dummy_user_id")["nid"].apply(set).to_dict()
+        elig = sorted(u for u in dv_sets
+                      if u in tr_sets and (dv_sets[u] - tr_sets[u]))
+        warm = elig[0]
+        cold_u = next(u for u in sorted(dv_sets) if u != warm)
+        sess = sorted(dv_sets[cold_u])[:3]
+        noals = [n for n in data["full_nids"] if n not in data["item_map"]][:3]
+        return {"warm_user": warm, "cold_session": sess,
+                "fallback_session": noals}
 
     elig = sorted(u for u in data["train_full"]
                   if u in data["dev_full"] and (data["dev_full"][u] - data["train_full"][u]))
@@ -48,23 +64,47 @@ def resolve_presets(data: dict) -> dict:
     return {"warm_user": elig[0], "cold_session": sess, "fallback_session": noals}
 
 
+def _serving_era() -> str:
+    """Which corpus era serves right now (PRD v1.1: indo is the default).
+
+    Invariant: `SERVING_ERA=mind` must reproduce the frozen MIND behavior
+    byte-for-byte; anything else (missing/unset/`indo`) serves the indo
+    corpus. No third era exists.
+    """
+    return "mind" if os.environ.get("SERVING_ERA", "").lower() == "mind" \
+        else "indo"
+
+
 def load_recommender() -> "HybridRecommender":
-    """Load frozen artifacts and install them for serving.
+    """Load era-selected artifacts and install them for serving.
 
     Additive seam for embedders (the web app) that mount this app and therefore
     do not receive this module's lifespan. Returns the loaded instance.
     Mirrors the lifespan below; keep the two in sync.
+
+    Era switch (PRD v1.1, approved 2026-10-27): default = indo corpus
+    (src/phase2/serving.IndoHybridRecommender over configs/indo_serving.yaml);
+    SERVING_ERA=mind loads the frozen MIND HybridRecommender exactly as
+    before. Both expose the same public interface, so no route/schema
+    changes.
     """
     global rec, demo_presets
-    rec = HybridRecommender.load()
+    if _serving_era() == "mind":
+        rec = HybridRecommender.load()
+        demo_presets = resolve_presets(rec._d)
+        return rec
+    try:
+        from src.phase2.serving import load_indo_recommender
+    except ModuleNotFoundError:  # uvicorn --app-dir src: src/ is the root
+        from phase2.serving import load_indo_recommender
+    rec = load_indo_recommender()
     demo_presets = resolve_presets(rec._d)
     return rec
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global rec, demo_presets
-    rec = HybridRecommender.load()
-    demo_presets = resolve_presets(rec._d)
+    load_recommender()  # era switch lives here only — keep single source
     yield
     rec = None
     demo_presets = None

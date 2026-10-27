@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 
-NID = re.compile(r'/berita/(N\d+)')
+NID = re.compile(r'/berita/([NI][0-9a-zA-Z]+)')
 
 
 def _store(client):
@@ -77,7 +77,7 @@ def test_similar_block_excludes_self(client, register):
     body = client.get(f"/berita/{nid}").text
     if "Berita serupa" not in body:
         return  # no neighbours for this item
-    related = re.findall(r'class="card" href="/berita/(N\d+)', body)
+    related = re.findall(r'class="card" href="/berita/([NI][0-9a-zA-Z]+)', body)
     assert nid not in related                            # TEST-AC-066
 
 
