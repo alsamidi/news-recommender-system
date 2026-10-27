@@ -285,7 +285,7 @@ Do **not** implement these from `DESIGN.md`:
 |-----------|---------|
 | `pricing-*`, `button-pricing-pill` | No pricing surface in this product |
 | `logo-strip` | No partner logos |
-| `topic-filter-rail` | Topic selection is out of MVP scope (PRD §5.2) |
+| `topic-filter-rail` | Category rail/filtering stays out of scope. Since PRD v1.2 a **separate, narrow** control exists: `.topic-chip` on the once-only onboarding screen (0-view users, candidate selection only). It is not this rail — do not build the rail, and do not delete the chips. |
 | `hero-band` rainbow-stripe treatment | Marketing artifact; not a news-app pattern |
 | `demo-grid-card` grids | Marketing artifact |
 
@@ -305,7 +305,7 @@ assume content we do not have. **Data availability wins** (PRD §10.3).
 | `article-card` carries a **16:9 illustrated thumbnail** | Catalog has no image column (F-16) | Render the card **without** a thumbnail. Do not substitute a placeholder image, stock photo, or generated graphic. If a visual anchor is needed, use a flat token-colored bar (e.g. `{colors.surface-soft}`) with no imagery. |
 | `article-card` carries a **meta line** (author/date/source) | MIND: tidak ada satu pun (F-16). Korpus aktif: punya `source` dan tanggal terbit nyata (bukan author), tetap tanpa gambar | Korpus aktif: tampilkan `category` + `source` + tanggal (PRD v1.1 §10.2); author/subkategori tetap jangan |
 | `article-card` has a **small uppercase category tag** | `category` exists (18 values) | ✅ Use it. This is the one meta element that is real. |
-| `topic-filter-rail` (240px left rail) | Topic selection is out of MVP (PRD §5.2) | Do not build it. No category filtering in the MVP. |
+| `topic-filter-rail` (240px left rail) | Category rail/filtering is out of scope; v1.2 adds only the `.topic-chip` onboarding control (12 measured labels, 0-view users, once) | Do not build the rail; no interactive category filtering. The onboarding chips are in scope and must not be removed as "out of MVP". |
 | `hero-band` with 96px padding and rainbow stripes | Marketing artifact | Landing page may use `hero-band` whitespace rhythm, but no rainbow treatment. |
 | Pricing sub-system (`Inter Display`, `{rounded.pill}`) | No pricing in product | Do not use `Inter Display` or pill radii anywhere. |
 
@@ -329,7 +329,7 @@ assume content we do not have. **Data availability wins** (PRD §10.3).
 | `configs/preprocessing.yaml` mentions `publish_date` and `alay_dict.csv` | Neither is used or present. `build_locked.py` reads no date column, and `configs/alay_dict.csv` does not exist in the repo. |
 | Thin article metadata | `data/processed/news_processed.parquet` has only `nid, title, abstract, processed_text, category, subcategory, split`. No URL, publication date, author, or image. Kebalikannya di korpus aktif: punya `content`, `source`, `published_at`, `url`; tidak punya `abstract`/`subcategory` (lihat §2.3 `DATA_MODEL.md`). |
 | `data/web.db` is **not** gitignored | `git check-ignore data/web.db` returns nothing. The app database holds emails and password hashes. Add `data/web.db*` to `.gitignore` **before** the first commit that creates it. |
-| `docs/web/PRD.md` is superseded | It still describes a topic-onboarding MVP. `PRD_Web_Rekomendasi_Berita.md` §5.2 removes topics. Do not implement from the old file. |
+| `docs/web/PRD.md` is superseded | It still describes a topic-onboarding MVP with topic-seeded recommendations. `PRD_Web_Rekomendasi_Berita.md` v1.2 allows only the narrow version (see §6.5); do not implement from the old file. |
 | Two documents use `AC-xx` IDs | `PRD_Web_Rekomendasi_Berita.md` §14 uses AC-01…AC-54; `ACCEPTANCE_CRITERIA.md` uses AC-01…AC-122. 17 IDs collide with **different meanings**. Always name the file when citing an AC until they are renumbered. |
 
 ## 6.4 Git hygiene and branch policy
@@ -379,8 +379,8 @@ Do not reopen these without explicit approval. Implementation must follow them.
 | Area | Decision |
 |------|----------|
 | PRD | `PRD_Web_Rekomendasi_Berita.md` is the only active PRD. `PRD.md` is SUPERSEDED (archive only). |
-| AC namespaces | `PRD-AC-01…54` (PRD §14) and `TEST-AC-001…999` (`ACCEPTANCE_CRITERIA.md`). The old bare `AC-xx` namespace is retired; never cite it. |
-| Scope | No topic selection, no ratings/likes, no search, no reading duration, no retraining, `view` events only. |
+| AC namespaces | `PRD-AC-01…62` (PRD §14 + addendum v1.2 §7) and `TEST-AC-001…999` (`ACCEPTANCE_CRITERIA.md`, currently 001–266). The old bare `AC-xx` namespace is retired; never cite it. |
+| Scope | No ratings/likes, no search, no reading duration, no retraining, `view` events only. Topic selection is **limited to v1.2**: optional, once, onboarding-only (no edit page), 0-view regular users only, implemented as candidate selection over the frozen popularity ranking — never a model input, never a `/recommend` argument, no score, no re-ranking. Personas and users with history never see it. Category rail/filtering stays out. |
 | Process model | One process: web app mounts the frozen API at `/` (mounted last). |
 | D13 seam | Additive `load_recommender()` in `src/api/main.py` only. No route/schema/algorithm/α changes; additions-only diff; four proofs required (`ARCHITECTURE.md` §4.2.1). |
 | Storage | SQLite at `data/web.db`; gitignored. |
