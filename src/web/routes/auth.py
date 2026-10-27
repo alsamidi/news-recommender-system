@@ -32,13 +32,14 @@ def client_ip(request: Request) -> str:
     """
     return request.client.host if request.client else "unknown"
 
-def _set_session(request: Request, user_id: int) -> RedirectResponse:
+def _set_session(request: Request, user_id: int,
+                 target: str = "/") -> RedirectResponse:
     cfg = request.app.state.config
     store = request.app.state.store
     token = new_session_token()
     csrf = new_csrf_token()
     store.create_session(user_id, token_hash(token), csrf, cfg.session_ttl_seconds)
-    resp = RedirectResponse("/", status_code=303)
+    resp = RedirectResponse(target, status_code=303)
     resp.set_cookie(
         "session", token,
         max_age=cfg.session_ttl_seconds,
@@ -94,7 +95,10 @@ async def register_submit(
                        values={"name": name, "email": email}, active_page="register")
 
     user_id = store.create_user(name, email, hash_password(password))
-    return _set_session(request, user_id)
+    # PRD addendum v1.2 §6: a freshly registered account is the only one that
+    # has not seen the (optional, skippable) topic screen. It is a redirect,
+    # not a modal: skipping leads straight to "Berita populer".
+    return _set_session(request, user_id, target="/onboarding/topik")
 
 
 

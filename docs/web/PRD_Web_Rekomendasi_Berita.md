@@ -1,12 +1,38 @@
 # PRD — Website Sistem Rekomendasi Berita Bahasa Indonesia
 
-**Versi:** 1.1  
+**Versi:** 1.2  
 **Tanggal:** 20 Oktober 2026 · disetujui 21 Oktober 2026 · **revisi korpus 27 Oktober 2026**  
-**Status:** v1.0 **disetujui dan diimplementasikan** (`src/web/`, 193 tes, `scripts/smoke_web.sh`, `scripts/audit_freeze.sh`). **Revisi v1.1 (peralihan korpus + interaksi simulasi) disetujui 27 Oktober 2026** — dikonfirmasi owner pada sesi kerja 2026-10-27 — dan **diimplementasikan** (artefak fase-2, `SERVING_ERA` default indo, addendum AC §L). Keputusan §18 mengikat untuk korpus aktif.  
+**Status:** v1.0 **disetujui dan diimplementasikan**; v1.1 (peralihan korpus + interaksi simulasi) **disetujui 27 Oktober 2026** dan **diimplementasikan** (artefak fase-2, `SERVING_ERA` default indo, addendum AC §L); v1.2 (**pilih topik untuk user 0-view**) **disetujui owner 2026-10-27** dan diimplementasikan di `feat/web-mvp`. Keputusan §18 mengikat untuk korpus aktif.  
 **Bahasa produk:** Bahasa Indonesia  
 **Tujuan:** Menjadi sumber kebenaran utama bagi coding agent saat membangun lapisan web di atas sistem rekomendasi yang sudah ada.
 
 ---
+
+## 0b. Revisi v1.2 — Pilih Topik untuk Feed Awal User Tanpa Riwayat (27 Oktober 2026)
+
+Dirinci di `PRD_Addendum_v1.2_Pilih_Topik_Cold_Start.md` (disetujui owner
+2026-10-27). Ringkas, batas fitur ini:
+
+1. **Hanya user biasa dengan 0 event `view`.** Persona dan user ber-riwayat
+   tidak pernah menerima feed topik.
+2. **Opsional, sekali, skippable.** Screen muncul tepat setelah registrasi;
+   "Lewati" selalu ada; tidak ada halaman edit preferensi.
+3. **Seleksi kandidat, bukan skoring.** Tidak ada panggilan `/recommend` baru,
+   tidak ada α baru, tidak ada skor, tidak ada re-ranking: feed topik adalah
+   irisan per kategori dari list popularitas beku yang sudah dihitung sekali
+   di startup, diinterleave deterministik, lalu diisi ulang dari list global
+   bila kuota topik habis.
+4. **Preferensi = data profil**, tabel `user_topics`, bukan event; tidak
+   pernah masuk pipeline riset/ALS.
+5. **Handover keras.** Begitu ada ≥1 `view`, jalur prioritas v1.1 (persona →
+   history → populer) kembali berlaku dan preferensi menjadi inersia.
+6. **Label** “Populer di topik pilihanmu” — popularitas dalam topik pilihan,
+   bukan keluaran model.
+7. **Set chip terukur:** 12 label dari aturan `seen ≥ 50` dikurangi
+   `{Berita, Info Tempo, Bersponsor}` (angka di
+   `data/DATASET_LOCK_INDO.md` §Topik). `position` di database memakai urutan
+   **kanonik** chip, bukan urutan klik, karena form multi-checkbox mengirim
+   urutan DOM — ini yang membuat urutan feed deterministik tanpa JavaScript.
 
 ## 0. Revisi v1.1 — Peralihan Korpus dan Interaksi Simulasi (27 Oktober 2026)
 
@@ -104,7 +130,8 @@ Persona dataset adalah **akun demo yang dikonfigurasi oleh pengembang**, bukan t
 
 ### 5.2 Tidak masuk MVP
 
-- Pemilihan topik/onboarding minat yang wajib maupun opsional.
+- Pemilihan topik/onboarding minat yang **wajib** (opsional dan skippable
+  untuk user 0-view **diizinkan** sejak v1.2 — lihat §0b).
 - Like, dislike, komentar, bookmark, rating bintang, dan durasi membaca.
 - Pelatihan ulang model dari interaksi website.
 - Memperbarui faktor ALS secara real-time.
@@ -138,7 +165,9 @@ flowchart TD
 Aturan:
 
 1. Feed awal memakai artikel populer berdasarkan frekuensi `view` pada interaksi **train** korpus aktif; korpus aktif saat ini adalah **interaksi hasil simulasi akun dummy** (lihat §18).
-2. Feed populer diberi label **“Berita populer”**; jangan menyebutnya rekomendasi personal.
+2. Feed populer diberi label **“Berita populer”**; jangan menyebutnya
+   rekomendasi personal. User 0-view yang memilih topik mendapat label
+   **“Populer di topik pilihanmu”** (v1.2 §0b).
 3. Detail artikel hanya dicatat sebagai `view` setelah endpoint artikel berhasil mengembalikan artikel valid dan halaman detail dirender untuk pengguna terautentikasi.
 4. Setelah ada histori, pemanggilan feed selanjutnya menggunakan jalur `history` ke API rekomendasi.
 5. Interaksi baru tidak langsung mengubah artefak model; rekomendasi dihitung saat feed diminta lagi berdasarkan input histori terbaru.
@@ -187,7 +216,7 @@ Aturan:
 | FR-02 | Registrasi | P0 | Nama, email, password, konfirmasi password; email unik; password minimal 8 karakter |
 | FR-03 | Login | P0 | Kredensial valid membuat sesi; pesan gagal tidak membocorkan apakah email terdaftar |
 | FR-04 | Logout | P0 | Sesi dihapus dan halaman privat tidak lagi dapat diakses |
-| FR-05 | Feed user tanpa histori | P0 | Maksimal 10 berita populer dari interaksi train hasil simulasi; sumber diberi label “Berita populer” |
+| FR-05 | Feed user tanpa histori | P0 | Maksimal 10 berita populer dari interaksi train hasil simulasi; label “Berita populer”. Varian v1.2: bila user memilih topik (opsional, sekali), feed = irisan per kategori dari list popularitas beku yang sama, label “Populer di topik pilihanmu”, tanpa panggilan `/recommend` |
 | FR-06 | Feed user biasa dengan histori | P0 | Memanggil `POST /recommend` dengan `history` dan `top_k=30`; tidak mengirim `alpha` |
 | FR-07 | Feed persona dataset | P0 | Memanggil `POST /recommend` dengan `user_id` persona valid dan `top_k=30` |
 | FR-08 | Detail berita | P0 | Memakai `GET /article/{nid}`; menampilkan judul, kategori, sumber, tanggal terbit, dan isi berita (konten penuh; katalog baru tidak memiliki abstrak/subkategori) |
@@ -291,7 +320,11 @@ Indeks minimum: `(user_id, created_at DESC)` dan `(user_id, nid)`. Jangan memasa
 - `users 1:N interactions`.
 - `interactions.nid` merujuk secara logis ke katalog, tetapi tidak memiliki foreign key SQL karena katalog berada di Parquet/API, bukan tabel SQLite.
 - `users.persona_user_id` merujuk secara logis ke ID dataset yang divalidasi oleh API.
-- `user_topics`, `ratings`, dan `articles_cache` **tidak dibuat untuk MVP**.
+- `ratings` dan `articles_cache` **tidak dibuat untuk MVP**.
+- `user_topics` **ada sejak v1.2**: maksimal 3 baris per user, `UNIQUE
+  (user_id, label)`, hanya ditulis `src/web/`, tidak pernah dibaca pipeline
+  riset. `users.topics_prompted_at` menandai onboarding sudah ditampilkan
+  (memisahkan "belum pernah" dari "sudah skip").
 - Tidak menyimpan skor rekomendasi, faktor ALS per user, salinan konten/judul, processed text, IP, atau user-agent.
 
 ## 10. Kebutuhan UI/UX dan Integritas Konten
@@ -450,6 +483,11 @@ Korpus baru menyediakan sumber dan tanggal terbit, tetapi tidak menyediakan gamb
 - Feed tanpa histori: **“Berita populer”** — “Mulai dengan membaca berita. Rekomendasi berdasarkan riwayatmu akan tersedia setelah kamu membuka artikel.”
 - Feed cold-session: **“Rekomendasi dari riwayat bacaanmu”**.
 - Feed persona: **“Rekomendasi berdasarkan profil akun demo”**.
+- Feed topik (v1.2): **“Populer di topik pilihanmu”**.
+- Onboarding topik: judul **“Pilih sampai 3 topik yang kamu sukai”**, subjudul
+  **“Pilihanmu hanya dipakai untuk feed awal. Rekomendasi dari riwayat
+  bacaanmu akan aktif setelah kamu membuka berita.”**, tombol
+  **“Simpan pilihan”** dan **“Lewati”**.
 - Histori kosong: **“Kamu belum membuka berita. Pilih berita dari beranda untuk mulai membangun riwayat bacaan.”**
 - Konten kosong/pendek: tampilkan judul + meta saja, tanpa paragraf pengganti palsu.
 - API belum siap: **“Sistem rekomendasi sedang disiapkan. Coba lagi sebentar.”**
@@ -475,7 +513,7 @@ Hindari frasa “model belajar dari kamu secara real-time”, “akurasi tinggi�
 
 | Keputusan | Pilihan untuk MVP |
 |---|---|
-| Apakah pilih topik wajib? | Tidak; fitur topik tidak dibangun dalam MVP |
+| Apakah pilih topik wajib? | Tidak. Sejak v1.2 pilih topik **opsional dan skippable** untuk user 0-view (maks 3 chip dari 12 label terukur), sekali saja, tanpa halaman edit; user ber-riwayat dan persona tidak terdampak |
 | Apa yang dilihat user baru? | Feed berita populer berbasis statistik klik train |
 | Bagaimana behavior direkam? | Event `view` saat detail berita valid dibuka |
 | Perlukah rating/like/durasi baca? | Tidak |
@@ -495,7 +533,11 @@ Hindari frasa “model belajar dari kamu secara real-time”, “akurasi tinggi�
 2. Perlakukan keputusan pada §18 dan larangan pada §8.1 sebagai batas implementasi.
 3. Audit repository aktual sebelum membuat asumsi tentang nama file, framework, atau struktur database.
 4. Implementasikan secara bertahap: (a) database/security, (b) auth, (c) feed dan routing rekomendasi, (d) detail + view, (e) histori, (f) persona demo, (g) smoke tests dan bukti.
-5. Jangan mengimplementasikan halaman pilih topik, ratings, search, atau fitur out-of-scope sebagai bonus.
+5. Jangan mengimplementasikan ratings, search, filter kategori interaktif,
+   halaman edit preferensi topik, atau fitur out-of-scope sebagai bonus.
+   Onboarding topik v1.2 bersifat terbatas: 12 chip terukur, sekali, hanya
+   untuk user 0-view, dan **tidak boleh** menyentuh model, kontrak API, α,
+   atau membuat ranking baru.
 6. Perbarui dokumen pendamping agar tidak lagi menginstruksikan onboarding topik sebagai bagian alur utama. **(Selesai 21 Oktober 2026.)** `PRD.md` ini harus menjadi sumber kebenaran; `UX_FLOWS.md`, `DATA_MODEL.md`, `RECOMMENDATION_INTEGRATION.md`, `ARCHITECTURE.md`, dan `ACCEPTANCE_CRITERIA.md` harus diselaraskan dengannya.
 7. Setelah implementasi, laporkan file yang berubah, keputusan teknis yang diperlukan, tes yang dijalankan, hasil audit freeze, dan setiap acceptance criterion yang belum terpenuhi. Jangan menyatakan selesai bila pengujian belum dijalankan.
 

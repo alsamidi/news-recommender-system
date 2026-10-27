@@ -75,18 +75,28 @@ def build_article_meta() -> dict[str, dict]:
             f"catalog missing: {path}. Build the indo corpus first "
             "(python -m src.phase2.build_corpus_indo)."
         )
-    df = pd.read_parquet(path, columns=["nid", "source", "published_at"])
+    df = pd.read_parquet(path,
+                         columns=["nid", "source", "published_at", "category"])
     out: dict[str, dict] = {}
-    for nid, source, published in zip(df["nid"], df["source"],
-                                      df["published_at"]):
+    for nid, source, published, category in zip(
+            df["nid"], df["source"], df["published_at"], df["category"]):
         text = format_published_at(published)
         out[str(nid)] = {
             "source": str(source) if source is not None else None,
             "source_label": str(source).capitalize() if source else None,
             "published_at": published,
             "published_text": text,
+            # Category travels with the meta map so the topic feed can slice
+            # the frozen popularity list without a second catalog read.
+            "category": str(category) if category is not None else None,
         }
     return out
+
+
+def categories_of(meta: dict[str, dict]) -> dict[str, str]:
+    """`nid -> category` view of the meta map (topic slicing needs only this)."""
+    return {nid: row["category"] for nid, row in meta.items()
+            if row.get("category")}
 
 
 def attach_article_meta(meta: dict[str, dict], rows: list[dict],

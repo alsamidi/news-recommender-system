@@ -53,7 +53,28 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     version    INTEGER PRIMARY KEY,
     applied_at TEXT NOT NULL
 );
+
+-- PRD addendum v1.2: topic selection for the 0-view feed.
+-- `position` is the CANONICAL chip order (the order of TOPIC_LABELS), not the
+-- order the user clicked: a plain multi-select form submits in DOM order, so
+-- click order is not recoverable without client-side JS, and a stored order
+-- that silently disagrees with what the browser sent would make the feed
+-- nondeterministic. Same set of chips => same feed, for every user.
+CREATE TABLE IF NOT EXISTS user_topics (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    label      TEXT    NOT NULL,
+    position   INTEGER NOT NULL,
+    created_at TEXT    NOT NULL,
+    UNIQUE (user_id, label)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_topics_user ON user_topics (user_id);
 """
+
+# `users.topics_prompted_at` cannot come from CREATE TABLE IF NOT EXISTS on an
+# existing database, so it is added by an idempotent migration below.
+TOPICS_PROMPTED_COLUMN = ("topics_prompted_at", "TEXT")
 
 
 def utcnow() -> datetime:
@@ -82,9 +103,26 @@ class Store:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as conn:
             conn.executescript(_SCHEMA)
+            self._migrate_users_topics_prompted(conn)
             conn.execute(
                 "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?, ?)",
                 (SCHEMA_VERSION, iso(utcnow())),
+            )
+
+    @staticmethod
+    def _migrate_users_topics_prompted(conn: sqlite3.Connection) -> None:
+        """Add `users.topics_prompted_at` to databases created before v1.2.
+
+        `CREATE TABLE IF NOT EXISTS` does nothing on an existing table, so the
+        column needs an explicit, idempotent ALTER. Without this marker the
+        server cannot tell "never shown the onboarding" from "skipped it", and
+        PRD addendum v1.2 C2 promises the screen appears exactly once.
+        """
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+        if TOPICS_PROMPTED_COLUMN[0] not in cols:
+            conn.execute(
+                f"ALTER TABLE users ADD COLUMN {TOPICS_PROMPTED_COLUMN[0]}"
+                f" {TOPICS_PROMPTED_COLUMN[1]}"
             )
 
     # -- users ----------------------------------------------------------
@@ -130,6 +168,37 @@ class Store:
                 (name, email.lower(), password_hash, persona_user_id, iso(utcnow())),
             )
             return int(cur.lastrowid)
+
+    # -- topic preferences (PRD addendum v1.2) --------------------------
+    def mark_topics_prompted(self, user_id: int) -> None:
+        """Record that the onboarding screen was shown (chosen or skipped)."""
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE users SET topics_prompted_at = ?"
+                " WHERE id = ? AND topics_prompted_at IS NULL",
+                (iso(utcnow()), user_id),
+            )
+
+    def user_topics(self, user_id: int) -> list[str]:
+        """Chosen labels, in canonical chip order."""
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT label FROM user_topics WHERE user_id = ? ORDER BY position ASC",
+                (user_id,),
+            ).fetchall()
+        return [r["label"] for r in rows]
+
+    def replace_user_topics(self, user_id: int, labels: list[str]) -> None:
+        """Replace the user's topics atomically; `labels` must already be
+        validated and in canonical order."""
+        with self.connect() as conn:
+            conn.execute("DELETE FROM user_topics WHERE user_id = ?", (user_id,))
+            conn.executemany(
+                "INSERT INTO user_topics (user_id, label, position, created_at)"
+                " VALUES (?, ?, ?, ?)",
+                [(user_id, label, i + 1, iso(utcnow()))
+                 for i, label in enumerate(labels)],
+            )
 
     # -- sessions -------------------------------------------------------
     def unique_readers(self, nids: list[str]) -> dict[str, int]:

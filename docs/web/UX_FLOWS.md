@@ -120,6 +120,8 @@ Persona account ──► Login ──► Feed (warm, from dataset profile)
 | Empty history | Popular feed, never an error; history page shows a dedicated empty state |
 | History contains only non-ALS articles | `recommend` returns content-only while `mode` stays `cold-session`; the UI must not claim ALS was used |
 | Very long history | Send the last 50 unique `nid`, then filter against the **full** history (§`RECOMMENDATION_INTEGRATION.md` §5.4) |
+| New registration with topic choice (PRD v1.2) | Register → `/onboarding/topik` (12 chips, max 3, "Lewati" always available) → feed labelled "Populer di topik pilihanmu". The screen appears once per account; after the first `view` the feed returns to the v1.1 history path and the stored preference stops mattering. |
+| New registration skipping topics | Register → `/onboarding/topik` → "Lewati" → "Berita populer" exactly as v1.1. No preference rows are written; the once-only marker is. |
 | Dataset persona account | Warm feed via `user_id`; app history still recorded but never mixed into the warm payload |
 | Persona invalid (404) | Fall back to history if present; otherwise a controlled error page |
 | Article with empty content (0.01% in the indo corpus) | Detail renders `title` + meta only — no substitute paragraph (PRD v1.1 §10.2/§16). The old MIND-era "Ringkasan tidak tersedia" callout is gone: the active corpus has `content`, not an abstract, so an empty body is shown as empty. |

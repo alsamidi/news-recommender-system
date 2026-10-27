@@ -170,10 +170,33 @@ Important notes:
 
 | Table | Why it does not exist |
 |-------|-----------------------|
-| `user_topics` | Topic selection is out of MVP scope (PRD §5.2, §18). `DESIGN.md`'s `topic-filter-rail` component is therefore also unused. |
+| `user_topics` | **Present since PRD v1.2** (see §3.3bis below). `DESIGN.md`'s `topic-filter-rail` marketing component remains unused — the chips are a plain form control, not that rail. |
 | `ratings` | Ratings/likes are out of MVP scope (PRD §5.2). |
 | `articles_cache` | Article data is read from the catalog/API, never copied (PRD §8.4). |
 | `recommendation_scores` | Scores are min-max normalized per request and must not be persisted (F-13). |
+
+### 3.3bis `user_topics` (PRD v1.2)
+
+| Column | Type | Constraint |
+|--------|------|-----------|
+| `id` | INTEGER | PK AUTOINCREMENT |
+| `user_id` | INTEGER | NOT NULL, FK `users(id)` ON DELETE CASCADE |
+| `label` | TEXT | NOT NULL; must be one of the 12 measured chips (`src/web/services/topics.py`) |
+| `position` | INTEGER | NOT NULL; **canonical chip order**, not click order |
+| `created_at` | TEXT | NOT NULL, ISO-8601 UTC |
+
+`UNIQUE (user_id, label)`; at most 3 rows per user (validated server-side).
+`position` is canonical because an HTML multi-select submits values in DOM
+order — storing "click order" is impossible without client-side JS, and a
+column that disagrees with what the browser sent would make the feed
+nondeterministic (TEST-AC-262).
+
+Also v1.2: `users.topics_prompted_at TEXT NULL` — set when the onboarding
+screen is shown or skipped. Without it, "skipped" and "never asked" both look
+like zero `user_topics` rows, and the once-only promise (C2) cannot be kept.
+The column is added by an idempotent `PRAGMA table_info`-guarded `ALTER TABLE`
+in `Store.init_schema`, because `CREATE TABLE IF NOT EXISTS` is a no-op on an
+existing table.
 
 ### 3.5 `schema_migrations`
 

@@ -571,3 +571,60 @@ input:disabled, button:disabled, .btn:disabled {
   .navmenu[open] > .navlinks { display: flex; }
   .navlinks a { padding: var(--space-xs) 0; }
 }
+
+/* ---- topic onboarding (PRD addendum v1.2) ----
+   A chip is a selectable form control. Its border is `--color-muted`
+   (14.6:1), never `--color-hairline` (1.36:1, WCAG 1.4.11 failure). Selected
+   state uses `--color-surface-soft` plus an inset ink ring — token colours
+   only, no new hue and no coral (that token means error, D25). The checkbox
+   stays in the DOM (focusable, keyboard operable, works with JS disabled)
+   and is visually hidden only, with the focus ring drawn on its label. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.topic-fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--space-xl);
+}
+.topic-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-muted);
+  /* DESIGN.md has no chip token. `{rounded.pill}` is pricing-only and
+     `{rounded.full}` belongs to icon buttons, so the chip uses the input
+     radius (`{rounded.sm}`) — the family a selectable form control belongs
+     to. Do not use a raw 999px value here (TEST-AC-204). */
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  line-height: 1.25;
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.topic-chip:hover { background: var(--color-surface-soft); }  /* D27: token-only */
+.topic-chip input:focus-visible + span {
+  /* Ring sits on the visible label; the checkbox itself is sr-only, so focus
+     must not be invisible to a keyboard user (TEST-AC-230/231). */
+  outline: 2px solid var(--color-info-border);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.topic-chip:has(input:checked) {
+  background: var(--color-surface-soft);
+  border-color: var(--color-ink);
+  box-shadow: inset 0 0 0 1px var(--color-ink);  /* selected = thicker border, no new hue */
+}
+.onboarding-actions { display: flex; flex-wrap: wrap; gap: var(--space-md); }

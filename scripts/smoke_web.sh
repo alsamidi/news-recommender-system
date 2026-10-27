@@ -85,6 +85,18 @@ post("/register", {"name": "Demo User", "email": "user@example.com",
                    "password": user_password, "password_confirm": user_password,
                    "csrf_token": csrf()})
 
+# PRD addendum v1.2 / PRD-AC-62: onboarding is offered once, skipping works,
+# and the topic feed is a slice of the frozen popularity list.
+onb = get("/onboarding/topik")
+assert "Pilih sampai 3 topik" in onb, "onboarding screen missing after register"
+chips = re.findall(r'name="topik" value="([^"]+)"', onb)
+assert len(chips) == 12, f"expected 12 chips, got {len(chips)}"
+tok = re.search(r'name="csrf_token" value="([^"]+)"', onb).group(1)
+post("/onboarding/topik", {"csrf_token": tok, "lewati": "1"})
+again = op.open(base + "/onboarding/topik")
+assert "Pilih sampai 3 topik" not in again.read().decode(), "onboarding repeated"
+print(f"onboarding: 12 chip, skippable, sekali saja")
+
 feed = get("/")
 assert "Berita populer" in feed, "expected popular label on first feed"
 nids = re.findall(r'/berita/([NI][0-9a-zA-Z]+)', feed)
@@ -109,6 +121,46 @@ print(f"feed cold: {len(nids2)} kartu, tanpa artikel yang sudah dibaca")
 hist = get("/histori")
 assert nids[0] in hist and nids[1] in hist, "history missing viewed articles"
 print("histori: OK")
+EOF
+
+echo "=== [3b] topic feed for a 0-view user ==="
+python - "$PORT" "$USER_PASSWORD" <<'EOF'
+import re, sys, urllib.parse
+from http.cookiejar import CookieJar
+from urllib.request import build_opener, HTTPCookieProcessor, Request
+
+port, user_password = sys.argv[1], sys.argv[2]
+base = f"http://localhost:{port}"
+jar = CookieJar()
+op = build_opener(HTTPCookieProcessor(jar))
+
+def get(path):
+    return op.open(base + path).read().decode()
+
+def post(path, data):
+    req = Request(base + path, data=urllib.parse.urlencode(data, doseq=True).encode(),
+                  method="POST")
+    return op.open(req)
+
+tok = re.search(r'name="csrf_token" value="([^"]+)"', get("/register")).group(1)
+post("/register", {"name": "Topic User", "email": "topic@example.com",
+                   "password": user_password, "password_confirm": user_password,
+                   "csrf_token": tok})
+onb = get("/onboarding/topik")
+tok = re.search(r'name="csrf_token" value="([^"]+)"', onb).group(1)
+post("/onboarding/topik", {"csrf_token": tok,
+                           "topik": ["Politik", "Hukum"]})
+
+feed = get("/")
+assert "Populer di topik pilihanmu" in feed, "topic label missing"
+nids = re.findall(r'/berita/([NI][0-9a-zA-Z]+)', feed)
+assert len(nids) == 10, f"expected 10 cards, got {len(nids)}"
+assert len(set(nids)) == len(nids), "duplicate card in topic feed"
+print(f"feed topik: {len(nids)} kartu unik, label OK")
+
+get(f"/berita/{nids[0]}")
+assert "Populer di topik pilihanmu" not in get("/"), "topic feed survived a view"
+print("handover ke jalur riwayat: OK")
 EOF
 
 echo "=== [4] scenario B: dataset persona ==="

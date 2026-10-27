@@ -9,10 +9,16 @@ from tests.web.conftest import TEST_PASSWORD, csrf_of
 from web.throttle import IP_MAX_FAILURES, MAX_FAILURES
 
 
-def test_register_creates_user_and_redirects_to_feed(client, register):
+def test_register_creates_user_and_redirects_to_onboarding(client, register):
+    """TEST-AC-010 (amended by PRD addendum v1.2 §6).
+
+    Registration now lands on the optional topic screen, which sits between
+    the form and the feed. The screen is skippable and shown once, so the feed
+    is still one click away; `test_onboarding_*` covers that contract.
+    """
     r = register()
     assert r.status_code == 303
-    assert r.headers["location"] == "/"          # TEST-AC-010
+    assert r.headers["location"] == "/onboarding/topik"
     assert client.cookies.get("session")
 
 

@@ -139,9 +139,10 @@ def test_schema_init_is_idempotent(store):
     with store.connect() as conn:
         tables = {r["name"] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'")}
-    assert {"users", "sessions", "interactions"} <= tables
-    assert "user_topics" not in tables
+    assert {"users", "sessions", "interactions", "user_topics"} <= tables
+    # Still absent: preference-as-ratings and derived caches stay out (C5).
     assert "ratings" not in tables
+    assert "articles_cache" not in tables
 
 
 def test_duplicate_email_rejected_case_insensitively(store):

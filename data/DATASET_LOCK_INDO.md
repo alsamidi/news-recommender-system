@@ -212,6 +212,20 @@ versi 1 yang sudah beku.
   popularity > ALS > hybrid > CBF di 9 titik adalah properti interaksi
   simulasi, bukan klaim kualitas model (lihat caveat di §Evaluasi).
 
+## Topik (PRD v1.2, terukur 2026-10-27)
+- Aturan tawar-chip: kategori dengan `seen >= 50` (item ber-≥1 view train) di
+  band efektif, **dikurangi** `{Berita, Info Tempo, Bersponsor}`.
+- Hasil: **12 chip** — Politik, Hukum, Ekonomi, Multimedia, Olahraga,
+  Hiburan, Internasional, Lingkungan, Teroka, Tekno-Sains, Kolom, Cek Fakta
+  (urutan kanonik = urutan ini; `user_topics.position` memakainya).
+- Tidak ditawarkan: Berita (catch-all), Info Tempo (bucket editorial),
+  Bersponsor (konten sponsor), Otomotif (`seen` 23) dan Investigasi (8) di
+  bawah ambang, Pemilu dan Ramadan kosong di band efektif.
+- Kedalaman pool terjamin: chip terkecil Cek Fakta `seen` 80 / `pool3` 54,
+  jauh di atas kuota maksimum 10.
+- Angka ini bergeser hanya jika korpus di-lock ulang; `tests/web/test_topics.py`
+  menurunkannya ulang dari parquet sehingga perubahan tidak lolos diam-diam.
+
 ## Aturan campur
 - Larangan campur: MIND split/join/jumlah NID tidak boleh dipakai untuk
   korpus ini dan sebaliknya. `data/DATASET_LOCK.md` tetap memaku riset v1.

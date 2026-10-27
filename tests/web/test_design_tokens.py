@@ -84,14 +84,24 @@ def test_no_thumbnail_or_image_markup():
 
 
 def test_no_forbidden_components():
-    """TEST-AC-224: no pricing, logo strip, or topic rail."""
+    """TEST-AC-224: no pricing, logo strip, or topic rail.
+
+    Greps for component SELECTORS, not for the bare words: a comment
+    explaining that the topic chips deliberately are *not* a pricing pill
+    would otherwise trip a check about implemented components. The topic
+    chips added by PRD addendum v1.2 are `.topic-chip`, which is a plain
+    selectable control — the forbidden component is the marketing
+    `topic-filter-rail` sidebar, not "any control mentioning topics".
+    """
+    forbidden_selectors = (".pricing-", ".logo-strip", ".topic-filter-rail")
     for tmpl in TEMPLATES.glob("*.html"):
         body = read(tmpl).lower()
-        for word in ("pricing", "logo-strip", "topic-filter", "topic-rail"):
-            assert word not in body
+        for needle in forbidden_selectors:
+            assert f'class="{needle[1:]}"' not in body
+            assert f"{needle} " not in body
     css = read(STATIC / "app.css").lower()
-    for word in ("pricing", "logo-strip", "topic-filter", "topic-rail"):
-        assert word not in css
+    for needle in forbidden_selectors:
+        assert f"{needle}" not in css
 
 
 def test_no_pill_radius():

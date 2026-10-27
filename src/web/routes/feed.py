@@ -45,6 +45,9 @@ SOURCE_LABELS = {
     "popular": "Berita populer",
     "cold-session": "Rekomendasi dari riwayat bacaanmu",
     "warm": "Rekomendasi berdasarkan profil dataset demo",
+    # PRD addendum v1.2 C7: names the real mechanism (popularity inside the
+    # chosen topics), not model personalisation.
+    "topic": "Populer di topik pilihanmu",
 }
 
 

@@ -293,6 +293,24 @@ All integration decisions are **settled** (2026-10-20).
 | D23 | History cap: 50 unique `nid`, then filter against the full history | ✅ Approved |
 | D24 | `/similar` only on the detail page, never in the feed | ✅ Approved |
 
+## 12b. Topic slot in the routing order (PRD v1.2)
+
+Routing priority, with the exact conditions (not just a position in a list):
+
+1. persona present -> warm `/recommend` with `user_id` (never the topic feed);
+2. otherwise, history non-empty -> cold `/recommend` with `history`;
+3. otherwise, 0 views **and** stored topics -> topic feed:
+   `slice_by_topic(frozen_popularity)`, label "Populer di topik pilihanmu";
+4. otherwise -> "Berita populer" from the same frozen list.
+
+Step 3 is the only branch that can be confused with "personalisation", so the
+constraints are explicit: **no** `POST /recommend`, **no** α, **no** score, no
+re-ranking. The only operations added are a category filter over the frozen
+ranking, a round-robin interleave (`q = ceil(10/m)`), and a global top-up when
+a topic pool is exhausted. Two users with the same topic set receive the same
+order, because `user_topics.position` is the canonical chip order rather than
+the order the browser happened to submit.
+
 ## 13. Corpus Transition (2026-10-27, per PRD v1.1)
 
 - Katalog aktif berganti ke korpus Indo; field UI kini `title, category,

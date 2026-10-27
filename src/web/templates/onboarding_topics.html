@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Pilih topik{% endblock %}
+{% block content %}
+<h1 class="page-title">Pilih sampai {{ max_topics }} topik yang kamu sukai</h1>
+{# PRD addendum v1.2 §6: the copy says exactly what the feature does. It is a
+   candidate filter over a popularity list, not model output, and it stops
+   mattering after the first article is opened. #}
+<p class="page-sub">Pilihanmu hanya dipakai untuk feed awal. Rekomendasi dari riwayat bacaanmu akan aktif setelah kamu membuka berita.</p>
+
+{% if error %}<div class="callout callout-error mb-lg">{{ error }}</div>{% endif %}
+
+<form method="post" action="/onboarding/topik" class="onboarding-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <fieldset class="topic-fieldset">
+    <legend class="sr-only">Topik</legend>
+    {% for chip in chips %}
+    <label class="topic-chip">
+      <input type="checkbox" name="topik" value="{{ chip }}">
+      <span>{{ chip }}</span>
+    </label>
+    {% endfor %}
+  </fieldset>
+  <div class="onboarding-actions">
+    <button class="btn btn-primary" type="submit">Simpan pilihan</button>
+    {# Skip is always available and is a plain submit: no JS, no hidden state. #}
+    <button class="btn btn-secondary" type="submit" name="lewati" value="1">Lewati</button>
+  </div>
+</form>
+{% endblock %}

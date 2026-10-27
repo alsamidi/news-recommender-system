@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from fastapi import Request
 
 from ..clients.rec_api import RecAPIError
+from .topics import slice_by_topic
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,8 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FeedResult:
     articles: list[dict] = field(default_factory=list)
-    mode: str = "popular"          # popular | cold-session | warm
+    # popular | cold-session | warm | topic
+    mode: str = "popular"
     notice: str | None = None
 
 
@@ -113,7 +115,19 @@ async def _history_or_popular(request, user_id: int, full_history: set[str],
             # e.g. every history nid unknown to the catalog: fall back.
             pass
 
-    # Popular path: no model call.
+    # Popular path: no model call. A 0-view user who chose topics gets the
+    # topic slice of this same frozen list instead (PRD addendum v1.2 C4/C6:
+    # candidate selection only — no /recommend call, no scores, no reranking).
+    if not full_history:
+        labels = request.app.state.store.user_topics(user_id)
+        if labels:
+            nids = slice_by_topic(
+                popularity.top(len(popularity)),
+                request.app.state.topic_categories, labels)
+            nids = [n for n in nids if n not in full_history][:cfg.feed_limit]
+            rows = await _fetch_articles(client, nids)
+            return FeedResult(_dedupe_keep_order(rows, cfg.feed_limit), "topic")
+
     nids = [n for n in popularity.top(cfg.rec_top_k) if n not in full_history]
     nids = nids[:cfg.feed_limit]
     rows = await _fetch_articles(client, nids)

@@ -41,7 +41,7 @@ the archived `PRD.md` §8 and remain valid as measurements.
 
 | ID | Criterion | Verification |
 |----|-----------|--------------|
-| TEST-AC-010 **[P]** | Users can register with name, email, password | Register form POST → 303 redirect to **`/`** (feed); one `users` row added |
+| TEST-AC-010 **[P]** | Users can register with name, email, password | Register form POST → 303 to **`/onboarding/topik`** (v1.2: skippable topic screen, once); one `users` row added |
 | TEST-AC-011 **[P]** | Duplicate email is rejected with a clear message | Register twice with the same email → form error, no new row |
 | TEST-AC-012 **[P]** | Passwords are stored hashed, never in plaintext | DB query: `password_hash` does not contain the password; format `scrypt$...` |
 | TEST-AC-013 **[P]** | Password and confirmation must match | Register with a mismatched confirmation → error, no account created |
@@ -70,7 +70,7 @@ the archived `PRD.md` §8 and remain valid as measurements.
 | TEST-AC-048 **[P]** | No duplicate `nid` within one feed | `len(set(nid)) == len(nid)` |
 | TEST-AC-049 **[P]** | A user with no history and no topics still sees a feed | Feed shows popular articles labeled "populer" (D8) |
 | TEST-AC-050 **[P]** | The feed reacts to new history | After opening one article, the `history` sent grows |
-| TEST-AC-051 **[P]** | Every feed states its source | Exactly one visible label: "Berita populer" (no history) / "Rekomendasi dari riwayat bacaanmu" (cold) / "Rekomendasi berdasarkan profil dataset demo" (warm) |
+| TEST-AC-051 **[P]** | Every feed states its source | Exactly one visible label: "Berita populer" (no history) / "Rekomendasi dari riwayat bacaanmu" (cold) / "Rekomendasi berdasarkan profil dataset demo" (warm) / **"Populer di topik pilihanmu"** (v1.2: 0-view user with chosen topics) |
 
 ## D. Article Detail and Interactions
 
@@ -270,6 +270,32 @@ addendum pilih-topik (PRD v1.2) belum disetujui.
 
 ---
 
+## M. Topic onboarding for 0-view users (2026-10-27, PRD v1.2)
+
+Scope: `PRD_Addendum_v1.2_Pilih_Topik_Cold_Start.md` §7 (`PRD-AC-55…62`).
+Numbering continues at **259** — 123–258 are already used (demo 120–122,
+MIND-era UI 123+, corpus-transition §L 250–258).
+
+| ID | Criterion | How it is checked |
+|----|-----------|-------------------|
+| TEST-AC-259 **[P]** | The topic feed renders only for a regular user with zero `view` events; personas and users with history never receive it | `test_topics.py::test_topic_feed_renders_for_zero_view_user_only` — label present before the first view, absent after |
+| TEST-AC-260 **[P]** | Every topic-feed card belongs to a chosen topic, or comes from the global top-up when a topic pool runs dry | `…::test_topic_feed_categories_match_choice_or_global_topup` plus `data/DATASET_LOCK_INDO.md` §Topik pool numbers |
+| TEST-AC-261 **[P]** | The topic feed adds no `POST /recommend` call and never sends or changes α | `…::test_topic_feed_never_calls_recommend` — a spy asserts zero payloads |
+| TEST-AC-262 **[P]** | Two users with the same topic set get an identical order (determinism from canonical `position` + round-robin) | `…::test_topic_order_is_deterministic_across_users` — same chips submitted in different form order |
+| TEST-AC-263 **[P]** | Chips are exactly the 12 measured labels; `Pemilu`, `Ramadan`, `Otomotif`, `Investigasi`, `Bersponsor`, `Berita`, `Info Tempo` and raw portal tags never appear | `…::test_chip_set_is_the_measured_twelve` |
+| TEST-AC-264 **[P]** | The form accepts at most 3 chips, rejects labels outside the set, requires CSRF, and is skippable without side effects | `…::test_onboarding_rejects_unknown_label_and_too_many`, `…::test_onboarding_requires_csrf`, `…::test_onboarding_offered_once_then_never_again`, `…::test_empty_submission_is_a_skip` |
+| TEST-AC-265 **[P]** | `user_topics` is written only by `src/web/`; the research pipeline never reads it; zero chips means "no preference" | `…::test_topics_are_profile_data_not_events` + `test_units.py::test_schema_init_is_idempotent` |
+| TEST-AC-266 **[P]** | The new-user smoke flow covers register → (optional) topics → labelled topic feed → detail → `view` → history path | `…::test_smoke_flow_register_topic_detail_history` + `scripts/smoke_web.sh` scenario 3b |
+
+**Onboarding shown exactly once** (PRD-AC-55 / C2) is enforced by
+`users.topics_prompted_at`, not by the absence of `user_topics` rows: a user
+who presses "Lewati" stores no preference, so zero rows cannot distinguish
+"skipped" from "never asked". `Store.init_schema` adds the column through an
+idempotent `PRAGMA table_info`-guarded `ALTER TABLE`, because
+`CREATE TABLE IF NOT EXISTS` does nothing to an existing `users` table.
+
+---
+
 ## Traceability
 
 Every criterion above is cited by at least one test. Coverage is mechanical,
@@ -314,7 +340,12 @@ rather than duplicating their logic.
 - **Next stage [S]:** none. Session TTL and the feed source label were raised
   to **[P]**; the rating criteria were removed (ratings are out of MVP).
 
-**Removed:** the six topic-onboarding criteria (previously `AC-30…AC-35`). Topic selection is out of MVP scope per `PRD_Web_Rekomendasi_Berita.md`
+**Superseded (2026-10-27):** the six topic-onboarding criteria previously
+`AC-30…AC-35` were removed when topic selection was out of MVP scope. PRD v1.2
+reintroduces a **narrowly scoped** topic feature (0-view users only, optional,
+once, candidate selection only), specified by `PRD-AC-55…62` and tested as
+`TEST-AC-259…266`; the old `AC-30…AC-35` ids stay retired and must never be
+reused. Original note for the record: topic selection was out of MVP scope per `PRD_Web_Rekomendasi_Berita.md`
 §5.2 and §18. Registration now redirects to `/` (the feed).
 
 ### Decisions recorded 2026-10-20
