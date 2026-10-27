@@ -21,7 +21,7 @@ def test_no_history_shows_popular_label(client, register):
     body = client.get("/").text
     assert "Berita populer" in body                    # TEST-AC-049/051
     nids = NID.findall(body)
-    assert 1 <= len(nids) <= 10                        # TEST-AC-040
+    assert 1 <= len(nids) <= 12                        # TEST-AC-040
     assert len(set(nids)) == len(nids)                 # TEST-AC-048
 
 
@@ -38,11 +38,12 @@ def test_history_switches_to_cold_and_filters(client, register):
     assert len(set(second)) == len(second)              # TEST-AC-048
 
 
-def test_feed_never_exceeds_ten(client, register):
+def test_feed_never_exceeds_twelve(client, register):
+    """The feed cap moved 10 -> 12 in v1.3; it must still be a hard cap."""
     register()
     for nid in feed_nids(client)[:5]:
         client.get(f"/berita/{nid}")
-    assert len(NID.findall(client.get("/").text)) <= 10  # TEST-AC-040
+    assert len(NID.findall(client.get("/").text)) <= 12  # TEST-AC-040
 
 
 def test_history_payload_is_capped(client, register):
@@ -126,20 +127,7 @@ def test_order_matches_api_response(client, register, monkeypatch):
     rendered = feed_nids(client)
 
     assert captured
-    expected = [n for n in captured[-1] if n != pre_read][:10]
+    expected = [n for n in captured[-1] if n != pre_read][:12]
     assert rendered == expected
 
 
-def test_persona_404_falls_back_to_history(client, register):
-    """Invalid persona id must not surface a raw error (TEST-AC-092)."""
-    register()
-    store = client.app.state.store
-    uid = _uid(client)
-    with store.connect() as conn:
-        conn.execute("UPDATE users SET persona_user_id = 'U000_nope' WHERE id = ?", (uid,))
-    store.add_view(uid, client.app.state.recommender_data["full_nids"][0], "feed")
-
-    r = client.get("/")
-    assert r.status_code == 200
-    assert "Rekomendasi dari riwayat bacaanmu" in r.text
-    assert "Traceback" not in r.text

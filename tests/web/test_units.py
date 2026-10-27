@@ -97,7 +97,7 @@ def test_config_defaults(monkeypatch):
     cfg = load_config()
     assert cfg.session_ttl_days == 7
     assert cfg.history_limit == 50
-    assert cfg.feed_limit == 10
+    assert cfg.feed_limit == 12
     assert cfg.rec_top_k == 30
 
 
@@ -109,10 +109,10 @@ def test_config_rejects_top_k_below_feed_limit(monkeypatch):
 
 
 def test_config_rejects_out_of_range_values(monkeypatch):
-    monkeypatch.setenv("WEB_FEED_LIMIT", "11")
+    monkeypatch.setenv("WEB_FEED_LIMIT", "21")
     with pytest.raises(ValueError):
         load_config()
-    monkeypatch.setenv("WEB_FEED_LIMIT", "10")
+    monkeypatch.setenv("WEB_FEED_LIMIT", "12")
     monkeypatch.setenv("WEB_REC_TOP_K", "101")
     with pytest.raises(ValueError):
         load_config()
@@ -149,16 +149,6 @@ def test_duplicate_email_rejected_case_insensitively(store):
     store.create_user("A", "a@x.com", hash_password("pw12345678"))
     with pytest.raises(Exception):
         store.create_user("B", "A@X.COM", hash_password("pw12345678"))
-
-
-def test_upsert_persona_is_idempotent(store):
-    h = hash_password("pw12345678")
-    first = store.upsert_persona("Demo", "demo@x.com", h, "U10045")
-    second = store.upsert_persona("Demo", "demo@x.com", h, "U10045")
-    assert first == second
-    with store.connect() as conn:
-        n = conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
-    assert n == 1
 
 
 def test_history_nids_unique_newest_first(store):

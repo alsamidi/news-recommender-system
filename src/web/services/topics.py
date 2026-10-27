@@ -55,12 +55,14 @@ TOPIC_LABELS: tuple[str, ...] = (
     "Cek Fakta",
 )
 
-# Upper bound, not an optimum: with a 10-card feed and q = ceil(10/m), past
-# m = 5 an extra topic only reshuffles a card, and past m = 10 a chosen topic
-# can receive none. 3 sits below both with margin. Full argument, with the
-# measured per-topic distribution for m = 1..12: PRD addendum v1.2 §4.1.
-MAX_TOPICS = 3
-FEED_SIZE = 10
+# Upper bound, not an optimum. With a 12-card feed and q = ceil(12/m), the
+# per-topic share is 12/m: 12 at m=1, 6 at m=2, 4 at m=3, 3 at m=4, 2 at m=5-6,
+# 1 at m=7-12. The cap moved from 3 to 5 in v1.3 (owner decision) so a user can
+# express a broader interest set while every chosen topic still gets >= 2 of
+# 12 cards; beyond m=6 a topic drops to a single card and the slice stops
+# reading as a preference. Full measured table: PRD addendum v1.2 §4.1.
+MAX_TOPICS = 5
+FEED_SIZE = 12
 
 # Labels excluded by decision, with the reason kept next to the rule so the
 # exclusion cannot be mistaken for an accident of the measurement.

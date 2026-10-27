@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse
 from ..clients.rec_api import RecAPIError
 from ..services.catalog_meta import attach_article_meta
 from ..services.stats import attach_reader_counts
+from ..services.textview import strip_leading_dateline
 
 router = APIRouter()
 
@@ -53,6 +54,14 @@ async def article_detail(request: Request, nid: str):
     attach_article_meta(request.app.state.article_meta, related, cards=True)
     # Detail page keeps the full body (cards=False): only meta is merged.
     attach_article_meta(request.app.state.article_meta, [article], cards=False)
+    # Display-only cleanup: 34.4% of bodies start with a leftover dateline comma
+    # (90.7% of the Tempo rows). The corpus itself is untouched — fixing it there
+    # would invalidate the lock hash and every gate number.
+    if article.get("abstract"):
+        article["abstract"] = strip_leading_dateline(article["abstract"])
+    # Original portal link, after the body, as attribution (PRD §10.3 as
+    # amended: real links from the data are allowed, fabricated ones are not).
+    article["source_url"] = request.app.state.source_urls.get(nid)
 
     return request.app.state.templates.TemplateResponse(
         request, "article.html",

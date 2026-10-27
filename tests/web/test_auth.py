@@ -391,106 +391,33 @@ def test_csrf_error_still_json_for_api_clients(client):
     assert r.headers["content-type"].startswith("application/json")
     assert "detail" in r.json()
 
-
 # ---------------------------------------------------------------------------
-# Passwordless persona picker
+# Persona feature removal (v1.3)
 # ---------------------------------------------------------------------------
 
-def _enable_picker(client):
-    """Swap in a config with the picker on. Config is frozen, so replace it."""
-    import dataclasses
-    client.app.state.config = dataclasses.replace(
-        client.app.state.config, persona_picker=True)
+def test_persona_endpoints_are_gone(client):
+    """The dataset-persona feature was deleted, not hidden.
 
-
-def test_persona_picker_is_off_by_default(client):
-    """TEST-AC-250: the picker signs anyone into any account, so it is opt-in.
-
-    Enabling it by default would make every public deployment open.
+    It existed to demo a warm feed for a dataset account. v1.3 removes roles
+    entirely: the routes must 404 (not 403/405), and the login page must not
+    advertise them.
     """
-    assert client.app.state.config.persona_picker is False
     assert client.get("/login/persona", follow_redirects=False).status_code == 404
-    # And the login page must not advertise it.
-    assert 'href="/login/persona"' not in client.get("/login").text
+    r = client.post("/login/persona", data={"persona_user_id": "x"},
+                    follow_redirects=False)
+    assert r.status_code == 404
+    # "personalisasi" is product copy, not the removed feature: match the
+    # feature's own words, not the substring.
+    login = client.get("/login").text.lower()
+    assert "persona dataset" not in login
+    assert "/login/persona" not in login
 
 
-def test_persona_picker_rejects_unknown_ids(client):
-    """TEST-AC-252: only users with ALS factors may be entered; CSRF applies."""
-    _enable_picker(client)
+def test_config_has_no_persona_fields():
+    """The config surface no longer carries persona knobs."""
+    from web.config import load_config
 
-    page = client.get("/login/persona")
-    assert page.status_code == 200
-    token = csrf_of(page.text)
-
-    for bogus in ["U99999999", "", "U10022' OR 1=1--"]:
-        r = client.post("/login/persona",
-                        data={"persona_user_id": bogus, "csrf_token": token},
-                        follow_redirects=False)
-        assert r.status_code == 400, bogus
-
-    valid_persona = sorted(client.app.state.recommender_data["user_map"])[0]
-    no_csrf = client.post("/login/persona",
-                          data={"persona_user_id": valid_persona},
-                          follow_redirects=False)
-    assert no_csrf.status_code == 403
-
-
-def test_persona_picker_lists_only_eligible_users(client):
-    """TEST-AC-251: every listed id has ALS factors, or the warm path cannot run."""
-    _enable_picker(client)
-
-    page = client.get("/login/persona")
-    ids = re.findall(r'name="persona_user_id" value="([^"]+)"', page.text)
-    assert ids, "picker rendered no personas"
-    user_map = client.app.state.recommender_data["user_map"]
-    assert all(i in user_map for i in ids)
-
-
-def test_persona_picker_renders_counts_not_python_objects(client):
-    """TEST-AC-251: a dict key named like a dict method renders the method.
-
-    `{{ p.items }}` resolves to dict.items before the key of the same name, so
-    every row read "<built-in method items of dict object at 0x...>".
-    """
-    _enable_picker(client)
-    body = client.get("/login/persona").text
-
-    assert "built-in method" not in body
-    assert "0x" not in body.split("picker-meta")[1][:40]
-    # Each row shows a real count.
-    counts = re.findall(r'<span class="picker-meta">(\d+) item latih</span>', body)
-    assert counts, "no counts rendered"
-    assert all(int(c) >= 0 for c in counts)
-
-
-def test_picker_login_is_idempotent_and_reaches_the_warm_path(client):
-    """TEST-AC-253: one account per persona, and the feed goes warm.
-
-    Logging in twice with the same persona must reuse the account rather than
-    create a second one, and the resulting feed must come from the dataset
-    profile, not the empty-history fallback.
-    """
-    _enable_picker(client)
-    store = client.app.state.store
-    # era-agnostic: pick a real account that has ALS factors (MIND U##### or
-    # indo dummy_NNNN) — the invariant under test is one-account-per-persona.
-    persona = sorted(client.app.state.recommender_data["user_map"])[0]
-
-    def login():
-        page = client.get("/login/persona")
-        token = csrf_of(page.text)
-        return client.post("/login/persona",
-                           data={"persona_user_id": persona, "csrf_token": token},
-                           follow_redirects=False)
-
-    assert login().status_code == 303
-    assert login().status_code == 303
-
-    with store.connect() as conn:
-        rows = conn.execute(
-            "SELECT id FROM users WHERE persona_user_id = ?", (persona,)
-        ).fetchall()
-    assert len(rows) == 1, f"expected one account, found {len(rows)}"
-
-    body = client.get("/").text
-    assert "Rekomendasi berdasarkan profil dataset demo" in body
+    cfg = load_config()
+    for attr in ("persona_user_id", "persona_email", "persona_password",
+                 "persona_picker", "persona_picker_limit"):
+        assert not hasattr(cfg, attr), attr

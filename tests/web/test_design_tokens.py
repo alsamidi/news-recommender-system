@@ -286,21 +286,6 @@ def test_static_files_are_revalidated(client):
     assert client.get("/static/app.css", headers={"if-none-match": etag}).status_code == 304
 
 
-def test_picker_list_scrolls_and_says_so():
-    """The list must be scrollable and look scrollable."""
-    css = read(STATIC / "app.css")
-    block = re.search(r"\.picker-list\s*\{([^}]*)\}", css).group(1)
-    assert "max-height" in block
-    assert "overflow-y: auto" in block
-    # Overlay scrollbars are ~2px and read as a truncated list.
-    assert "scrollbar-width: thin" in css
-    assert "::-webkit-scrollbar" in css
-    template = read(TEMPLATES / "persona_picker.html")
-    assert "Gulir daftar" in template
-
-
-
-
 def test_reader_counts_are_visually_subordinate():
     """TEST-AC-258: reader counts sit below 1 opacity, under the title.
 

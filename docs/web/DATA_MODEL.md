@@ -99,23 +99,15 @@ All tables use an internal `INTEGER PRIMARY KEY`; `nid` is stored as `TEXT` with
 | `name` | TEXT | NOT NULL | Display name |
 | `email` | TEXT | NOT NULL UNIQUE (case-insensitive) | Stored lowercase |
 | `password_hash` | TEXT | NOT NULL | Format `scrypt$n$r$p$salt_b64$hash_b64` |
-| `persona_user_id` | TEXT | NULL | Dataset `user_id` for the demo account (D4); korpus aktif: ID akun dummy simulasi (PRD v1.1). NULL for regular users |
 | `created_at` | TEXT | NOT NULL | ISO-8601 UTC |
+| `topics_prompted_at` | TEXT | NULL | Set when the topic onboarding was shown (see §3.3bis) |
 
 Notes:
-- `persona_user_id` is populated by two paths, both idempotent:
-  1. `python -m src.web.seed_persona`, which reads `WEB_DEMO_PERSONA_USER_ID`
-     (see `.env.example`).
-  2. The passwordless picker at `/login/persona` (D28), which calls
-     `Store.ensure_persona_user()` for the chosen id. Only reachable when
-     `WEB_PERSONA_PICKER` is set.
-  Never through public registration, never at startup.
-- Both paths upsert rather than insert, so re-running either cannot create a
-  second account for the same dataset user. The picker keys on
-  `persona_user_id`; the seed command keys on `email`.
-- Accounts created by the picker get a random password hash that is never
-  shown to anyone: they are entered by choosing them, not by typing a
-  credential.
+- **No persona binding** (v1.3): `users.persona_user_id` was dropped by an
+  idempotent migration, together with the accounts that carried it. The app has
+  no roles; a user is a user.
+- Accounts are created only by public registration or the persona-free login.
+
 - There is no `role` column in the MVP (no admin).
 
 ### 3.2 `sessions`
@@ -214,7 +206,6 @@ users 1 ──── N sessions
 users 1 ──── N interactions
 
 interactions.nid ─ ─ ─► catalog (logical, no SQL FK)
-users.persona_user_id ─► ALS user_map (logical, no SQL FK)
 ```
 
 ## 5. Data Lifecycle
@@ -232,9 +223,8 @@ users.persona_user_id ─► ALS user_map (logical, no SQL FK)
 
 | API need | Web data source |
 |----------|-----------------|
-| `user_id` (warm) | `users.persona_user_id` |
 | `history` (cold) | `SELECT DISTINCT nid FROM interactions WHERE user_id=? ORDER BY MAX(created_at) DESC LIMIT 50` |
-| `top_k` | Constant **30** (not 10) — leaves room to reach 10 cards after filtering |
+| `top_k` | Constant **30** (not 12) — leaves room to reach 12 cards after filtering |
 | `nid` for `/article`, `/similar` | From the URL, validated against the catalog |
 
 Rules in detail: `RECOMMENDATION_INTEGRATION.md`.

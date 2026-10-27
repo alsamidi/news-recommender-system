@@ -63,7 +63,7 @@ the archived `PRD.md` §8 and remain valid as measurements.
 | TEST-AC-041 **[P]** | The feed comes from `/recommend`, not fabricated data | Internal request log contains `POST /recommend`; feed `nid` ⊆ API response `nid` |
 | TEST-AC-042 **[P]** | Article order matches the API response order | Compare `nid` lists |
 | TEST-AC-043 **[P]** | A user with history sends `history` (cold mode) | Recorded payload contains `history`; response `mode == "cold-session"` |
-| TEST-AC-044 **[P]** | A persona account sends `user_id` (warm mode) | Payload contains `user_id`; response `mode == "warm"` |
+| ~~TEST-AC-044~~ | **Retired v1.3** — the persona/warm path was removed from the web layer | — |
 | TEST-AC-045 **[P]** | The web layer never sends `user_id` and `history` together | Assert on the payload builder |
 | TEST-AC-046 **[P]** | The web layer never sends `alpha` | Assert the payload has no `alpha` key |
 | TEST-AC-047 **[P]** | Already-read articles do not reappear in the feed | Feed `nid` ∩ **sent** history `nid` = ∅. **Note:** if history is capped at 50 (D9), older articles outside the window can reappear — verified empirically. A mandatory second-layer web filter drops every `nid` in the user's **full** history, not just the 50 sent (see `RECOMMENDATION_INTEGRATION.md` §5.4) |
@@ -113,7 +113,7 @@ the archived `PRD.md` §8 and remain valid as measurements.
 |----|-----------|--------------|
 | TEST-AC-090 **[P]** | API 503 → friendly page, not a stack trace | Simulate model load failure → "system is starting" page |
 | TEST-AC-091 **[P]** | API 400 on the feed → controlled fallback | Invalid payload → empty state + prompt to choose topics |
-| TEST-AC-092 **[P]** | API 404 on `user_id` → fall back to `history` | Invalid persona → feed still renders via history |
+| ~~TEST-AC-092~~ | **Retired v1.3** — the web layer never sends `user_id`, so this fallback no longer exists | — |
 | TEST-AC-093 **[P]** | No traceback leaks to the browser | Search for "Traceback" on every error page |
 | TEST-AC-094 **[P]** | No personal data in logs | Logs contain no email or password |
 
@@ -213,10 +213,10 @@ functional criteria in `TEST-AC-001…199`. `[P]` = MVP-mandatory.
 
 | ID | Criterion | Verification |
 |----|-----------|--------------|
-| TEST-AC-250 **[P]** | `/login/persona` returns 404 and the login page hides its link unless `WEB_PERSONA_PICKER` is set | Request the route with the flag off; grep `/login` for the link |
+| TEST-AC-250 **[P]** | `/login/persona` returns 404 unconditionally (v1.3: the feature is deleted, not gated) | `test_auth.py::test_persona_endpoints_are_gone` |
 | TEST-AC-251 **[P]** | The picker lists only `user_id`s present in the ALS `user_map` | Compare rendered ids against `recommender_data["user_map"]` |
 | TEST-AC-252 **[P]** | The picker POST rejects any id outside `user_map` with 400, and still enforces CSRF (403) | Post unknown ids, empty string, and an injection-shaped string |
-| TEST-AC-253 **[P]** | Picker login creates one account per persona, idempotently, and lands on the warm path | Log in twice with the same persona; assert a single row and `mode == "warm"` |
+| ~~TEST-AC-253~~ | **Retired v1.3** — there is no picker and no warm path | — |
 | TEST-AC-254 **[P]** | Cards show a dataset reader count and an app reader count, both unique per user | Open one article 3× from one account; the app count must rise by 1 |
 | TEST-AC-255 **[P]** | A zero reader count is never printed; the row renders nothing instead | Grep the rendered feed for `>0× via MIND<` and `>0× via web<` |
 | TEST-AC-256 **[P]** | Reader counts are labelled by source, so a dataset sample is never presented as total readership | Inspect card and history copy for `× via MIND` and `× via web` |
@@ -278,7 +278,7 @@ MIND-era UI 123+, corpus-transition §L 250–258).
 
 | ID | Criterion | How it is checked |
 |----|-----------|-------------------|
-| TEST-AC-259 **[P]** | The topic feed renders only for a regular user with zero `view` events; personas and users with history never receive it | `test_topics.py::test_topic_feed_renders_for_zero_view_user_only` — label present before the first view, absent after |
+| TEST-AC-259 **[P]** | The topic feed renders only for a user with zero `view` events; users with history never receive it | `test_topics.py::test_topic_feed_renders_for_zero_view_user_only` — label present before the first view, absent after |
 | TEST-AC-260 **[P]** | Every topic-feed card belongs to a chosen topic, or comes from the global top-up when a topic pool runs dry | `…::test_topic_feed_categories_match_choice_or_global_topup` plus `data/DATASET_LOCK_INDO.md` §Topik pool numbers |
 | TEST-AC-261 **[P]** | The topic feed adds no `POST /recommend` call and never sends or changes α | `…::test_topic_feed_never_calls_recommend` — a spy asserts zero payloads |
 | TEST-AC-262 **[P]** | Two users with the same topic set get an identical order (determinism from canonical `position` + round-robin) | `…::test_topic_order_is_deterministic_across_users` — same chips submitted in different form order |
@@ -293,6 +293,22 @@ who presses "Lewati" stores no preference, so zero rows cannot distinguish
 "skipped" from "never asked". `Store.init_schema` adds the column through an
 idempotent `PRAGMA table_info`-guarded `ALTER TABLE`, because
 `CREATE TABLE IF NOT EXISTS` does nothing to an existing `users` table.
+
+---
+
+## N. Web polish + persona removal (2026-10-27, v1.3)
+
+| ID | Criterion | How it is checked |
+|----|-----------|-------------------|
+| TEST-AC-267 **[P]** | On the topic onboarding screen the wordmark is not a link (navigation locked), and both "Simpan pilihan" and "Lewati" are present | `test_topics.py::test_onboarding_locks_navigation` |
+| TEST-AC-268 **[P]** | Article bodies never start with the leftover dateline comma; the corpus itself is unchanged | `test_addendum_l_indo_ui.py::test_body_starts_without_dateline_comma` |
+| TEST-AC-269 **[P]** | `.article-body` is justified with a first-line indent, using tokens only | `…::test_article_body_is_justified` |
+| TEST-AC-270 **[P]** | History rows share one height and identical column offsets, whatever the title/date length | `test_addendum_l_indo_ui.py::test_history_row_keeps_four_grid_cells` + browser measurement |
+| TEST-AC-271 **[P]** | No persona feature remains: `/login/persona` 404s, the login page does not advertise it, and `Config`/`Store` carry no persona surface | `test_auth.py::test_persona_endpoints_are_gone`, `…::test_config_has_no_persona_fields` |
+| TEST-AC-272 **[P]** | The feed renders at most 12 unique cards | `test_feed.py::test_feed_never_exceeds_twelve` |
+| TEST-AC-273 **[P]** | The detail page shows exactly one portal link, after the body, whose host matches the article's `source` | `test_addendum_l_indo_ui.py::test_no_author_and_source_link_only_from_data` |
+| TEST-AC-274 **[P]** | Up to 5 topics are accepted and the topic feed then renders 12 cards (`q = ceil(12/5) = 3`) | `test_topics.py::test_five_topics_accepted_and_feed_has_twelve_cards` |
+| TEST-AC-275 **[P]** | The onboarding heading carries no number, while the 5-chip cap is enforced server-side | `…::test_onboarding_label_has_no_number`, `…::test_onboarding_rejects_unknown_label_and_too_many` |
 
 ---
 
@@ -369,7 +385,7 @@ reused. Original note for the record: topic selection was out of MVP scope per `
 | D26 | Article body 16px/1.6 via `.article-body` | ✅ Approved |
 | D27 | Hover restricted to five token-only changes, ≤ 120 ms | ✅ Approved |
 | — | Session TTL: **7 days** | ✅ Approved |
-| — | Demo persona via `WEB_DEMO_PERSONA_USER_ID`, seeded by an explicit idempotent command | ✅ Approved |
+| — | ~~Demo persona via `WEB_DEMO_PERSONA_USER_ID`~~ — **revoked v1.3** (feature removed) | ❌ Revoked |
 | — | Star ratings: **out of MVP** | ✅ Approved |
 | — | Feed source label: **in MVP**, raised to priority P | ✅ Approved |
 
@@ -377,7 +393,7 @@ reused. Original note for the record: topic selection was out of MVP scope per `
 
 | ID | Decision | Status |
 |----|----------|--------|
-| D28 | Passwordless persona picker at `/login/persona`, gated by `WEB_PERSONA_PICKER` (default **off**). The page is the credential: anyone who loads it enters any listed demo account, so it must not be enabled on a public deployment. Amends D4 from "one demo account" to "one account per chosen dataset user, created on demand" | ✅ Approved |
+| D28 | ~~Passwordless persona picker at `/login/persona`~~ — **revoked v1.3**: picker, seed CLI, column and warm path all removed; the app has no roles | ❌ Revoked |
 | D29 | Reader counts shown on cards come from two labelled sources: dataset unique readers (MIND sample) and app unique readers (this deployment). Both count unique users, not views | ✅ Approved |
 | D30 | A zero reader count is hidden rather than printed. Only 13.9% of catalogue nids appear in the interactions at all, so "0 pembaca" would assert something the data cannot support | ✅ Approved |
 

@@ -17,7 +17,6 @@ CREATE TABLE IF NOT EXISTS users (
     name            TEXT    NOT NULL,
     email           TEXT    NOT NULL,
     password_hash   TEXT    NOT NULL,
-    persona_user_id TEXT,
     created_at      TEXT    NOT NULL
 );
 
@@ -104,10 +103,26 @@ class Store:
         with self.connect() as conn:
             conn.executescript(_SCHEMA)
             self._migrate_users_topics_prompted(conn)
+            self._migrate_drop_persona(conn)
             conn.execute(
                 "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?, ?)",
                 (SCHEMA_VERSION, iso(utcnow())),
             )
+
+    @staticmethod
+    def _migrate_drop_persona(conn: sqlite3.Connection) -> None:
+        """Delete dataset-persona accounts and drop `users.persona_user_id`.
+
+        The persona feature was removed in v1.3 (owner decision): it existed to
+        demo a warm feed for a dataset account, and the product no longer has
+        roles. Order matters — rows are deleted first so no account keeps a
+        binding that would dangle once the column is gone. Both steps are
+        guarded, so re-running on an already-migrated database is a no-op.
+        """
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+        if "persona_user_id" in cols:
+            conn.execute("DELETE FROM users WHERE persona_user_id IS NOT NULL")
+            conn.execute("ALTER TABLE users DROP COLUMN persona_user_id")
 
     @staticmethod
     def _migrate_users_topics_prompted(conn: sqlite3.Connection) -> None:
@@ -126,13 +141,12 @@ class Store:
             )
 
     # -- users ----------------------------------------------------------
-    def create_user(self, name: str, email: str, password_hash: str,
-                    persona_user_id: str | None = None) -> int:
+    def create_user(self, name: str, email: str, password_hash: str) -> int:
         with self.connect() as conn:
             cur = conn.execute(
-                "INSERT INTO users (name, email, password_hash, persona_user_id, created_at)"
-                " VALUES (?, ?, ?, ?, ?)",
-                (name, email.lower(), password_hash, persona_user_id, iso(utcnow())),
+                "INSERT INTO users (name, email, password_hash, created_at)"
+                " VALUES (?, ?, ?, ?)",
+                (name, email.lower(), password_hash, iso(utcnow())),
             )
             return int(cur.lastrowid)
 
@@ -147,27 +161,6 @@ class Store:
             return conn.execute(
                 "SELECT * FROM users WHERE id = ?", (user_id,)
             ).fetchone()
-
-    def upsert_persona(self, name: str, email: str, password_hash: str,
-                       persona_user_id: str) -> int:
-        """Idempotent: re-running must not create a second persona account."""
-        with self.connect() as conn:
-            row = conn.execute(
-                "SELECT id FROM users WHERE lower(email) = ?", (email.lower(),)
-            ).fetchone()
-            if row:
-                conn.execute(
-                    "UPDATE users SET name = ?, password_hash = ?, persona_user_id = ?"
-                    " WHERE id = ?",
-                    (name, password_hash, persona_user_id, row["id"]),
-                )
-                return int(row["id"])
-            cur = conn.execute(
-                "INSERT INTO users (name, email, password_hash, persona_user_id, created_at)"
-                " VALUES (?, ?, ?, ?, ?)",
-                (name, email.lower(), password_hash, persona_user_id, iso(utcnow())),
-            )
-            return int(cur.lastrowid)
 
     # -- topic preferences (PRD addendum v1.2) --------------------------
     def mark_topics_prompted(self, user_id: int) -> None:
@@ -225,41 +218,6 @@ class Store:
             for row in rows:
                 out[row["nid"]] = int(row["n"])
         return out
-
-    def get_user_by_persona(self, persona_user_id: str) -> sqlite3.Row | None:
-        with self.connect() as conn:
-            return conn.execute(
-                "SELECT * FROM users WHERE persona_user_id = ?", (persona_user_id,)
-            ).fetchone()
-
-    def ensure_persona_user(self, persona_user_id: str) -> int:
-        """Return a local account bound to this dataset user, creating it once.
-
-        Used by the passwordless picker. The password hash is random and never
-        handed out: this account is entered by choosing it, not by typing a
-        credential, so there is nothing to guess.
-        """
-        existing = self.get_user_by_persona(persona_user_id)
-        if existing is not None:
-            return int(existing["id"])
-        email = f"{persona_user_id.lower()}@persona.local"
-        row = self.get_user_by_email(email)
-        if row is not None:
-            # Account predates the persona binding (e.g. seeded by hand).
-            with self.connect() as conn:
-                conn.execute(
-                    "UPDATE users SET persona_user_id = ? WHERE id = ?",
-                    (persona_user_id, row["id"]),
-                )
-            return int(row["id"])
-        from .security import hash_password
-        import secrets as _secrets
-        return self.upsert_persona(
-            name=persona_user_id,
-            email=email,
-            password_hash=hash_password(_secrets.token_urlsafe(32)),
-            persona_user_id=persona_user_id,
-        )
 
     def create_session(self, user_id: int, token_hash: str, csrf_token: str,
                        ttl_seconds: int) -> None:

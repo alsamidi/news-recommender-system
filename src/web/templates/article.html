@@ -21,9 +21,22 @@
   </div>
 
   {# PRD v1.1 §10.3: render the catalogue `content` as-is. No substitute
-     paragraph when it is empty or short (§16) — just the title and meta. #}
+     paragraph when it is empty or short (§16) — just the title and meta.
+     Leading dateline residue is stripped in the route, not here, so the
+     template stays a rendering surface. #}
   {% if article.abstract %}
     <div class="article-body mt-lg">{{ article.abstract }}</div>
+  {% endif %}
+
+  {# PRD v1.3 §10.3 amendment: a real link to the portal is allowed, because it
+     comes from the corpus (`Link` column, recovered via nid = sha1(Link)).
+     Only rendered when the mapping exists — never a guessed URL. #}
+  {% if article.source_url %}
+  <p class="article-source">
+    Sumber asli:
+    <a href="{{ article.source_url }}" rel="noopener noreferrer nofollow"
+       target="_blank">{{ article.source_label or article.source_url }}</a>
+  </p>
   {% endif %}
 </article>
 

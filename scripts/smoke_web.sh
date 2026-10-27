@@ -3,9 +3,12 @@
 #
 #   bash scripts/smoke_web.sh [VENV_DIR=path/to/venv] [PORT=8100]
 #
-# Skenario A (user baru): register -> feed populer -> buka detail ->
-#   cek event view -> feed dari riwayat -> histori.
-# Skenario B (persona) : seed persona -> login -> feed warm -> buka detail.
+# Skenario A (user baru): register -> onboarding topik -> feed populer ->
+#   buka detail -> cek event view -> feed dari riwayat -> histori.
+# Skenario A2 (user 0-view dengan topik): feed topik -> handover ke riwayat.
+#
+# The dataset-persona scenario (former B) is gone: v1.3 removed the persona
+# feature, so there is no seeded account and no warm label to assert.
 #
 # Fails non-zero on any broken step. Runs against a throwaway database so it
 # never touches data/web.db. Server is always cleaned up (trap).
@@ -39,9 +42,6 @@ trap cleanup EXIT
 
 echo "=== [1] start web app (port $PORT, db $DB) ==="
 WEB_DB_PATH="$DB" \
-WEB_DEMO_PERSONA_USER_ID=dummy_0000 \
-WEB_DEMO_PERSONA_EMAIL=demo@example.com \
-WEB_DEMO_PERSONA_PASSWORD="$DEMO_PASSWORD" \
   uvicorn web.app:app --app-dir src --port "$PORT" > "$OUT/uvicorn.log" 2>&1 &
 SERVER_PID=$!
 
@@ -88,19 +88,21 @@ post("/register", {"name": "Demo User", "email": "user@example.com",
 # PRD addendum v1.2 / PRD-AC-62: onboarding is offered once, skipping works,
 # and the topic feed is a slice of the frozen popularity list.
 onb = get("/onboarding/topik")
-assert "Pilih sampai 3 topik" in onb, "onboarding screen missing after register"
+assert "Pilih beberapa topik yang paling kamu sukai" in onb, \
+    "onboarding screen missing after register"
 chips = re.findall(r'name="topik" value="([^"]+)"', onb)
 assert len(chips) == 12, f"expected 12 chips, got {len(chips)}"
 tok = re.search(r'name="csrf_token" value="([^"]+)"', onb).group(1)
 post("/onboarding/topik", {"csrf_token": tok, "lewati": "1"})
 again = op.open(base + "/onboarding/topik")
-assert "Pilih sampai 3 topik" not in again.read().decode(), "onboarding repeated"
+assert "Pilih beberapa topik yang paling kamu sukai" not in again.read().decode(), \
+    "onboarding repeated"
 print(f"onboarding: 12 chip, skippable, sekali saja")
 
 feed = get("/")
 assert "Berita populer" in feed, "expected popular label on first feed"
 nids = re.findall(r'/berita/([NI][0-9a-zA-Z]+)', feed)
-assert len(nids) == 10, f"expected 10 cards, got {len(nids)}"
+assert len(nids) == 12, f"expected 12 cards, got {len(nids)}"
 print(f"feed populer: {len(nids)} kartu, label OK")
 
 get(f"/berita/{nids[0]}")
@@ -115,7 +117,7 @@ feed2 = get("/")
 assert "Rekomendasi dari riwayat bacaanmu" in feed2, "expected cold label"
 nids2 = re.findall(r'/berita/([NI][0-9a-zA-Z]+)', feed2)
 assert not (set(nids2) & set(nids[:2])), "already-read article reappeared"
-assert len(nids2) <= 10
+assert len(nids2) <= 12
 print(f"feed cold: {len(nids2)} kartu, tanpa artikel yang sudah dibaca")
 
 hist = get("/histori")
@@ -154,7 +156,7 @@ post("/onboarding/topik", {"csrf_token": tok,
 feed = get("/")
 assert "Populer di topik pilihanmu" in feed, "topic label missing"
 nids = re.findall(r'/berita/([NI][0-9a-zA-Z]+)', feed)
-assert len(nids) == 10, f"expected 10 cards, got {len(nids)}"
+assert len(nids) == 12, f"expected 12 cards, got {len(nids)}"
 assert len(set(nids)) == len(nids), "duplicate card in topic feed"
 print(f"feed topik: {len(nids)} kartu unik, label OK")
 
@@ -163,54 +165,18 @@ assert "Populer di topik pilihanmu" not in get("/"), "topic feed survived a view
 print("handover ke jalur riwayat: OK")
 EOF
 
-echo "=== [4] scenario B: dataset persona ==="
-WEB_DB_PATH="$DB" \
-WEB_DEMO_PERSONA_USER_ID=dummy_0000 \
-WEB_DEMO_PERSONA_EMAIL=demo@example.com \
-WEB_DEMO_PERSONA_PASSWORD="$DEMO_PASSWORD" \
-  python -m src.web.seed_persona | tee "$OUT/seed.txt"
-
-python - "$PORT" "$DEMO_PASSWORD" <<'EOF'
-import re, sys, urllib.parse
-from http.cookiejar import CookieJar
-from urllib.request import build_opener, HTTPCookieProcessor, Request
-
-port, demo_password = sys.argv[1], sys.argv[2]
-base = f"http://localhost:{port}"
-op = build_opener(HTTPCookieProcessor(CookieJar()))
-
-def get(path):
-    return op.open(base + path).read().decode()
-
-def post(path, data):
-    req = Request(base + path, data=urllib.parse.urlencode(data).encode(), method="POST")
-    return op.open(req)
-
-token = re.search(r'name="csrf_token" value="([^"]+)"', get("/login")).group(1)
-post("/login", {"email": "demo@example.com", "password": demo_password,
-                "csrf_token": token})
-feed = get("/")
-assert "Rekomendasi berdasarkan profil dataset demo" in feed, "expected warm label"
-nids = re.findall(r'/berita/([NI][0-9a-zA-Z]+)', feed)
-assert len(nids) == 10, f"expected 10 warm cards, got {len(nids)}"
-print(f"feed warm: {len(nids)} kartu, label OK")
-
-get(f"/berita/{nids[0]}")
-print("detail persona: OK")
-EOF
-
-echo "=== [5] unauthenticated access is blocked ==="
+echo "=== [4] unauthenticated access is blocked ==="
 code=$(curl -s -o /dev/null -w "%{http_code}" "localhost:$PORT/")
 [ "$code" = "303" ] || { echo "FATAL: anonymous / returned $code"; exit 1; }
 echo "anon / -> 303: OK"
 
-echo "=== [6] no traceback leaked ==="
+echo "=== [5] no traceback leaked ==="
 if grep -qi "traceback" "$OUT/uvicorn.log"; then
   echo "FATAL: traceback in server log"; tail -20 "$OUT/uvicorn.log"; exit 1
 fi
 echo "no traceback: OK"
 
-echo "=== [7] shutdown ==="
+echo "=== [6] shutdown ==="
 kill "$SERVER_PID"
 wait "$SERVER_PID" 2>/dev/null || true
 SERVER_PID=""

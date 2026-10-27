@@ -3,7 +3,7 @@
 Status: **DRAFT — not approved.**
 Date: 2026-10-20.
 Revised: **2026-10-27 — peralihan korpus (PRD v1.1).** Persona era MIND (`U10045`)
-adalah contoh; setelah generator interaksi korpus Indo jalan, persona dipetakan ke
+adalah contoh; setelah generator interaksi korpus Indo jalan, akun dataset dipetakan ke
 ID akun dummy (format `I...`, `data/DATASET_LOCK_INDO.md`). Mekanisme seed,
 validasi, dan semua seam arsitektur tidak berubah.
 
@@ -19,7 +19,7 @@ validasi, dan semua seam arsitektur tidak berubah.
 3. **Clear separation:** web app (product) vs API app (research). The API works
    without the web app; the web app must not break the API.
 4. **No mandatory new services.** SQLite + filesystem is enough for the MVP.
-5. **Everything testable is tested.** Routing logic (persona vs. history vs.
+5. **Everything testable is tested.** Routing logic (history vs. topic vs.
    popular), history selection, and filtering must have unit tests that do not
    load the model.
 
@@ -33,10 +33,10 @@ validasi, dan semua seam arsitektur tidak berubah.
                 │ HTTP (session cookie)
 ┌───────────────▼──────────────────────────────────────────────┐
 │  Web App  (NEW)  src/web/                                     │
-│  ├─ routes/auth      register, login, persona, logout         │
+│  ├─ routes/auth      register, login, logout                  │
 │  ├─ routes/feed      feed, history                            │
 │  ├─ routes/article   detail (proxy + record interaction)      │
-│  ├─ services/feed    persona → history → popular              │
+│  ├─ services/feed    history → topic → popular                │
 │  ├─ services/stats   unique reader counts (dataset + app)     │
 │  ├─ db.Store         SQLite access                            │
 │  ├─ templates/       Jinja2                                   │
@@ -66,28 +66,26 @@ onboarding; see §0b) and `DESIGN.md` (token-driven styling).
 src/web/
   __init__.py
   app.py                # web FastAPI app + lifespan owning the model
-  config.py             # DB path, session TTL, history cap, persona seed, flags
+  config.py             # DB path, session TTL, history cap, feed size
   security.py           # password hashing, session tokens, CSRF token helpers
   csrf.py               # signed anonymous tokens + require_csrf
   throttle.py           # login throttle (per email and per IP)
   db.py                 # SQLite connection + schema + queries
-  seed_persona.py       # idempotent persona account seeding (CLI)
   routes/
-    auth.py             # /register /login /login/persona /logout
+    auth.py             # /register /login /logout
     onboarding.py       # /onboarding/topik (v1.2, once per account)
     feed.py             # / (feed), /histori
     article.py          # /berita/{nid}
   services/
-    feed.py             # decision tree: persona -> history -> topic -> popular
+    feed.py             # decision tree: history -> topic -> popular
     topics.py           # 12 measured chips + candidate slicing (v1.2)
     popular.py          # train click-count popularity for the no-history feed
-    persona.py          # eligible dataset users for the picker
     catalog_meta.py     # source + publication date + category (display only)
     stats.py            # unique reader counts (dataset + app)
   clients/
     rec_api.py          # thin client to the frozen API (in-process)
   templates/
-    base.html, landing.html, login.html, persona_picker.html,
+    base.html, landing.html, login.html,
     register.html, onboarding_topics.html, feed.html, _card.html,
     _readers.html, article.html, history.html, error.html
   static/
@@ -97,7 +95,7 @@ src/web/
 tests/web/
   test_auth.py, test_feed.py, test_popular.py, test_article.py,
   test_units.py, test_design_tokens.py, test_traceability.py,
-  test_topics.py, test_addendum_l_indo_ui.py, test_seed_persona.py
+  test_topics.py, test_addendum_l_indo_ui.py
 ```
 
 There is no `schemas.py` and no `services/store.py`: SQLite access lives on the
@@ -304,8 +302,8 @@ duplication. The client **must not** touch `HybridRecommender` directly.
 
 ```
 Feed request
-  → does the user have a dataset persona mapping?
-      yes → POST /recommend {"user_id": <persona>}          → mode warm
+  → does the user have any view history?
+      no  → does the user have stored topics?  yes → topic slice of frozen list
       no  → is there reading history?
           yes → POST /recommend {"history": [last 50 nid]}   → cold-session
           no  → 10 popular articles (labeled "Berita populer")  (D8)
@@ -340,56 +338,22 @@ Detail: `RECOMMENDATION_INTEGRATION.md`.
 Rejected alternatives for the MVP: OAuth, stateless JWT, 2FA, email verification
 (all add dependencies or services with no demo benefit).
 
-### 6.1 Demo persona provisioning
+### 6.1 Demo persona provisioning — REMOVED (v1.3)
 
-Approved 2026-10-20. The demo account is **never** created at startup and
-**never** lives in source code.
+The dataset-persona feature was deleted at the owner's request: no passwordless
+picker, no seed CLI, no `users.persona_user_id`, no warm path in the web layer.
 
-| Concern | Rule |
-|---------|------|
-| Which dataset user | `WEB_DEMO_PERSONA_USER_ID` (e.g. `U10045`), read from the environment |
-| Account email | `WEB_DEMO_PERSONA_EMAIL` — local value, documented in `.env.example` |
-| Account password | `WEB_DEMO_PERSONA_PASSWORD` — supplied locally at run time, never committed |
-| Creation | Explicit command: `python -m src.web.seed_persona` |
-| Idempotency | Re-running must **not** create a second account; it updates the existing row |
-| Validation | The seed command calls the API once with the persona id; if the result is 404, abort with a clear message |
-| Startup | No seeding, no demo user creation, no extra work |
-| Missing env var | Persona seeding is skipped explicitly; the app still runs with normal users only |
+What this changes for a demo: the warm feed is no longer reachable from the UI.
+`POST /recommend` still accepts `user_id` per API contract v1.0.0 — the removal
+is about how the web app used it, not about the contract or the model.
 
-**Corpus note (2026-10-27):** nilai `U10045` di atas adalah contoh era MIND.
-Setelah PRD v1.1 disetujui dan generator interaksi korpus Indo berjalan, persona
-dipetakan ke ID akun dummy korpus (format `I...` per
-`data/DATASET_LOCK_INDO.md`); mekanisme seed dan validasi via API tidak berubah.
+What to show instead:
 
-`U10045` is verified to have ALS factors (2,858 eligible warm users; returns 10
-recommendations).
-
-`.env.example` (committed, no secrets):
-
-```
-# Demo persona — copy to .env and fill locally. Never commit .env.
-WEB_DEMO_PERSONA_USER_ID=U10045
-WEB_DEMO_PERSONA_EMAIL=
-WEB_DEMO_PERSONA_PASSWORD=
-```
-
-`.env` must be listed in `.gitignore` (it already is).
-
-## 7. Performance
-
-Measured figures (F-22, F-23):
-
-| Operation | Time |
-|-----------|------|
-| Model load at startup | ~6.1 s, RSS ~503 MB |
-| `POST /recommend` warm | ~6 ms |
-| `POST /recommend` cold (history 5–400 nid) | ~6–7 ms |
-| `GET /similar` | ~70 ms |
-
-Implications:
-- The model loads **once** at startup, never per request.
-- Long history does not slow things down meaningfully (flat up to 400 nid).
-- `/similar` is ~10× slower; cap `top_k` and cache per `nid` if needed.
+| Scenario | Path |
+|---|---|
+| New user | register -> optional topic screen -> "Berita populer" (12 cards) |
+| New user with topics | register -> choose up to 5 chips -> "Populer di topik pilihanmu" |
+| Returning user | open 1+ articles -> "Rekomendasi dari riwayat bacaanmu" |
 
 ### 7.1 State built at startup
 
@@ -398,7 +362,8 @@ read-only afterwards and would be wasteful to rebuild per request:
 
 | State | Built by | Cost | Used by |
 |-------|----------|------|---------|
-| `recommender_data` | `HybridRecommender.load()` | part of the ~8 s model load | persona picker (eligibility), feed |
+| `recommender_data` | `HybridRecommender.load()` | part of the ~8 s model load | feed (catalog size, topic slicing) |
+| `source_urls` | `build_source_urls()` over the raw CSV | ~1.2 s, 67k rows | detail page attribution link |
 | `dataset_readers` | `services.stats.build_dataset_readers()` | ~0.6 s, 9,100 entries | reader counts on cards |
 | `popularity` | `Popularity.build()` | one pass over train interactions | the no-history feed |
 | `throttle` / `ip_throttle` | `LoginThrottle()` | trivial | login |
@@ -434,7 +399,7 @@ than copying it, so the picker does not add a second copy of the model.
 | # | Risk | Impact | Mitigation |
 |---|------|--------|------------|
 | R1 | Sub-app lifespan does not run → 503 | All recommendations dead | §4.2 (verified) |
-| R2 | New users have no ALS factors | 404 if `user_id` is sent incorrectly | Router always sends `history` for non-personas; handle 404 |
+| R2 | New users have no ALS factors | 404 if `user_id` is sent incorrectly | Router never sends `user_id`; it sends `history` or uses the frozen popularity list |
 | R3 | History contains only non-ALS items | Quality drops (content-only) | Detect from the response (`mode`), label in the UI |
 | R4 | `nid` duplicated across splits | Duplicate cards in the UI | Dedupe by `nid` in the web layer (API already dedupes; this is a second layer) |
 | R5 | Scores not comparable across requests | Misleading if compared | Do not render raw scores; or label them explicitly |

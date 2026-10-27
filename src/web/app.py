@@ -32,6 +32,7 @@ from .csrf import issue as issue_csrf  # noqa: E402
 from .security import token_hash  # noqa: E402
 from .clients.rec_api import RecClient  # noqa: E402
 from .services.catalog_meta import build_article_meta, categories_of  # noqa: E402
+from .services.textview import build_source_urls  # noqa: E402
 from .services.popular import Popularity  # noqa: E402
 from .services.stats import build_dataset_readers  # noqa: E402
 from .throttle import IP_MAX_FAILURES, LoginThrottle  # noqa: E402
@@ -94,6 +95,10 @@ async def lifespan(app: FastAPI):
     # `nid -> category`, used by the topic feed to slice the frozen popularity
     # ranking (PRD addendum v1.2 C4). Derived once; no second catalog read.
     app.state.topic_categories = categories_of(app.state.article_meta)
+    # Original portal link per nid, reconstructed from the raw CSV (the catalog
+    # has no `url` column and adding one would break its recorded sha256).
+    app.state.source_urls = build_source_urls(
+        set(rec._d["full_nids"])) if rec._d.get("era") == "indo" else {}
     # Reader-count label: the dataset sample is simulated under the indo
     # corpus, so the card must not claim "MIND" there (PRD v1.1 §18;
     # TEST-AC-256 is about labelling the source, not about the word MIND).
@@ -175,7 +180,7 @@ def create_app() -> FastAPI:
 
         # Anonymous forms need a signed token before a session exists.
         anon_form = (
-            path in {"/register", "/login", "/landing", "/login/persona"}
+            path in {"/register", "/login", "/landing"}
             and request.state.user is None
         )
         nonce_to_set = None

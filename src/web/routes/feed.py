@@ -1,4 +1,4 @@
-"""Feed routing: persona (warm) -> history (cold) -> popular.
+"""Feed routing: history (cold) -> topic slice -> popular.
 
 Implements the approved decision tree and the second-layer history filter that
 the API cannot provide when the payload is capped at 50 nids.
@@ -44,7 +44,6 @@ def format_viewed_at(iso_str: str) -> str:
 SOURCE_LABELS = {
     "popular": "Berita populer",
     "cold-session": "Rekomendasi dari riwayat bacaanmu",
-    "warm": "Rekomendasi berdasarkan profil dataset demo",
     # PRD addendum v1.2 C7: names the real mechanism (popularity inside the
     # chosen topics), not model personalisation.
     "topic": "Populer di topik pilihanmu",

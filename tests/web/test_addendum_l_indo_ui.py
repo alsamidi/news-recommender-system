@@ -75,21 +75,33 @@ def test_card_meta_is_category_source_and_date_only(client, register):
     assert "card-abstract" not in card
 
 
-def test_no_author_no_portal_link_but_source_and_date_labelled(client, register):
-    """TEST-AC-222 (addendum §L, partly reversed).
+def test_no_author_and_source_link_only_from_data(client, register):
+    """TEST-AC-222 (amended v1.3).
 
-    `Sumber:`/`Tanggal:` are mandatory when the corpus carries the value;
-    author and portal links remain forbidden.
+    `Sumber:`/`Tanggal:` stay mandatory; the author is still forbidden. The
+    portal-link ban is narrowed rather than dropped: exactly one link is
+    allowed, it must sit after the body, and its host must match the article's
+    own `source` — a fabricated or mismatched link still fails.
     """
+    import pandas as pd
+
+    catalog = pd.read_parquet(REPO / "data/processed/indo/catalog.parquet",
+                              columns=["nid", "source"])
+    source_of = dict(zip(catalog["nid"], catalog["source"]))
+
     for nid in _first_nids(client, register, 2):
         body = client.get(f"/berita/{nid}").text
         assert "Sumber: " in body
         assert "Tanggal: " in body
         assert "Penulis" not in body
         assert "Penerbit" not in body
-        assert 'href="http' not in body
-        for domain in ("detik.com", "tempo.co", "kompas.com"):
-            assert domain not in body
+
+        links = re.findall(r'<a href="(https?://[^"]+)"', body)
+        assert len(links) == 1, links
+        host = links[0].split("/")[2]
+        assert source_of[nid] in host, (nid, host, source_of[nid])
+        # The link must come after the body block, never inside it.
+        assert body.index("article-body") < body.index(links[0])
 
 
 def test_rendered_source_matches_catalog(client, register):
@@ -184,3 +196,53 @@ def test_history_row_keeps_four_grid_cells(client, register):
         assert "history-readers" in (children[3].get("class") or [])
         # Source and date live inside the category cell, not as new columns.
         assert "Sumber: " in children[1].get_text()
+
+
+def test_body_starts_without_dateline_comma(client, register):
+    """v1.3 #2: display-only cleanup of the leftover dateline comma.
+
+    34.4% of bodies (90.7% of Tempo rows) start with ", ". It is stripped when
+    rendering, never in the corpus — the lock hash and every gate number stay
+    valid.
+    """
+    for nid in _first_nids(client, register, 4):
+        body = client.get(f"/berita/{nid}").text
+        m = re.search(r'<div class="article-body[^"]*">(.*?)</div>', body, re.S)
+        if not m:
+            continue
+        first = m.group(1).lstrip()[:3]
+        assert not first.startswith(","), (nid, first)
+
+
+def test_article_body_is_justified(client, register):
+    """v1.3 #3: justified body with a first-line indent, token-only CSS."""
+    from pathlib import Path
+
+    css = (REPO / "src/web/static/app.css").read_text()
+    block = re.search(r"\.article-body \{([^}]*)\}", css)
+    assert block, "article-body block missing"
+    assert "text-align: justify" in block.group(1)
+    assert "text-indent:" in block.group(1)
+
+
+def test_history_rows_share_one_height(client, register):
+    """TEST-AC-270: uniform row height, measured on the rendered markup.
+
+    The structural invariant (four grid children) is asserted elsewhere; this
+    checks that the meta cell always occupies two lines, which is what makes
+    rows visually uniform. A browser measurement is in the goal's verification
+    step; this is the cheap structural proxy that runs in CI.
+    """
+    register()
+    nids = _first_nids(client, register, 3)
+    for nid in nids:
+        client.get(f"/berita/{nid}")
+
+    body = client.get("/histori").text
+    rows = re.findall(r'<li class="history-row">(.*?)</li>', body, re.S)
+    assert len(rows) >= 2
+    shapes = []
+    for row in rows:
+        shapes.append(row.count('class="history-meta-line"'))
+    # Every row carries the same meta-line count: 2 when source/date exist.
+    assert len(set(shapes)) == 1, shapes

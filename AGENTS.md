@@ -383,7 +383,7 @@ Do not reopen these without explicit approval. Implementation must follow them.
 |------|----------|
 | PRD | `PRD_Web_Rekomendasi_Berita.md` is the only active PRD. `PRD.md` is SUPERSEDED (archive only). |
 | AC namespaces | `PRD-AC-01…62` (PRD §14 + addendum v1.2 §7) and `TEST-AC-001…999` (`ACCEPTANCE_CRITERIA.md`, currently 001–266). The old bare `AC-xx` namespace is retired; never cite it. |
-| Scope | No ratings/likes, no search, no reading duration, no retraining, `view` events only. Topic selection is **limited to v1.2**: optional, once, onboarding-only (no edit page), 0-view regular users only, implemented as candidate selection over the frozen popularity ranking — never a model input, never a `/recommend` argument, no score, no re-ranking. Personas and users with history never see it. Category rail/filtering stays out. |
+| Scope | No ratings/likes, no search, no reading duration, no retraining, `view` events only. **No dataset persona / roles** (v1.3): no picker, no seed CLI, no `users.persona_user_id`, no warm path in the UI. Topic selection is **limited to v1.2**: optional, once, onboarding-only (no edit page), 0-view regular users only, implemented as candidate selection over the frozen popularity ranking — never a model input, never a `/recommend` argument, no score, no re-ranking. Personas and users with history never see it. Category rail/filtering stays out. |
 | Process model | One process: web app mounts the frozen API at `/` (mounted last). |
 | D13 seam | Additive `load_recommender()` in `src/api/main.py` only. No route/schema/algorithm/α changes; additions-only diff; four proofs required (`ARCHITECTURE.md` §4.2.1). |
 | Storage | SQLite at `data/web.db`; gitignored. |

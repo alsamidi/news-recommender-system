@@ -332,13 +332,16 @@ def test_decisions_have_status_tables():
 # J. Demo evidence
 # ---------------------------------------------------------------------------
 
-def test_smoke_script_covers_both_scenarios():
-    """TEST-AC-120: one script, both flows, no manual ids."""
+def test_smoke_script_covers_the_journey():
+    """TEST-AC-120 (amended v1.3): one script, no manual ids, no persona."""
     body = (REPO / "scripts" / "smoke_web.sh").read_text()
-    assert "scenario A" in body and "scenario B" in body
-    assert "register" in body and "seed_persona" in body
+    assert "scenario A" in body
+    assert "register" in body
+    # The persona scenario is gone with the feature; the topic flow replaced it.
+    assert "seed_persona" not in body
+    assert "topik" in body
     # Must not require a human to type a nid or user_id.
-    assert "WEB_DEMO_PERSONA_USER_ID=" in body
+    assert "user@example.com" in body
 
 
 def test_evidence_artifacts_exist():
@@ -531,33 +534,6 @@ def test_evaluation_numbers_unchanged():
     best = max(rows, key=lambda r: r["ndcg@10"])
     assert best["alpha"] == 0.4
     assert f"{best['ndcg@10']:.5f}" == "0.00208"
-
-
-def test_persona_payload_uses_user_id(client, register):
-    """TEST-AC-044: a persona account is served by the warm path only."""
-    register()
-    store = client.app.state.store
-    uid = int(store.get_user_by_email("budi@example.com")["id"])
-    with store.connect() as conn:
-        conn.execute("UPDATE users SET persona_user_id = 'U10045' WHERE id = ?", (uid,))
-
-    from web.clients.rec_api import RecClient
-    payloads: list[dict] = []
-    original = RecClient.recommend
-
-    async def spy(self, payload):
-        payloads.append(dict(payload))
-        return await original(self, payload)
-
-    RecClient.recommend = spy
-    try:
-        body = client.get("/").text
-    finally:
-        RecClient.recommend = original
-
-    assert payloads and "user_id" in payloads[-1]
-    assert "history" not in payloads[-1]
-    assert "profil dataset demo" in body.lower()
 
 
 def test_thin_metadata_never_leaks():

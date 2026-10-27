@@ -108,53 +108,51 @@ yang pernah dibuka (aturan v1.1 §8.3 tidak berubah):
 Kedalaman pool terjamin: chip terkecil (Cek Fakta) ber-pool3 54 item —
 jauh di atas kuota maksimum 10 setelah filter riwayat user baru (0 item).
 
-### 4.1 Mengapa batas 3 topik (jawaban untuk pertanyaan penguji)
+### 4.1 Mengapa batas 5 topik (jawaban untuk pertanyaan penguji)
 
-Batas `m <= 3` bukan angka bulat yang dipilih tanpa dasar: ia ditentukan oleh
-**interaksi antara ukuran feed dan kuota `q = ceil(10/m)`**, dan bisa
-dipertanggungjawabkan dengan membalik pertanyaannya — apa yang terjadi kalau
-batasnya dilonggarkan? Diukur pada list popularitas beku yang sama
-(`slice_by_topic`, katalog efektif 17.584 item):
+Batas `m <= 5` bukan angka bulat tanpa dasar: ia ditentukan oleh **interaksi
+antara ukuran feed dan kuota `q = ceil(12/m)`**. Diukur pada list popularitas
+beku yang sama (`slice_by_topic`, katalog efektif 17.584 item, feed 12 kartu):
 
-| `m` | `q = ceil(10/m)` | Kartu per topik (urutan kanonik) | Kartu terpakai |
-|---|---|---|---|
-| 1 | 10 | 10 | 10 |
-| 2 | 5 | 5, 5 | 10 |
-| **3** | **4** | **4, 3, 3** | **10** |
-| 4 | 3 | 3, 3, 2, 2 | 10 |
-| 5 | 2 | 2, 2, 2, 2, 2 | 10 |
-| 6 | 2 | 2, 2, 2, 2, 1, 1 | 10 |
-| 10 | 1 | 10 topik × 1 kartu | 10 |
-| 11 | 1 | 10 topik × 1 kartu, **1 topik × 0 kartu** | 10 |
-| 12 | 1 | 10 topik × 1 kartu, **2 topik × 0 kartu** | 10 |
+| `m` | `q = ceil(12/m)` | Kartu per topik (urutan kanonik) | Kartu terpakai | Topik dapat 0 |
+|---|---|---|---|---|
+| 1 | 12 | 12 | 12 | 0 |
+| 2 | 6 | 6, 6 | 12 | 0 |
+| 3 | 4 | 4, 4, 4 | 12 | 0 |
+| 4 | 3 | 3, 3, 3, 3 | 12 | 0 |
+| **5** | **3** | **3, 3, 2, 2, 2** | **12** | **0** |
+| 6 | 2 | 2, 2, 2, 2, 2, 2 | 12 | 0 |
+| 7 | 2 | 2, 2, 2, 2, 2, 1, 1 | 12 | 0 |
+| 10 | 2 | 2, 2, 1 × 8 | 12 | 0 |
+| 12 | 1 | 1 × 12 | 12 | 0 |
 
 Tiga alasan, semuanya terukur:
 
-1. **Feed hanya 10 kartu (PRD §18).** Setiap topik tambahan mengurangi kuota
-   per topik. Pada `m = 3` tiap topik masih mendapat 3–4 kartu (topik terkuat
-   = 40% feed) — cukup untuk menunjukkan topik itu hadir. Pada `m = 4` porsi
-   turun ke 30%, dan pada `m >= 5` tiap topik tinggal 1–2 kartu (20%): feed
-   menjadi mosaik rata, preferensi keenam hanya menggeser satu kartu, dan label
-   "Populer di topik pilihanmu" makin lemah karena tidak ada topik yang
-   benar-benar mewarnai hasil.
-2. **Di atas 10 topik, preferensi mulai kosong secara struktural.** Dengan
-   `q = 1` dan feed 10 kartu, `m = 11` menyisakan 1 topik tanpa satu kartu pun,
-   `m = 12` menyisakan 2. User memilih topik lalu tidak melihatnya sama sekali —
-   itu janji yang dilanggar oleh desainnya sendiri.
+1. **Setiap topik terpilih harus benar-benar tampil.** Pada `m = 5` topik
+   terkuat membawa 3 kartu dan yang lain 2 — total 12. Sampai `m = 12` tidak ada
+   topik yang mendapat nol kartu (feed 12 cukup untuk satu kartu per topik),
+   sehingga batas atas yang bisa dipertanggungjawabkan adalah **12**, bukan 5.
+   Di atas 12, topik terpilih mulai tidak terwakili sama sekali.
+2. **Di atas 6 topik, slice berhenti terbaca sebagai preferensi.** Mulai
+   `m = 7` ada topik yang hanya dapat 1 kartu; pada `m = 12` semua topik dapat
+   tepat 1 kartu, yang secara praktis sama dengan daftar popularitas yang
+   diacak per topik. Pilihan user berhenti mengubah komposisi feed.
 3. **Sinyalnya segera menjadi inersia (C6), jadi friksi harus kecil.**
    Onboarding muncul sekali dan langsung diambil alih jalur riwayat setelah
-   satu `view`. Menambah chip hanya menambah friksi untuk sinyal yang berhenti
-   dipakai begitu user membaca satu berita. Tiga dari dua belas chip (25%)
-   masih menyatakan preferensi tanpa menyalin hampir seluruh taksonomi.
+   satu `view`. Lima dari dua belas chip (42%) masih menyatakan preferensi
+   terarah tanpa menyalin hampir seluruh taksonomi.
 
 Konsekuensi yang harus disebut jujur: batas ini adalah **keputusan desain
-produk, bukan hasil optimasi**. Kami tidak mengukur bahwa 3 lebih baik daripada
-2 atau 4 terhadap kepuasan pengguna — tidak ada data user nyata untuk itu
+produk, bukan hasil optimasi**. Kami tidak mengukur bahwa 5 lebih baik daripada
+3 atau 7 terhadap kepuasan pengguna — tidak ada data user nyata untuk itu
 (interaksi korpus adalah simulasi). Yang bisa dipertanggungjawabkan adalah
-batas atas: mulai `m = 5` preferensi tambahan berhenti berpengaruh, dan mulai
-`m = 11` ada topik yang tidak terwakili sama sekali. Angka 3 dipilih karena
-berada di bawah kedua ambang itu dengan margin, sekaligus memberi user ruang
-menyatakan lebih dari satu minat.
+**plafonnya**: mulai `m = 7` topik mulai mendapat satu kartu, dan di atas
+`m = 12` topik terpilih tidak dapat kartu sama sekali. Angka 5 dipilih di bawah
+kedua ambang itu dengan margin.
+
+Catatan versi: batas ini semula 3 (draf v1.2, feed 10 kartu). Pada v1.3 feed
+menjadi 12 kartu dan batas naik ke 5 atas permintaan owner, dengan tabel di atas
+sebagai dasarnya — bukan angka yang dipilih tanpa perhitungan.
 
 ## 5. Skema Database (SQLite `data/web.db`)
 
@@ -169,7 +167,7 @@ absen — `DATA_MODEL.md` §3.4 dan PRD §9.4 dicabut terbatas oleh addendum ini
 | `position` | INTEGER | 1..m, **urutan kanonik chip §3** (dipakai determinisme) |
 | `created_at` | TEXT | UTC ISO-8601 |
 
-Batasan: `UNIQUE (user_id, label)`; maksimal **3** baris per user; dibaca
+Batasan: `UNIQUE (user_id, label)`; maksimal **5** baris per user (v1.3); dibaca
 server-side dari sesi (identitas dari sesi, bukan parameter); form post pakai
 CSRF (v1.1 §11). Skema idempoten via `CREATE TABLE IF NOT EXISTS` di jalur
 migrasi yang sama. Kolom/volume: <100 user demo, <100 KB — tanpa service baru.
@@ -201,7 +199,9 @@ Indeks: `UNIQUE (user_id, label)` sudah mencakup pola baca per user.
 ## 6. Alur UX (ringkas; detail screen masuk UX_FLOWS saat dilebur)
 
 1. Registrasi valid (FR-02 tetap) → screen onboarding opsional:
-   "Pilih sampai 3 topik yang kamu sukai" + 12 chip + tombol "Lewati".
+   "Pilih beberapa topik yang paling kamu sukai" + 12 chip + "Lewati".
+   Judul sengaja tanpa angka: batas 5 ditegakkan server-side, dan menyebut
+   angka di layar mengundang user menghitung chip alih-alih memilih.
 2. Lewati → langsung "Berita populer" (perilaku v1.1 persis).
 3. Pilih → simpan → feed **"Populer di topik pilihanmu"**.
 4. Buka artikel → `view` tercatat → feed berikutnya memakai jalur history
@@ -226,7 +226,7 @@ Indeks: `UNIQUE (user_id, label)` sudah mencakup pola baca per user.
   riwayat masing-masing. Urutan klik tidak memengaruhi hasil.
 - **PRD-AC-59 [P1]** Chip hanya 12 label §3; `Pemilu`, `Ramadan`, `Otomotif`,
   `Investigasi`, `Bersponsor`, dan tag portal mentah tidak pernah tampil.
-- **PRD-AC-60 [P1]** Form onboarding menerima maksimal 3 chip, menolak label
+- **PRD-AC-60 [P1]** Form onboarding menerima maksimal 5 chip, menolak label
   di luar set, memakai CSRF, dan bisa di-skip tanpa efek samping.
 - **PRD-AC-61 [P2]** Tabel `user_topics` tidak dibaca/ditulis pipeline riset;
   perubahan hanya di `src/web/` + migrasi idempoten.
@@ -275,7 +275,7 @@ pembimbing)
    tanpa sentuh kontrak/α/artefak.
 4. 12 chip dari aturan terukur §3.
 5. Kuota `ceil(10/m)` + isi ulang global.
-6. Tabel `user_topics` (3 baris maks/user, `position` kanonik) +
+6. Tabel `user_topics` (5 baris maks/user, `position` kanonik) +
    `users.topics_prompted_at` sebagai penanda "onboarding sudah ditampilkan".
 
 Jika semua disetujui, #8 dikerjakan (dilebur PRD v1.2), baru implementasi

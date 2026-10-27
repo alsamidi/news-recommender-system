@@ -37,6 +37,9 @@ def _render(request: Request, status_code: int = 200, error: str | None = None):
             "max_topics": MAX_TOPICS,
             "error": error,
             "active_page": None,
+            # Navigation is locked here: the wordmark is not a link and the nav
+            # links are hidden, so the only ways out are the two buttons.
+            "lock_nav": True,
         },
         status_code=status_code,
     )

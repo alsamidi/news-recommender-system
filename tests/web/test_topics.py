@@ -65,7 +65,7 @@ def test_onboarding_offered_once_then_never_again(client):
 
     first = client.get("/onboarding/topik")
     assert first.status_code == 200
-    assert "Pilih sampai 3 topik" in first.text
+    assert "Pilih beberapa topik yang paling kamu sukai" in first.text
 
     assert _post_topics(client, [], skip=True).status_code == 303
 
@@ -96,8 +96,10 @@ def test_onboarding_rejects_unknown_label_and_too_many(client):
     """TEST-AC-264 / PRD-AC-60: server-side validation, not just form shape."""
     _register(client)
     assert _post_topics(client, ["Topik Palsu"]).status_code == 400
+    # 6 chips exceeds the v1.3 cap of 5; 5 must still be accepted.
     assert _post_topics(
-        client, ["Politik", "Hukum", "Ekonomi", "Olahraga"]).status_code == 400
+        client, ["Politik", "Hukum", "Ekonomi", "Olahraga", "Multimedia",
+                 "Hiburan"]).status_code == 400
 
 
 def test_onboarding_requires_csrf(client):
@@ -268,3 +270,42 @@ def test_chip_set_matches_the_measured_rule():
     band_sizes = band.groupby("category").size().to_dict()
     derived.sort(key=lambda row: (-band_sizes[row[1]], row[1]))
     assert tuple(label for _, label in derived) == TOPIC_LABELS, derived
+
+
+def test_onboarding_locks_navigation(client):
+    """v1.3 #1: the wordmark is not a link on the onboarding screen.
+
+    The screen must be answered (save or skip), so leaving by clicking the logo
+    is disabled — but both buttons stay, so the user is never trapped.
+    """
+    _register(client)
+    body = client.get("/onboarding/topik").text
+    assert 'class="brand"' in body
+    assert 'class="brand" href' not in body
+    # Both exits remain.
+    assert "Simpan pilihan" in body
+    assert "Lewati" in body
+
+
+def test_onboarding_label_has_no_number(client):
+    """v1.3 #8: the heading says "beberapa", the cap is enforced server-side."""
+    _register(client)
+    body = client.get("/onboarding/topik").text
+    assert "Pilih beberapa topik yang paling kamu sukai" in body
+    assert "sampai 3 topik" not in body
+
+
+def test_five_topics_accepted_and_feed_has_twelve_cards(client):
+    """v1.3 #6/#8: cap 5, feed 12, q = ceil(12/5) = 3."""
+    _register(client)
+    five = ["Politik", "Hukum", "Ekonomi", "Multimedia", "Olahraga"]
+    assert _post_topics(client, five).status_code == 303
+
+    store = client.app.state.store
+    user = store.get_user_by_email("topic@example.com")
+    assert store.user_topics(int(user["id"])) == five
+
+    body = client.get("/").text
+    assert "Populer di topik pilihanmu" in body
+    nids = list(dict.fromkeys(NID.findall(body)))
+    assert len(nids) == 12, len(nids)

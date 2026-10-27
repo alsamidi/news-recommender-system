@@ -56,29 +56,34 @@ Consequences the web layer must understand:
 
 ```python
 def build_request(user, history_nids):
-    if user.persona_user_id:
-        return {"user_id": user.persona_user_id, "top_k": 30}   # warm
     if history_nids:
         return {"history": history_nids[:50], "top_k": 30}      # cold, history
-    return None                                                 # -> popular feed (D8)
+    return None                          # -> topic slice or popular feed (D8)
 ```
 
 The web layer then filters results against the user's **full** history (§5.4)
-and takes the top 10. `top_k=30` leaves room so that 10 cards remain after
+and takes the top 12. `top_k=30` leaves room so that 12 cards remain after
 filtering.
 
-Priority: **persona → history → popular**.
+Priority: **history → topic slice → popular**.
 
-There is **no topic-seed path**: topic selection is out of MVP scope
-(PRD §5.2, §18). An earlier draft routed topic chips into `history`; that is
-withdrawn.
+Two changes from the original design:
 
-### 3.1 Why persona comes first
+1. **No warm path from the web layer** (v1.3): the dataset-persona feature was
+   removed, so the app never sends `user_id`. `POST /recommend` still accepts it
+   per contract v1.0.0 — only this client stopped using it.
+2. **Topic selection exists, but never reaches the API** (v1.2): a 0-view user
+   who chose topics gets a category slice of the *frozen popularity list*, with
+   no `/recommend` call, no score and no re-ranking. An earlier draft routed
+   topic chips into `history`; that remains withdrawn.
 
-The persona demo account exists to showcase the warm path (ALS
-personalization). If history were also sent, the API would reject the request
-(both fields set). So persona **overrides** history; the UI must explain that
-the demo account uses the dataset profile.
+### 3.1 Why history wins over the topic slice
+
+A user with history has demonstrated a real signal; the topic preference is a
+one-time statement made before reading anything. Sending both would also be
+impossible: the API rejects a payload with both `user_id` and `history`, and the
+topic slice is a web-side filter rather than a request field. Once one article
+is opened, the preference becomes inert (C6).
 
 ### 3.2 Why history is capped at 50
 
@@ -94,7 +99,7 @@ demo users (< 100 reads) both are cheap; **D9** may choose "send everything".
 
 ## 4. Popularity Path (no-history feed)
 
-When a non-persona user has no history, the feed does **not** call
+When a user has no history, the feed does **not** call
 `/recommend`. It renders a popularity list computed from the research data.
 
 ### 4.1 Source and definition — APPROVED 2026-10-20
@@ -297,16 +302,17 @@ All integration decisions are **settled** (2026-10-20).
 
 Routing priority, with the exact conditions (not just a position in a list):
 
-1. persona present -> warm `/recommend` with `user_id` (never the topic feed);
-2. otherwise, history non-empty -> cold `/recommend` with `history`;
-3. otherwise, 0 views **and** stored topics -> topic feed:
+1. history non-empty -> cold `/recommend` with `history`;
+2. otherwise, 0 views **and** stored topics -> topic feed:
    `slice_by_topic(frozen_popularity)`, label "Populer di topik pilihanmu";
-4. otherwise -> "Berita populer" from the same frozen list.
+3. otherwise -> "Berita populer" from the same frozen list.
+
+(The persona/warm branch is gone in v1.3, so this is the complete order.)
 
 Step 3 is the only branch that can be confused with "personalisation", so the
 constraints are explicit: **no** `POST /recommend`, **no** α, **no** score, no
 re-ranking. The only operations added are a category filter over the frozen
-ranking, a round-robin interleave (`q = ceil(10/m)`), and a global top-up when
+ranking, a round-robin interleave (`q = ceil(12/m)`), and a global top-up when
 a topic pool is exhausted. Two users with the same topic set receive the same
 order, because `user_topics.position` is the canonical chip order rather than
 the order the browser happened to submit.

@@ -24,8 +24,8 @@ Dirinci di `PRD_Addendum_v1.2_Pilih_Topik_Cold_Start.md` (disetujui owner
    bila kuota topik habis.
 4. **Preferensi = data profil**, tabel `user_topics`, bukan event; tidak
    pernah masuk pipeline riset/ALS.
-5. **Handover keras.** Begitu ada ≥1 `view`, jalur prioritas v1.1 (persona →
-   history → populer) kembali berlaku dan preferensi menjadi inersia.
+5. **Handover keras.** Begitu ada ≥1 `view`, jalur prioritas (history →
+   populer) kembali berlaku dan preferensi menjadi inersia.
 6. **Label** “Populer di topik pilihanmu” — popularitas dalam topik pilihan,
    bukan keluaran model.
 7. **Set chip terukur:** 12 label dari aturan `seen ≥ 50` dikurangi
@@ -61,7 +61,7 @@ Produk terdiri dari dua bagian yang batasnya harus dijaga:
 - **User baru tanpa riwayat melihat berita populer** sebagai feed awal. Feed ini bukan hasil personalisasi model dan harus diberi label yang jujur.
 - **Setelah detail berita berhasil dibuka, website merekam satu event `view`.** Event ini berarti artikel dikunjungi, bukan bukti bahwa seluruh artikel telah dibaca.
 - **User biasa dengan riwayat memakai jalur cold-session** melalui `POST /recommend` dengan `history` berisi `nid` yang pernah dikunjungi.
-- **Akun persona korpus memakai jalur warm** melalui `POST /recommend` dengan `user_id` akun dummy hasil simulasi yang telah dikonfigurasi dan diverifikasi.
+- **Tidak ada akun persona dataset** (v1.3). Fitur itu dihapus beserta route, picker, seed CLI, dan kolom `users.persona_user_id`; tidak ada role di aplikasi.
 - Interaksi website **tidak otomatis melatih ulang ALS** dan tidak mengubah metrik penelitian.
 - **Interaksi model berasal dari simulasi akun dummy, bukan pengguna nyata.** UI dan laporan tidak boleh mengklaim bahwa personalisasi mencerminkan perilaku pembaca nyata.
 
@@ -73,7 +73,7 @@ Demo yang hanya meminta pengguna memasukkan `user_id` dataset atau menempelkan d
 - aktivitas mengunjungi berita benar-benar tersimpan;
 - pengguna dapat melihat riwayatnya;
 - riwayat menjadi input untuk rekomendasi berikutnya;
-- pengguna baru dan persona dataset dapat diperlihatkan melalui dua jalur yang jelas;
+- pengguna baru dengan dan tanpa riwayat dapat diperlihatkan melalui jalur yang jelas;
 - examiner bisa menguji alur dari UI tanpa memasukkan `nid` atau `user_id` secara manual.
 
 ## 3. Sasaran dan Ukuran Keberhasilan
@@ -85,7 +85,7 @@ Demo yang hanya meminta pengguna memasukkan `user_id` dataset atau menempelkan d
 3. Website menyimpan event `view` setelah detail artikel berhasil dimuat.
 4. Pengguna dapat melihat riwayat artikel yang pernah dibuka.
 5. User biasa dengan riwayat mendapat rekomendasi dari jalur cold-session API.
-6. Akun demo persona yang valid mendapat rekomendasi dari jalur warm API.
+6. ~~Akun demo persona~~ — dihapus di v1.3; demo memakai user biasa dengan riwayat.
 7. Detail artikel menyediakan blok “Berita serupa” dari endpoint `/similar/{nid}`.
 8. Seluruh data akun dan perilaku website terpisah dari data penelitian yang dibekukan.
 9. Demo end-to-end dapat dijalankan dan diuji tanpa input manual `nid` atau `user_id`.
@@ -93,7 +93,7 @@ Demo yang hanya meminta pengguna memasukkan `user_id` dataset atau menempelkan d
 ### 3.2 Kriteria keberhasilan produk
 
 - Alur register → login → feed awal → detail berita → interaksi tersimpan → rekomendasi dari riwayat → riwayat dapat diselesaikan tanpa error.
-- Alur akun persona → rekomendasi warm dapat didemonstrasikan tanpa pengguna mengetik `user_id`.
+- Alur user baru → topik opsional → detail → riwayat dapat diselesaikan tanpa mengetik `nid`/`user_id`.
 - Histori seorang pengguna tidak dapat dibaca oleh akun lain.
 - Feed tidak menampilkan `nid` duplikat dan tidak merekomendasikan berita yang ada di seluruh riwayat pengguna.
 - Teks UI tidak mengklaim model belajar real-time atau menyatakan feed populer sebagai hasil personalisasi.
@@ -119,13 +119,13 @@ Persona dataset adalah **akun demo yang dikonfigurasi oleh pengembang**, bukan t
 - Registrasi, login, logout, sesi, dan perlindungan halaman privat.
 - Feed berita populer untuk akun tanpa histori.
 - Feed rekomendasi cold-session untuk user biasa yang memiliki histori.
-- Feed rekomendasi warm untuk akun persona dataset.
+- Feed irisan topik untuk user 0-view yang memilih topik (v1.2).
 - Detail berita.
 - Pencatatan event `view`.
 - Halaman histori.
 - Blok “Berita serupa” pada detail berita.
 - Penanganan kondisi loading/error/empty state.
-- Akun persona demo yang dibuat melalui konfigurasi atau perintah seed internal.
+- (dihapus v1.3) Akun persona demo beserta seed internalnya.
 - Unit test, integration test, smoke test, dokumentasi cara menjalankan, dan bukti demo.
 
 ### 5.2 Tidak masuk MVP
@@ -177,36 +177,33 @@ Aturan:
 ```mermaid
 flowchart TD
     A[Login] --> B[Ambil akun dari sesi]
-    B --> C{Akun persona dataset?}
-    C -- Tidak --> D[Ambil histori pengguna dari SQLite]
-    D --> E[Susun nid unik menurut kunjungan terbaru]
-    E --> F[POST /recommend dengan history]
+    B --> D[Ambil histori pengguna dari SQLite]
+    D --> E{Ada histori?}
+    E -- Ya --> F[POST /recommend dengan history]
     F --> G[Filter seluruh nid yang pernah dikunjungi]
     G --> H[Deduplikasi dan pertahankan urutan API]
-    H --> I[Tampilkan maksimal 10 berita]
+    H --> I[Tampilkan maksimal 12 berita]
+    E -- Tidak --> J{Memilih topik?}
+    J -- Ya --> K[Irisan list popularitas beku per topik]
+    J -- Tidak --> L[List popularitas beku]
+    K --> I
+    L --> I
 ```
 
-Input `history` berisi maksimal 50 `nid` unik terbaru. Sesudah respons API, web app harus menyaring hasil terhadap **seluruh riwayat** pengguna, termasuk artikel yang lebih lama dan tidak ikut dikirim dalam jendela 50. Penyaringan hanya membuang artikel yang sudah dikunjungi; tidak boleh menghitung ulang skor atau mengurutkan ulang hasil API.
+Input `history` berisi maksimal 50 `nid` unik terbaru; feed menampilkan maksimal 12 kartu. Sesudah respons API, web app harus menyaring hasil terhadap **seluruh riwayat** pengguna, termasuk artikel yang lebih lama dan tidak ikut dikirim dalam jendela 50. Penyaringan hanya membuang artikel yang sudah dikunjungi; tidak boleh menghitung ulang skor atau mengurutkan ulang hasil API.
 
-### 6.3 Akun demo persona dataset
+### 6.3 Akun demo persona dataset — DIHAPUS (v1.3)
 
-```mermaid
-flowchart TD
-    A[Login akun demo] --> B[Ambil persona_user_id dari database]
-    B --> C[POST /recommend dengan user_id]
-    C --> D[Mode warm dari API]
-    D --> E[Filter artikel yang sudah dikunjungi di website]
-    E --> F[Tampilkan maksimal 10 berita]
-    F --> G[Pengguna membuka detail]
-    G --> H[Simpan event view ke SQLite]
-```
+Fitur persona dataset dihapus atas keputusan owner: aplikasi tidak punya role,
+tidak ada picker tanpa kata sandi, tidak ada akun seed, dan kolom
+`users.persona_user_id` di-drop oleh migrasi idempoten. Alasan: persona hanya
+ada untuk mendemokan jalur warm dari akun dataset, sementara jalur itu
+membutuhkan `user_id` dataset yang tidak dimiliki user sungguhan; demo kini
+memakai user biasa dengan riwayat (cold-session) dan user 0-view dengan topik.
 
-Aturan:
-
-- Persona harus dipilih dari ID yang telah diverifikasi memiliki faktor ALS; jangan menerima ID persona dari query string/form publik.
-- Jika persona tidak valid atau API mengembalikan 404, sistem boleh mencoba jalur `history` apabila akun memiliki histori website. Jika tidak ada histori, tampilkan pesan yang jelas dan catat error internal tanpa membuka detail teknis ke browser.
-- Jalur warm memakai `user_id` saja. Jangan mengirim `user_id` dan `history` dalam request yang sama.
-- Rekomendasi warm merepresentasikan interaksi simulasi yang sudah ada pada korpus. Kunjungan baru di SQLite tidak otomatis dimasukkan ke riwayat train korpus atau melatih ulang ALS.
+Konsekuensi yang harus disebut saat demo: **tidak ada lagi jalur warm** di UI.
+`POST /recommend` tetap menerima `user_id` sesuai kontrak API v1.0.0 — yang
+dihapus adalah cara web memakainya, bukan kontraknya.
 
 ## 7. Kebutuhan Fungsional
 
@@ -353,10 +350,16 @@ Katalog korpus baru tidak memiliki abstrak maupun subkategori, sehingga keduanya
 
 ### 10.3 Data yang tidak boleh direkayasa
 
-Korpus baru menyediakan sumber dan tanggal terbit, tetapi tidak menyediakan gambar, penulis, atau URL tampilan yang layak. Karena itu:
+Korpus menyediakan sumber, tanggal terbit, dan **URL asli portal** (kolom `Link`
+pada CSV mentah; `nid = "I" + sha1(Link)[:10]`, terverifikasi 67.381/67.381).
+Gambar dan penulis tetap tidak tersedia. Karena itu:
 
-- Sumber dan tanggal terbit **boleh ditampilkan** karena tersedia nyata di korpus; atribusi cukup dengan label teks (mis. “Sumber: Tempo”).
-- Jangan menampilkan tautan eksternal portal (di luar MVP, lihat §5.2).
+- Sumber dan tanggal terbit **boleh ditampilkan** karena tersedia nyata di korpus.
+- **Tautan ke portal asli boleh ditampilkan** (v1.3), dengan tiga syarat: hanya
+  satu tautan per halaman, diletakkan setelah isi berita sebagai atribusi,
+  dan URL-nya **berasal dari data** — tidak pernah disusun, ditebak, atau
+  ditulis tangan. Tautan yang host-nya tidak cocok dengan `source` artikel
+  dianggap bug.
 - Jangan menambahkan thumbnail/foto palsu.
 - Jangan menampilkan nama penulis yang tidak berasal dari data.
 - Jangan menampilkan `processed_text` sebagai isi berita karena teks tersebut telah diproses untuk pemodelan; yang boleh tampil adalah `content` asli korpus.
@@ -484,7 +487,8 @@ Korpus baru menyediakan sumber dan tanggal terbit, tetapi tidak menyediakan gamb
 - Feed cold-session: **“Rekomendasi dari riwayat bacaanmu”**.
 - Feed persona: **“Rekomendasi berdasarkan profil akun demo”**.
 - Feed topik (v1.2): **“Populer di topik pilihanmu”**.
-- Onboarding topik: judul **“Pilih sampai 3 topik yang kamu sukai”**, subjudul
+- Onboarding topik: judul **“Pilih beberapa topik yang paling kamu sukai”**
+  (tanpa angka — batas 5 ditegakkan server-side), subjudul
   **“Pilihanmu hanya dipakai untuk feed awal. Rekomendasi dari riwayat
   bacaanmu akan aktif setelah kamu membuka berita.”**, tombol
   **“Simpan pilihan”** dan **“Lewati”**.
@@ -518,7 +522,7 @@ Hindari frasa “model belajar dari kamu secara real-time”, “akurasi tinggi�
 | Bagaimana behavior direkam? | Event `view` saat detail berita valid dibuka |
 | Perlukah rating/like/durasi baca? | Tidak |
 | Apakah interaksi web melatih ulang ALS? | Tidak |
-| Bagaimana user lama dataset didemonstrasikan? | Akun persona internal dipetakan ke ID akun dummy korpus simulasi yang memiliki faktor ALS |
+| Bagaimana user lama dataset didemonstrasikan? | **Tidak didemonstrasikan** (v1.3): fitur persona dataset dihapus — tidak ada role, picker, atau akun seed. Demo memakai user biasa dengan riwayat |
 | Database web | SQLite lokal |
 | Batas history yang dikirim ke API | 50 `nid` unik terbaru; hasil difilter terhadap histori penuh |
 | Jumlah artikel feed | Maksimal 10; API dipanggil dengan `top_k=30` untuk memberi ruang setelah filter |

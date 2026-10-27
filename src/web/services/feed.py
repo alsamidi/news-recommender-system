@@ -1,7 +1,6 @@
 """Feed assembly: the only place that decides which API path to use."""
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 
 from fastapi import Request
@@ -9,13 +8,11 @@ from fastapi import Request
 from ..clients.rec_api import RecAPIError
 from .topics import slice_by_topic
 
-logger = logging.getLogger(__name__)
-
 
 @dataclass
 class FeedResult:
     articles: list[dict] = field(default_factory=list)
-    # popular | cold-session | warm | topic
+    # popular | cold-session | topic
     mode: str = "popular"
     notice: str | None = None
 
@@ -74,29 +71,6 @@ async def build_feed(request: Request) -> FeedResult:
     user_id = int(user["id"])
 
     full_history = store.all_history_nids(user_id)
-    persona_id = user["persona_user_id"]
-
-    # 1) Persona -> warm
-    if persona_id:
-        try:
-            body = await client.recommend({"user_id": persona_id, "top_k": cfg.rec_top_k})
-            rows = [a for a in body["recommendations"] if a["nid"] not in full_history]
-            deduped = _dedupe_keep_order(rows, cfg.feed_limit)
-            return FeedResult(await _attach_details(client, deduped), "warm")
-        except RecAPIError as exc:
-            # Invalid persona seed: fall through to history, then popular.
-            notice = "Profil dataset demo tidak tersedia; menampilkan rekomendasi lain."
-            result = await _history_or_popular(request, user_id, full_history, client,
-                                               popularity, cfg)
-            result.notice = notice
-            return result
-        except Exception as exc:  # noqa: BLE001 - surface, never swallow silently
-            logger.exception("persona feed failed for user %s: %s", user_id, exc)
-            notice = "Terjadi kendala saat memuat profil demo; menampilkan rekomendasi lain."
-            result = await _history_or_popular(request, user_id, full_history, client,
-                                               popularity, cfg)
-            result.notice = notice
-            return result
 
     return await _history_or_popular(request, user_id, full_history, client,
                                      popularity, cfg)

@@ -15,10 +15,17 @@
       <a href="/berita/{{ a.nid }}?from=history">
         <span class="history-title">{{ a.title or a.nid }}</span>
       </a>
+      {# Two deliberate lines: category, then source + date. Free wrapping put
+         the separator at the start of the second line and the date looked
+         misplaced (TEST-AC-257: four grid children, geometry identical). #}
       <span class="history-cat">
-        {{ a.category or 'umum' }}
-        {% if a.source_label %}<span class="history-sub">Sumber: {{ a.source_label }}</span>{% endif %}
-        {% if a.published_text %}<span class="history-sub">{{ a.published_text }}</span>{% endif %}
+        <span class="history-meta-line">{{ a.category or 'umum' }}</span>
+        {% if a.source_label or a.published_text %}
+        <span class="history-meta-line">
+          {% if a.source_label %}<span class="history-sub">Sumber: {{ a.source_label }}</span>{% endif %}
+          {% if a.published_text %}<span class="history-sub">{{ a.published_text }}</span>{% endif %}
+        </span>
+        {% endif %}
       </span>
       <time class="history-time">Dibaca {{ a.viewed_at }}</time>
       <span class="history-readers">
