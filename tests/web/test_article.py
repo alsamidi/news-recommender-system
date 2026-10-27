@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 NID = re.compile(r'/berita/([NI][0-9a-zA-Z]+)')
+
+REPO = Path(__file__).resolve().parents[2]
 
 
 def _store(client):
@@ -52,23 +55,33 @@ def test_unknown_nid_returns_404_and_no_row(client, register):
     assert _store(client).count_interactions(_uid(client)) == before  # TEST-AC-032
 
 
-def test_article_without_abstract_renders_cleanly(client, register):
+def test_article_with_empty_content_renders_cleanly(client, register):
+    """TEST-AC-065: an empty body renders title + meta only.
+
+    Previously this test hunted for a "Ringkasan tidak tersedia" sentinel that
+    the indo templates no longer emit, so it always fell through to the else
+    branch and never exercised the empty case. The corpus has exactly three
+    empty-content articles, so pick one from the catalog itself: deterministic,
+    and this test now actually fails if an empty body starts rendering a
+    placeholder or a raw `None`.
+    """
+    import pandas as pd
+
+    catalog = pd.read_parquet(
+        REPO / "data/processed/indo/catalog.parquet",
+        columns=["nid", "content"])
+    empty = catalog[catalog["content"].fillna("").str.len() == 0]
+    assert not empty.empty, "corpus has no empty-content article to test"
+    nid = str(empty.iloc[0]["nid"])
+
     register()
-    store = _store(client)
-    with store.connect() as conn:
-        row = conn.execute(
-            "SELECT nid FROM interactions LIMIT 1").fetchone()
-    # Find a catalog nid whose abstract is missing via the API response.
-    from web.clients.rec_api import RecClient  # noqa: F401
-    candidates = NID.findall(client.get("/").text)[:10]
-    for nid in candidates:
-        detail = client.get(f"/berita/{nid}").text
-        if "Ringkasan tidak tersedia untuk berita ini." in detail:
-            break
-    else:
-        # No such article in this feed slice; the copy check is enough.
-        detail = client.get(f"/berita/{candidates[0]}").text
-    assert "None" not in detail                          # TEST-AC-065
+    r = client.get(f"/berita/{nid}")
+    assert r.status_code == 200
+    body = r.text
+    assert "None" not in body
+    assert "Ringkasan tidak tersedia" not in body
+    assert 'class="article-body' not in body            # nothing to render
+    assert "article-headline" in body                    # title still there
 
 
 def test_similar_block_excludes_self(client, register):

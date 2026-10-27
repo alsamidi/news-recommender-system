@@ -254,8 +254,17 @@ a:hover { color: var(--color-link-active); }
   /* Title takes the slack; metadata columns are fixed so a row with only
      "1× via web" does not shrink the last column and shift category/time
      leftwards relative to rows that carry both counts. 220px fits
-     "4257× via MIND · 8× via web" at 14px with room to spare. */
-  grid-template-columns: minmax(0, 1fr) 120px 210px 220px;
+     "4257× via MIND · 8× via web" at 14px with room to spare.
+
+     The category cell also carries the catalogue source and publication date
+     (one cell, not extra columns — TEST-AC-257). Measured in-browser at this
+     type size: the whole meta on ONE line needs 316px, while
+     "MULTIMEDIA · Sumber: Tempo" needs 196px. 240px therefore renders a
+     uniform two lines (category+source, then date) and leaves the title the
+     rest of the slack; 120px — the MIND-era value, when the cell held only a
+     category — wrapped it to three. Widening to 316px would not save row
+     height (long headlines wrap regardless), only steal it from the title. */
+  grid-template-columns: minmax(0, 1fr) 240px 210px 220px;
   align-items: baseline;
   gap: var(--space-md);
   padding: var(--space-sm) 0;

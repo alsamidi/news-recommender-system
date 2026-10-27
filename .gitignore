@@ -52,3 +52,6 @@ Thumbs.db
 
 # Artifact release archives (built by scripts/pack_artifacts.sh)
 dist/
+
+# Local agent scratch (plans, transcripts) — never committed
+.hermes/
