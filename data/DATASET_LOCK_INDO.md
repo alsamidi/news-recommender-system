@@ -48,6 +48,50 @@ versi 1 yang sudah beku.
   keras, bukan warning. Bawa hasil assert (jumlah artikel, jumlah nid unik)
   ke output preproses untuk dibandingkan dengan angka lock ini.
 
+## Katalog (Gerbang A — terkunci 2026-10-27)
+- Builder: `python -m src.phase2.build_corpus_indo` (`src/phase2/`, beku-set
+  research v1 tidak disentuh; rules stemming replika v1 — Sastrawi per
+  kata-unik, timeout 0,3 dtk, stopwords `configs/stopwords_id.txt`, tanpa
+  kamus alay).
+- File katalog: `data/processed/indo/catalog.parquet` (gitignored; hash di
+  bawah adalah identitasnya).
+- sha256: `971c4db2853735b4c7627d0e119a8624bc6d1cd95121f61ee72066ade5836bca`
+- Kolom: `nid, title, content, processed_text, category, source,
+  published_at, split` — `split="unsplit"` semua baris (cutoff nanti dari
+  interaksi, Gerbang setelah generator).
+- Angka terukur build (assert keras lulus): 80.472 mentah → 67.381 unik
+  (== angka lock), nid unik 67.381, tabrakan 0. Per sumber: kompas 35.275,
+  tempo 25.580, detik 6.526. — Catatan detik: 19.390 baris mentah menyusut
+  jadi 6.526 URL unik (pola re-scrape; total dupl. URL 6.691 group).
+- `published_at`: tz-aware UTC dari parser Waktu (via keputusan ±7h di
+  docstring parser; kompas tanpa jam = midnight).
+- Kategori: turunan seksi URL 100% tercakup (unknown = build gagal keras).
+  Peta final `SECTION_TO_LABEL` (sumber: build summary JSON
+  `docs/evidence/phase2/build_summary.json`; tempo→12 label, detik→7,
+  kompas→1 label "Berita"):
+  - tempo: politik→Politik; hukum→Hukum; ekonomi→Ekonomi; internasional,
+    dw, bbc-world, abc-australia, internasional-utama→Internasional;
+    sepakbola, hno, bola, olahraga→Olahraga; hiburan, gaya-hidup, musik,
+    seleb→Hiburan; teroka→Teroka; sains, digital, tekno→Tekno-Sains;
+    lingkungan→Lingkungan; kolom, tokoh, wawancara→Kolom;
+    cekfakta→Cek Fakta; info-tempo, arsip, newsletter, data,
+    prelude→Info Tempo; foto, video, infografik, detiktv,
+    infografis→Multimedia; investigasi→Investigasi; otomotif→Otomotif;
+    ramadan, ramadhan→Ramadan.
+  - detik: berita→Berita; pilkada, pemilu→Pemilu; dw, bbc-world,
+    abc-australia, internasional-utama→Internasional; kolom→Kolom;
+    detiktv, infografis→Multimedia; adv-nhl-detikcom, bangun-indonesia,
+    melindungi-tuah-marwah→Bersponsor. — **Batasan sumber (bukan bug):**
+    semua URL detik bertumpu pada satu subdomain `news.detik.com`; seksi
+    diambil dari segmen path channel.
+  - kompas: subdomain nasional, megapolitan, regional→Berita;
+    internasional→Internasional (1 artikel).
+- Distribusi kategori terukur: Berita 40.468, Politik 4.928, Ekonomi 3.736,
+  Hukum 3.697, Multimedia 2.330, Internasional 2.225, Info Tempo 2.168,
+  Hiburan 1.998, Olahraga 1.877, Tekno-Sains 969, Teroka 884, Lingkungan
+  793, Pemilu 475, Kolom 349, Bersponsor 265, Cek Fakta 166, Otomotif 34,
+  Ramadan 10, Investigasi 9.
+
 ## Interaksi
 - Tidak ada interaksi nyata pada korpus. Interaksi dibangkitkan oleh
   **generator akun dummy** (pipeline penelitian), event `view` saja, satu
