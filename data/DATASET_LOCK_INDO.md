@@ -169,6 +169,33 @@ versi 1 yang sudah beku.
   tidak kebagian view di TRAIN (cold-start ALS); mereka tetap tervalidasi
   lewat jalur CBF/popularity dan tidak pernah dipaksa punya faktor.
 
+## Evaluasi (4 sistem + sensitivitas —Task 11/12, 2026-10-27)
+- Artefak angka: `models/indo_eval.json` (komit; pola
+  metrics_source_of_truth — setiap angka telusur ke JSON di
+  `docs/evidence/phase2/`); matriks penuh:
+  `docs/evidence/phase2/sensitivity_matrix.json` (9 titik: seed {1,2,3} ×
+  s {0.9, 1.1, 1.3}).
+- Protokol: rank FULL katalog DEV (tanpa sampled negatives); relevan = item
+  dev yang di-view akun itu sendiri; NDCG@10, AP@10 (MAP), Recall@10;
+  k = 10. CBF: TF-IDF fit HANYA di katalog train (`processed_text`),
+  transform full catalog; profil akun = mean vektor item train yang
+  di-view. Hybrid: α·minmax(ALS) + (1−α)·minmax(CBF) per akun, α ∈
+  {0.2,0.4,0.6,0.8} — grid di JSON, TIDAK di-hardcode; web tidak pernah
+  mengirim α (PRD AC-02).
+- **Winner α (mean NDCG@10 lintas 9 titik): 0.8** (grid mean: 0.2 → 0.00217,
+  0.4 → 0.00256, 0.6 → 0.00273, 0.8 → 0.00297). Per titik winner juga 0.8
+  (2 pengecualian: seed 1 s=1.1 → 0.2; seed 3 s∈{1.1,1.3} → 0.6).
+- Urutan sistem konsisten di semua 9 titik: popularity > ALS > hybrid > CBF.
+  **Caveat jujur (wajib dibaca sebelum kutip):** interaksi adalah SIMULASI
+  view-only yang popularity-process-nya didefinisikan generator itu sendiri
+  — popularity baseline di sini referensi batas-atas, bukan kemenangan
+  sistem; skala absolut NDCG (~0.01) adalah properti tugas (katalog dev
+  67k, relevant ~24 item/akun), bukan bug.
+- n per sel: 600 akun untuk SEMUA sel (sama — aman dibandingkan silang;
+  tetap sebut kolom n saat mengutip, aturan Tabel D).
+- Verifikasi waktu: generated_at_utc instrumen eval ≥ waktu commit cutoff
+  (Task 9) — lulus (10:47 vs 10:03 +07).
+
 ## Aturan campur
 - Larangan campur: MIND split/join/jumlah NID tidak boleh dipakai untuk
   korpus ini dan sebaliknya. `data/DATASET_LOCK.md` tetap memaku riset v1.
