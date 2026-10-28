@@ -11,7 +11,7 @@ Status: **usulan desain untuk direview sebelum implementasi agent**.
 5. Web tidak melatih ulang model, mengubah artefak, menulis ke Parquet, mengubah alpha=0.4, atau mengubah kontrak API v1.0.0.
 6. Artikel dibaca dari katalog/API, bukan tabel artikel lokal. `interactions.nid` adalah referensi logis yang divalidasi aplikasi, bukan foreign key SQL.
 7. MVP hanya mencatat event `view`. Rating, pencarian, profil preferensi, dan fitur admin tidak masuk diagram inti.
-8. Feed rekomendasi: request `top_k=30`, filter semua `nid` yang pernah dibaca, deduplikasi berdasarkan `nid`, lalu tampilkan maksimal 10 dengan urutan hasil API yang tetap.
+8. Feed rekomendasi: request `top_k=30`, filter semua `nid` yang pernah dibaca, deduplikasi berdasarkan `nid`, lalu tampilkan maksimal 12 dengan urutan hasil API yang tetap.
 9. Jika akun persona warm mendapat 404 karena mapping tidak valid, coba jalur history jika ada; jangan tampilkan error mentah ke pengguna.
 
 ## 1. Use Case Diagram

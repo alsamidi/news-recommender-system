@@ -105,7 +105,7 @@ Persona account ──► Login ──► Feed (warm, from dataset profile)
 |---|--------|-------------|--------|--------------|
 | 1 | Landing | Click "Daftar" / "Masuk" | Route to Register/Login | — |
 | 2 | Register | Fill name, email, password, repeat password | Validate, create account, start session | `users` |
-| 3 | Feed | View up to 10 cards | No history → popular list. History → `POST /recommend` (§4) | — |
+| 3 | Feed | View up to 12 cards | No history → popular list. History → `POST /recommend` (§4) | — |
 | 4 | Detail | Click "Baca Selengkapnya" | `GET /article/{nid}`; record the read | `interactions` |
 | 5 | Detail | View "Berita serupa" | `GET /similar/{nid}` | — |
 | 6 | History | Open the History menu | Read the user's `interactions` | — |
@@ -138,9 +138,8 @@ Persona account ──► Login ──► Feed (warm, from dataset profile)
 | "Berita serupa" | `GET /similar/{nid}?top_k=5` | — | — |
 | Health/badge | `GET /health` | — | — |
 
-`top_k=30` (not 10) is required so that ~10 cards remain after filtering out
-already-read articles. The web layer then renders at most 10, preserving API
-order.
+`top_k=30` is required so that enough cards survive filtering out already-read
+articles. The web layer then renders at most 12, preserving API order.
 
 **Hard rule:** the UI must not compute scores, must not reorder results, and
 must not render `score` in any form (D22). See `RECOMMENDATION_INTEGRATION.md`.

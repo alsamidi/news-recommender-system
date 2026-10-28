@@ -261,7 +261,7 @@ Jangan mengirim `user_id` dan `history` bersama-sama. Jangan mengirim parameter 
 - Untuk payload rekomendasi, susun `nid` unik berdasarkan kunjungan terbaru dan kirim maksimal 50.
 - Jangan menghapus `nid` dari payload berdasarkan asumsi bahwa item tidak memiliki faktor ALS. Input model harus dipertahankan sesuai histori yang dipilih.
 - Setelah menerima respons, hapus `nid` yang ada dalam **semua** histori website user untuk mencegah berita lama muncul kembali karena payload dibatasi 50.
-- Deduplikasi hasil dan pertahankan urutan relatif dari API. Ambil maksimal 10 hasil setelah filtering.
+- Deduplikasi hasil dan pertahankan urutan relatif dari API. Ambil maksimal 12 hasil setelah filtering.
 - Jika hasil tersisa kurang dari 10, tampilkan jumlah yang tersedia; jangan mengisi dengan artikel duplikat atau mengarang rekomendasi.
 - Bila item dalam histori tidak mempunyai pasangan ALS, API mungkin menjalankan fallback content-only sementara `mode` tetap `cold-session`. UI tidak boleh mengklaim bahwa setiap respons pasti menggunakan ALS.
 
@@ -434,11 +434,11 @@ Gambar dan penulis tetap tidak tersedia. Karena itu:
 
 ### C. Feed dan rekomendasi
 
-- **PRD-AC-20 [P0]** User tanpa histori melihat maksimal 10 artikel populer yang diambil dari statistik interaksi train hasil simulasi; label “Berita populer” terlihat.
+- **PRD-AC-20 [P0]** User tanpa histori melihat maksimal 12 artikel populer yang diambil dari statistik interaksi train hasil simulasi; label “Berita populer” terlihat.
 - **PRD-AC-21 [P0]** Feed user dengan histori memanggil API menggunakan `history` dan `top_k=30`.
 - **PRD-AC-22 [P0]** Feed persona memanggil API menggunakan `user_id` akun dummy terkonfigurasi dan `top_k=30`.
 - **PRD-AC-23 [P0]** Web tidak pernah mengirim `user_id` dan `history` bersama-sama.
-- **PRD-AC-24 [P0]** Feed menyaring semua `nid` dari histori penuh, deduplikasi, mempertahankan urutan API, lalu mengambil maksimal 10.
+- **PRD-AC-24 [P0]** Feed menyaring semua `nid` dari histori penuh, deduplikasi, mempertahankan urutan API, lalu mengambil maksimal 12.
 - **PRD-AC-25 [P0]** Tidak ada artikel duplikat dalam satu feed dan tidak ada artikel yang sudah dikunjungi di hasil feed.
 - **PRD-AC-26 [P0]** Mengunjungi artikel lalu kembali ke feed menyebabkan payload `history` berikutnya mencakup `nid` yang baru saja dikunjungi (bila akun bukan persona).
 - **PRD-AC-27 [P0]** Skor API tidak digunakan untuk menyusun ranking baru dan tidak ditampilkan sebagai persentase/bintang.

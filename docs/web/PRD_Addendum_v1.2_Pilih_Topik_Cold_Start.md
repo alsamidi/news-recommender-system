@@ -93,14 +93,15 @@ Dengan `m` = topik terpilih (1 ≤ m ≤ 3), urutan topik = **urutan kanonik chi
 `P_L` = list popularitas beku yang difilter label `L`; riwayat = seluruh `nid`
 yang pernah dibuka (aturan v1.1 §8.3 tidak berubah):
 
-1. **Kuota per topik:** `q = ceil(10 / m)`.
+1. **Kuota per topik:** `q = ceil(FEED_SIZE / m)`; pada v1.3 `FEED_SIZE = 12`
+   (sebelumnya 10).
 2. **Ambil awal:** dari tiap `P_L` ambil `q` teratas; sisipkan round-robin
-   (`P_1[0], P_2[0], …, P_1[1], …`) hingga ≥10 kandidat.
-3. **Isi ulang:** jika hasil kurang dari 10 (pool topik habis / tersaring
+   (`P_1[0], P_2[0], …, P_1[1], …`) hingga ≥`FEED_SIZE` kandidat.
+3. **Isi ulang:** jika hasil kurang dari `FEED_SIZE` (pool topik habis / tersaring
    riwayat), isi dari list popularitas global beku berurutan (skip yang sudah
    masuk/sudah dibaca). Isian global dilerui: tampil normal, tanpa label khusus.
 4. **Gerbang keluaran sama dengan v1.1:** filter seluruh riwayat → dedup
-   `nid` → pertahankan urutan irisan → maksimal 10 kartu.
+   `nid` → pertahankan urutan irisan → maksimal `FEED_SIZE` kartu (12 pada v1.3).
 5. **Larangan:** tidak memanggil `/recommend`, tidak membentuk skor, tidak
    mengurutkan ulang satu pun list popularitas; satu-satunya operasi baru
    adalah irisan dan interleave deterministik dari list yang sudah beku.
@@ -187,7 +188,7 @@ Indeks: `UNIQUE (user_id, label)` sudah mencakup pola baca per user.
    dipenuhi. Kolom ditambahkan lewat `ALTER TABLE` idempoten yang dijaga
    `PRAGMA table_info` — `CREATE TABLE IF NOT EXISTS` tidak berpengaruh pada
    tabel `users` yang sudah ada di `data/web.db`.
-3. **m = 0 berarti Lewati.** `ceil(10/m)` tidak terdefinisi untuk m = 0, maka
+3. **m = 0 berarti Lewati.** `ceil(FEED_SIZE/m)` tidak terdefinisi untuk m = 0, maka
    form tanpa chip tidak menulis preferensi apa pun (hanya penanda).
 4. **Desain chip memakai token yang ada**: radius `{rounded.sm}` (DESIGN.md
    tidak punya token chip; `{rounded.pill}` pricing-only, `{rounded.full}`
@@ -274,7 +275,7 @@ pembimbing)
 3. Seleksi kandidat dari list popularitas beku; tanpa skor/baru ranking baru;
    tanpa sentuh kontrak/α/artefak.
 4. 12 chip dari aturan terukur §3.
-5. Kuota `ceil(10/m)` + isi ulang global.
+5. Kuota `ceil(FEED_SIZE/m)` + isi ulang global.
 6. Tabel `user_topics` (5 baris maks/user, `position` kanonik) +
    `users.topics_prompted_at` sebagai penanda "onboarding sudah ditampilkan".
 

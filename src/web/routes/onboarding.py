@@ -8,7 +8,7 @@ Invariants this module owns:
   Without that marker a 0-view user who pressed "Lewati" would be asked again
   on every visit.
 - Skipping is always available and has no side effect beyond the marker (C2).
-- Submitting zero chips is **skip** (m = 0 has no quota; `ceil(10/0)` is
+- Submitting zero chips is **skip** (m = 0 has no quota; `ceil(FEED_SIZE/0)` is
   undefined), so the endpoint cannot store an empty preference that would
   later look like a chosen topic set.
 - Only labels in the measured chip set are accepted, server-side (C7/§3);

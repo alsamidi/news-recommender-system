@@ -114,8 +114,8 @@ bash scripts/smoke_demo.sh         # original API + demo UI proof
 
 | Scenario | Steps |
 |----------|-------|
-| A — new user | register → popular feed (10 cards) → open 2 articles → 2 `view` rows → cold feed excludes them → history lists them |
-| B — persona | seed → login → warm feed (10 cards) → open detail |
+| A — new user | register → popular feed (12 cards) → open 2 articles → 2 `view` rows → cold feed excludes them → history lists them |
+| B — persona | seed → login → warm feed (12 cards) → open detail |
 
 It also asserts the frozen `/health` payload is unchanged, anonymous access is
 redirected, and no traceback reaches the log. It runs on a temporary database

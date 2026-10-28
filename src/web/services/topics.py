@@ -96,13 +96,20 @@ def slice_by_topic(popular_nids, catalog_category: dict[str, str],
                    labels: list[str]) -> list[str]:
     """Interleave the frozen popular list per topic, then top up globally.
 
-    Exact definition from addendum §4:
+    Exact definition from addendum §4, at the v1.3 feed size of 12:
 
-    1. ``q = ceil(10 / m)`` per topic.
+    1. ``q = ceil(FEED_SIZE / m)`` per topic. With the cap of 5 topics this
+       gives q = 3 for m = 5 and q = 4 for m = 3 (see addendum §4.1).
     2. Take the first ``q`` nids of each topic slice; interleave round-robin.
-    3. If fewer than 10 remain, top up from the global frozen list, skipping
-       nids already taken. A topped-up item is not labelled specially.
-    4. Output gate is v1.1's: filter history -> dedupe -> keep order -> max 10.
+    3. If fewer than ``FEED_SIZE`` remain, top up from the global frozen list,
+       skipping nids already taken. A topped-up item is not labelled specially.
+    4. Output gate is v1.1's: filter history -> dedupe -> keep order -> max
+       ``FEED_SIZE``.
+
+    Round-robin means the last picks fall to the earliest canonical labels:
+    with m = 5 and q = 3, rounds 1 and 2 fill every topic and round 3 only
+    reaches Politik and Hukum. Topic choice carries no weight, so there is no
+    "primary" topic.
 
     ``popular_nids`` must already be the frozen, catalog-only ranking; this
     function only filters and interleaves, so it cannot invent an order.

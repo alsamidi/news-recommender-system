@@ -167,8 +167,8 @@ Rules:
 
 - Jinja2 templates receive **already-ordered** recommendation lists; templates
   must not sort, slice by score, or filter.
-- The template layer renders at most 10 cards; the cap is applied in
-  `services/recs.py`, not in Jinja.
+- The template layer renders at most 12 cards (v1.3); the cap is applied in
+  `services/feed.py`, not in Jinja.
 - Empty/loading/error states are separate template blocks, not inline
   conditionals scattered across pages.
 
@@ -311,7 +311,7 @@ Feed request
   After any model response:
       → drop nid present in the user's FULL history
       → dedupe by nid
-      → keep API order, take at most 10
+      → keep API order, take at most 12
       → render ONE source label (TEST-AC-051)
 
   Persona 404 (invalid seed):

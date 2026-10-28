@@ -59,7 +59,7 @@ the archived `PRD.md` §8 and remain valid as measurements.
 
 | ID | Criterion | Verification |
 |----|-----------|--------------|
-| TEST-AC-040 **[P]** | The feed shows at most 10 articles | `GET /` → card count = 10 (when enough exist) |
+| TEST-AC-040 **[P]** | The feed shows at most 12 articles (v1.3; was 10) | `GET /` → card count ≤ 12 (`test_feed.py`) |
 | TEST-AC-041 **[P]** | The feed comes from `/recommend`, not fabricated data | Internal request log contains `POST /recommend`; feed `nid` ⊆ API response `nid` |
 | TEST-AC-042 **[P]** | Article order matches the API response order | Compare `nid` lists |
 | TEST-AC-043 **[P]** | A user with history sends `history` (cold mode) | Recorded payload contains `history`; response `mode == "cold-session"` |
