@@ -54,16 +54,41 @@ def _nid_for(link: str) -> str:
     return "I" + hashlib.sha1(link.encode()).hexdigest()[:10]
 
 
+SOURCE_LINKS_PARQUET = "data/processed/indo/source_links.parquet"
+
+
 def build_source_urls(catalog_nids: set[str],
-                      raw_csv: str = RAW_CSV) -> dict[str, str]:
+                      raw_csv: str | None = RAW_CSV,
+                      links_parquet: str | None = SOURCE_LINKS_PARQUET
+                      ) -> dict[str, str]:
     """`nid -> original portal link`, for nids that are in the catalogue.
 
-    The mapping is derived, not stored: `nid` is a sha1 of the link, so reading
-    only the `Link` column of the raw CSV (1.2 s, 207 MB file) reconstructs it
-    without touching any processed artifact. Missing CSV or a nid that does not
-    map back simply yields no link — the detail page then shows the source name
-    without a hyperlink rather than inventing a URL.
+    The mapping is derived, not stored in the catalogue: `nid` is sha1(Link)
+    truncated to 10 hex chars, so the link can be reconstructed without
+    touching any processed artifact.
+
+    Two sources, in order:
+
+    1. `data/processed/indo/source_links.parquet` — a 3.2 MB derived table
+       (nid, url) built once by `python -m src.phase2.build_links`. This is what the Docker image ships: the raw CSV is
+       207 MB and only this column matters.
+    2. The raw CSV (`Link` column), for checkouts that still have it and for
+       the tests. Costs ~1.2 s on the full 207 MB file.
+
+    Missing both, or a nid that does not map back, yields no link: the detail
+    page then shows the source name without a hyperlink rather than inventing
+    a URL.
     """
+    if links_parquet is not None:
+        pq = Path(links_parquet)
+        if pq.exists():
+            df = pd.read_parquet(pq)
+            return {str(nid): str(url)
+                    for nid, url in zip(df["nid"], df["url"])
+                    if nid in catalog_nids and isinstance(url, str) and url}
+
+    if raw_csv is None:
+        return {}
     path = Path(raw_csv)
     if not path.exists():
         return {}

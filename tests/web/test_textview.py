@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import hashlib
 
+import pandas as pd
+
 from web.services.textview import build_source_urls, strip_leading_dateline
 
 
@@ -60,7 +62,7 @@ def test_maps_nid_back_to_its_link(tmp_path):
     link = "https://news.detik.com/berita/d-1/contoh"
     csv = tmp_path / "raw.csv"
     csv.write_text(f"Link,source\n{link},detik\n")
-    got = build_source_urls({_nid(link)}, str(csv))
+    got = build_source_urls({_nid(link)}, str(csv), None)
     assert got == {_nid(link): link}
 
 
@@ -70,16 +72,43 @@ def test_only_catalogue_nids_are_returned(tmp_path):
     outside = "https://www.tempo.co/b"
     csv = tmp_path / "raw.csv"
     csv.write_text(f"Link,source\n{inside},tempo\n{outside},tempo\n")
-    got = build_source_urls({_nid(inside)}, str(csv))
+    got = build_source_urls({_nid(inside)}, str(csv), None)
     assert set(got) == {_nid(inside)}
 
 
 def test_missing_csv_yields_no_links_instead_of_inventing_one(tmp_path):
     """No data means no link: the detail page falls back to the source name."""
-    assert build_source_urls({_nid("https://x/y")}, str(tmp_path / "nope.csv")) == {}
+    assert build_source_urls({_nid("https://x/y")}, str(tmp_path / "nope.csv"), None) == {}
 
 
 def test_blank_links_are_skipped(tmp_path):
     csv = tmp_path / "raw.csv"
     csv.write_text("Link,source\n,detik\n")
-    assert build_source_urls({_nid("")}, str(csv)) == {}
+    assert build_source_urls({_nid("")}, str(csv), None) == {}
+
+def test_derived_parquet_is_preferred_over_the_raw_csv(tmp_path):
+    """The image ships the 3.2 MB parquet, not the 207 MB CSV."""
+    link = "https://www.tempo.co/politik/contoh-1"
+    pq = tmp_path / "links.parquet"
+    pd.DataFrame({"nid": [_nid(link)], "url": [link]}).to_parquet(pq, index=False)
+    got = build_source_urls({_nid(link)}, str(tmp_path / "absent.csv"), str(pq))
+    assert got == {_nid(link): link}
+
+
+def test_parquet_rows_outside_the_catalogue_are_filtered(tmp_path):
+    inside = "https://www.tempo.co/a"
+    outside = "https://www.tempo.co/b"
+    pq = tmp_path / "links.parquet"
+    pd.DataFrame({"nid": [_nid(inside), _nid(outside)],
+                  "url": [inside, outside]}).to_parquet(pq, index=False)
+    got = build_source_urls({_nid(inside)}, str(tmp_path / "absent.csv"), str(pq))
+    assert set(got) == {_nid(inside)}
+
+
+def test_missing_parquet_falls_back_to_the_csv(tmp_path):
+    """Checkouts without the derived file must keep working exactly as before."""
+    link = "https://news.detik.com/berita/d-2/contoh"
+    csv = tmp_path / "raw.csv"
+    csv.write_text(f"Link,source\n{link},detik\n")
+    got = build_source_urls({_nid(link)}, str(csv), str(tmp_path / "absent.parquet"))
+    assert got == {_nid(link): link}

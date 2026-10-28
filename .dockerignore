@@ -8,6 +8,17 @@ venv/
 docs/evidence/
 notebooks/
 
+# Indo-era artifacts that serving never opens. The four parquet files and the
+# ALS pickle it DOES need are copied explicitly by the Dockerfile.
+data/processed/indo/catalog_dev.parquet
+data/processed/indo/interactions.parquet
+data/processed/indo/corpusindo.zip
+data/processed/indo/indo_als_user_factors.npy
+data/processed/indo/indo_als_item_factors.npy
+models/indo_als_user_factors.npy
+models/indo_als_item_factors.npy
+models/indo_eval.json
+
 # Research-only artifacts: never read by web.app or HybridRecommender.load().
 models/indobert_embeddings.npy
 models/indobert_eval.json
