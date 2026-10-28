@@ -24,6 +24,22 @@ Measured in-browser, not estimated: topic chip radius 6px
 45px, focus ring 2px `#458fff`; history row column left edges 610 / 866 /
 1092 identical on every row.
 
+## Reading-column evidence (2026-10-29, D31)
+
+| File | State | What it proves |
+|------|-------|----------------|
+| `21_detail_kolom_tengah.png` | Article detail, desktop 1440px | Breadcrumb, 36px headline, meta line, body and portal link all share one centred column |
+
+Measured in-browser at 1440×1000 (1.25 DPR), not estimated: the
+`.article-column` box is x 432→1008 (576px wide), and the breadcrumb,
+`.article-headline`, `.meta-row`, `.article-body` and `.article-source` boxes
+all report the same left edge 432 and width 576. Headline computed font-size
+36px; body 16px with `chars_per_line = 73` measured through a range over the
+rendered text (was 78 at the previous 1184px block). The related
+`.card-grid` stays at x 128→1312 (1184px), i.e. outside the column. At 390px
+viewport the column collapses to 358px starting at x 16 with the headline back
+at its 32px mobile size, so nothing changed there.
+
 ## Screenshots
 
 | File | State | What it proves |

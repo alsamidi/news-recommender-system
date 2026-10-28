@@ -333,12 +333,28 @@ a:hover { color: var(--color-link-active); }
   .history-time { text-align: left; }
 }
 
+/* ---- article detail: one centred reading column (D31) ----
+   Headline, meta line, body and the portal link share one column, centred on
+   the page, all left-aligned to the same edge. The article text is a reading
+   surface, not a full-width band: at 1184px the body measured 78 characters
+   per line, above the 65–75 the design rules allow. The column carries the
+   measure (`--layout-reading`) and the body fills it, so the headline wraps in
+   the same width the reader's eye runs down instead of starting a line 600px
+   away from the paragraph under it. The related grid stays full width: it is a
+   browsing surface, not reading. */
+.article-column {
+  max-width: var(--layout-reading);
+  margin: 0 auto;
+}
+
 /* ---- article body (D26) ---- */
 .article-body {
   font-size: var(--type-article-size);
   line-height: var(--type-article-leading);
-  max-width: 70ch;
   color: var(--color-body);
+  /* The measure lives on .article-column (D31); a second cap here would make
+     the body narrower than the headline's column. */
+  max-width: none;
   /* Ragged right edges made the long single-paragraph bodies read as blocks of
      noise; justified text with a first-line indent reads like prose. The
      corpus stores one flattened paragraph per article (measured: 0% of rows
@@ -357,7 +373,13 @@ a:hover { color: var(--color-link-active); }
   color: var(--color-muted);
   margin-top: var(--space-lg);
 }
-.article-headline { font-size: 40px; font-weight: 400; line-height: 1.2; color: var(--color-ink); margin: 0 0 var(--space-sm); }
+.article-headline {
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-sm);
+}
 @media (max-width: 768px) { .article-headline { font-size: 32px; } }
 
 /* ---- forms ---- */

@@ -301,3 +301,17 @@ def test_reader_counts_are_visually_subordinate():
         opacity = re.search(r"opacity:\s*([\d.]+)", block.group(1))
         assert opacity, f"{selector} has no opacity"
         assert float(opacity.group(1)) < 1.0
+
+
+def test_reading_measure_token():
+    """TEST-AC-279 (D31): the detail page's measure is a token, not a magic px.
+
+    576px is the width that puts the 16px body on 72 characters per line,
+    inside the 65–75 the design rules require. Pinned here so a later tweak to
+    the column cannot quietly leave the reading measure behind.
+    """
+    tokens = read(STATIC / "tokens.css")
+    assert "--layout-reading: 576px" in tokens
+    css = read(STATIC / "app.css")
+    assert "var(--layout-reading)" in css, "the token exists but nothing uses it"
+

@@ -312,6 +312,17 @@ idempotent `PRAGMA table_info`-guarded `ALTER TABLE`, because
 
 ---
 
+## O. Detail-page reading column (2026-10-29, D31)
+
+| ID | Criterion | How it is checked |
+|----|-----------|-------------------|
+| TEST-AC-276 **[P]** | Breadcrumb, headline, meta line, body and portal link render inside **one** `.article-column`; the related grid is outside it | `test_addendum_l_indo_ui.py::test_detail_content_shares_one_reading_column` (cites TEST-AC-276) |
+| TEST-AC-277 **[P]** | The detail headline is 36px via a local override, not a token change | `test_addendum_l_indo_ui.py::test_detail_headline_is_thirty_six_pixels` (cites TEST-AC-277) |
+| TEST-AC-278 **[P]** | The reading measure lives on `.article-column` alone; `.article-body` does not re-cap its own width | `test_addendum_l_indo_ui.py::test_measure_lives_on_the_column_only` (cites TEST-AC-278) |
+| TEST-AC-279 **[P]** | `--layout-reading` is 576px, the width that puts the 16px body on 65–75 characters per line | `test_design_tokens.py::test_reading_measure_token` (cites TEST-AC-279) |
+
+---
+
 ## Traceability
 
 Every criterion above is cited by at least one test. Coverage is mechanical,
@@ -402,6 +413,7 @@ reused. Original note for the record: topic selection was out of MVP scope per `
 | D28 | ~~Passwordless persona picker at `/login/persona`~~ — **revoked v1.3**: picker, seed CLI, column and warm path all removed; the app has no roles | ❌ Revoked |
 | D29 | Reader counts shown on cards come from two labelled sources: dataset unique readers (MIND sample) and app unique readers (this deployment). Both count unique users, not views | ✅ Approved |
 | D30 | A zero reader count is hidden rather than printed. Only 13.9% of catalogue nids appear in the interactions at all, so "0 pembaca" would assert something the data cannot support | ✅ Approved |
+| D31 | The detail page's breadcrumb, headline (36px), meta line, body and portal link share one centred reading column of `--layout-reading` (576px), left-aligned; the related grid stays full width. 576px is measured, not chosen: it puts the 16px body on 72 characters per line, inside the 65–75 band, where the previous full-bleed column measured 78 | ✅ Approved |
 
 Consequence of D22: score-bearing criteria are **deleted**, not deferred. No
 `TEST-AC` requires a debug page, and none requires a score to be rendered.

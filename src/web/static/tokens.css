@@ -52,5 +52,10 @@
   --type-article-leading: 1.6;
 
   --layout-max: 1280px;
+  /* D31: width of the article reading column on the detail page. It is the
+     reading measure, not a layout preference: 576px lands on 72 characters per
+     line at the 16px article body, inside the 65–75 band AGENTS.md §5.1
+     requires (measured in-browser: 560px → 69, 576px → 72, 623px → 78). */
+  --layout-reading: 576px;
   --touch-min: 44px;
 }

@@ -262,7 +262,7 @@ availability win (see `AGENTS.md` §5.1).
 | Landing | `hero-band`, `button-primary`, `button-secondary` | No rainbow stripes, no demo grids. One primary CTA ("Daftar"), one secondary ("Masuk"). |
 | Register / Login | `text-input`, `text-input-focus`, `button-primary`, `label-md` | Add error state (no token exists — use `{colors.signature-coral}`). Card container uses `{rounded.lg}` on `{colors.canvas}`. |
 | Feed | `article-card`, `top-nav`, `label-md` | **No thumbnail** (korpus tetap tanpa gambar). Meta line: kategori + sumber + tanggal (PRD v1.1 §10.2). 3-up desktop, 2-up tablet, 1-up mobile. |
-| Article detail | `article-card` (for related), `top-nav` | Header: judul + kategori + sumber + tanggal; body = `content` penuh lewat `.article-body` (16/1.6, D26) pada lebar ~65–75ch. Related block uses `article-card` without thumbnails. |
+| Article detail | `article-card` (for related), `top-nav` | One centred reading column (`--layout-reading`, 576px, D31): breadcrumb, judul 36px, kategori + sumber + tanggal, lalu body = `content` penuh lewat `.article-body` (16/1.6, D26) — 72 karakter per baris, di dalam rentang 65–75. Blok "Berita serupa" tetap selebar kontainer. Related block uses `article-card` without thumbnails. |
 | History | `article-card` (compact), `top-nav` | Same card without thumbnail; show `created_at` grouped by day. |
 | Error / 404 / 503 | `cream-callout-card` or `signature-coral-card` | Coral for hard errors (503/404), cream for soft empty states. |
 | Empty history | `cream-callout-card` | Uses PRD §16 copy: "Kamu belum membuka berita…". |

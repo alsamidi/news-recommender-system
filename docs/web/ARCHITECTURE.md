@@ -134,7 +134,7 @@ properties) → `app.css` consumes variables only.
 --space-lg: 24px; --space-xl: 32px; --space-xxl: 48px;
 ```
 
-Approved aliases and overrides (decisions D25–D27, 2026-10-20):
+Approved aliases and overrides (decisions D25–D27, D31):
 
 ```css
 /* D25 — error color; DESIGN.md has no danger token */
@@ -143,13 +143,18 @@ Approved aliases and overrides (decisions D25–D27, 2026-10-20):
 /* D26 — article body readability; tokens themselves are NOT changed */
 --type-article-size: 16px;
 --type-article-leading: 1.6;
+
+/* D31 — detail-page reading measure, so the body lands on 65–75 chars/line */
+--layout-reading: 576px;
 ```
 
 ```css
-/* applied only to the article body */
+/* applied to the detail page's reading surface */
+.article-column { max-width: var(--layout-reading); margin: 0 auto; }
 .article-body { font-size: var(--type-article-size);
                 line-height: var(--type-article-leading);
-                max-width: 70ch; }
+                max-width: none;      /* the column owns the measure */
+                text-align: justify; }
 ```
 
 Rules:

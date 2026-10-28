@@ -246,3 +246,67 @@ def test_history_rows_share_one_height(client, register):
         shapes.append(row.count('class="history-meta-line"'))
     # Every row carries the same meta-line count: 2 when source/date exist.
     assert len(set(shapes)) == 1, shapes
+
+
+# ---------------------------------------------------------------------------
+# D31 — detail-page reading column (TEST-AC-276/277/278)
+# ---------------------------------------------------------------------------
+
+def _detail_html(client, register) -> str:
+    """One rendered detail page for the first article in the feed."""
+    nid = _first_nids(client, register, 1)[0]
+    return client.get(f"/berita/{nid}").text
+
+
+def test_detail_content_shares_one_reading_column(client, register):
+    """TEST-AC-276 (D31): the reading surface is one column, not four widths.
+
+    Breadcrumb, headline, meta line, body and the portal link must all sit
+    inside `.article-column`, and the related grid must sit outside it — it is
+    a browsing surface and stays full width. Asserted structurally (nesting),
+    because the visual consequence — one shared left edge — only exists if the
+    nesting is right.
+    """
+    body = _detail_html(client, register)
+    column = re.search(r'<div class="article-column">(.*?)\n  </div>\n</article>',
+                       body, re.S)
+    assert column, "no .article-column wrapping the detail content"
+    inner = column.group(1)
+
+    for marker in ('class="breadcrumb"', 'class="article-headline"',
+                   'class="meta-row"', 'class="article-body',
+                   'class="article-source"'):
+        assert marker in inner, f"{marker} is outside the reading column"
+
+    # The related grid is rendered after the column closes.
+    assert 'class="card-grid"' in body
+    assert body.index('class="card-grid"') > body.index('class="article-column"')
+
+
+def test_detail_headline_is_thirty_six_pixels(client, register):
+    """TEST-AC-277 (D31): the detail headline came down from 40px to 36px."""
+    css = (REPO / "src/web/static/app.css").read_text()
+    block = re.search(r"\.article-headline \{([^}]*)\}", css).group(1)
+    assert "font-size: 36px" in block
+    assert "40px" not in block
+    # Still a local override: the token scale itself is untouched.
+    tokens = (REPO / "src/web/static/tokens.css").read_text()
+    assert "--typography-display" not in tokens
+
+
+def test_measure_lives_on_the_column_only(client, register):
+    """TEST-AC-278 (D31): one measure, owned by the column.
+
+    Two caps (column + body) is how the headline width and the paragraph width
+    drift apart, so the body must not carry its own `max-width`.
+    """
+    css = (REPO / "src/web/static/app.css").read_text()
+    column = re.search(r"\.article-column \{([^}]*)\}", css)
+    assert column, "article-column block missing"
+    assert "max-width: var(--layout-reading)" in column.group(1)
+    assert "margin: 0 auto" in column.group(1)
+
+    body_block = re.search(r"\.article-body \{([^}]*)\}", css).group(1)
+    assert re.search(r"max-width:\s*none", body_block), body_block
+    assert "70ch" not in body_block
+

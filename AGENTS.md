@@ -155,8 +155,9 @@ collisions are listed in §6.1.
 | Area | Rule |
 |------|------|
 | Color | Only values from `colors:` in the DESIGN.md front matter. Primary action = `{colors.primary}` (#181d26), **not** `{colors.link}` (#1b61c9). |
-| Type | `{typography.body-md}` (14/400) for body, `{typography.title-sm}` (18/500) for card titles, `{typography.display-md}`/`display-lg` for page headings, `{typography.button}` for buttons. Never bolder than 500 in display sizes. |
+| Type | `{typography.body-md}` (14/400) for body, `{typography.title-sm}` (18/500) for card titles, `{typography.display-md}` for page headings, `{typography.button}` for buttons. Never bolder than 500 in display sizes. The detail headline is 36px (D31). |
 | Spacing | 4px base unit; use the `spacing:` scale. `{spacing.section}` (96px) is for marketing-style bands only — app screens use `{spacing.xl}`/`{spacing.xxl}`. |
+| Reading column | `--layout-reading` (576px) is the detail page's measure, set by D31. Body text must measure 65–75 characters per line. |
 | Radius | `{rounded.sm}` (6px) inputs, `{rounded.md}` (10px) cards, `{rounded.lg}` (12px) primary buttons and signature cards, `{rounded.full}` icon buttons. **`{rounded.pill}` is pricing-only — do not use it.** |
 | Layout | Max content width ~1280px, `{spacing.xxl}` (48px) side gutters, breakpoints < 768 / 768–1024 / 1024–1440 / > 1440. |
 | Touch targets | ≥ 44×44 px (DESIGN.md specifies 48px for buttons, 44px for inputs). |
@@ -190,13 +191,43 @@ tuned for marketing copy rather than sustained reading.
 | Article body (`abstract` on detail page) | 16px | 1.6 | Local override, D26 |
 | All UI chrome (nav, meta, buttons, forms) | 14px | 1.25 | `{typography.body-md}` |
 | Card titles | 18px | 1.4 | `{typography.title-sm}` |
-| Page headings | 32–40px | 1.2 | `{typography.display-md}` / `display-lg` |
+| Page headings (feed, history) | 32px | 1.2 | `{typography.display-md}` |
+| Article detail headline | 36px | 1.2 | Local override, D31 |
 
 Rules:
 - The override is applied by a **single CSS class** (`.article-body`) in
   `app.css`. Do not change the `--type-body-*` tokens themselves.
 - Measure article text at **65–75 characters** per line.
 - Do not enlarge headings to compensate; keep the token scale.
+
+### Detail-page reading column — decided 2026-10-29
+
+**Decision D31 (APPROVED 2026-10-29):** the article detail page renders its
+breadcrumb, headline, meta line, body and portal link inside **one centred
+column** of `--layout-reading` (576px), all left-aligned to the same edge. The
+related grid stays outside it, full width.
+
+| Context | Value | Source |
+|---------|-------|--------|
+| Reading column width | 576px | `--layout-reading`, tokens.css |
+| Detail headline | 36px | Local override, down from `display-lg` 40px |
+| Article body | 16px / 1.6, justified | unchanged, D26 |
+| Related grid | full container width | unchanged |
+
+Why 576px: it is a measurement, not a preference. Measured in-browser on a real
+article, the 16px body runs **72 characters per line** at 576px, inside the
+65–75 band the rules above require; the previous full-bleed column measured 623px
+and **78 characters**, over the band. The body no longer caps itself
+(`max-width: none`) — the column owns the single measure, so headline width and
+paragraph width cannot drift apart.
+
+36px is a deliberate step off the `{typography.display-md}` (32px) /
+`display-lg` (40px) scale, taken at the product owner's request that the detail
+headline come down "a bit" from 40px. It is not a new token; it is a local
+override of the same kind as D26.
+
+Mobile (≤ 768px) is unchanged: the column is already narrower than the
+viewport, so the headline keeps its existing 32px and no centring is visible.
 
 ### Interaction states — deliberate deviation
 
@@ -397,6 +428,7 @@ Do not reopen these without explicit approval. Implementation must follow them.
 | `/similar` | Detail page only. |
 | Error color | `--color-error` = `signature-coral` #aa2d00 (D25). |
 | Article body | 16px/1.6 via `.article-body`; all else keeps tokens (D26). |
+| Detail reading column | Breadcrumb + headline (36px) + meta + body + source link share one centred column, `--layout-reading` 576px, left-aligned (D31). Related grid stays full width. |
 | Hover | Five token-only changes, ≤ 120 ms; focus always visible (D27). |
 | Korpus fase 2 | PRD v1.1 (2026-10-27): korpus portal Indonesia + interaksi simulasi dummy (`view` saja, tanpa like/durasi/rating); kontrak API dan field `nid` dipertahankan. PRD v1.0 tetap mengikat untuk korpus MIND yang beku. Status: **disetujui 2026-10-27**; implementasi fase-2 selesai (Task 0–14 plan fase-2). |
 

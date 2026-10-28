@@ -3,41 +3,46 @@
 {% block meta_desc %}{{ article.abstract or article.title or 'Detail berita' }}{% endblock %}
 {% block content %}
 <article>
-  <nav aria-label="Breadcrumb">
-    <ol class="breadcrumb">
-      <li><a href="/">Beranda</a></li>
-      <li aria-current="page">{{ article.category or '-' }}</li>
-    </ol>
-  </nav>
-  <h1 class="article-headline">{{ article.title or article.nid }}</h1>
-  {# Meta line, PRD v1.1 §10.2 / TEST-AC-222: source and publication date are
-     shown because the corpus really has them. No author, no portal link. #}
-  <div class="meta-row">
-    <span>{{ article.category or '-' }}</span>
-    {% if article.subcategory %}<span>{{ article.subcategory }}</span>{% endif %}
-    {% if article.source_label %}<span>Sumber: {{ article.source_label }}</span>{% endif %}
-    {% if article.published_text %}<span>Tanggal: {{ article.published_text }}</span>{% endif %}
-    <span>{{ article.nid }}</span>
+  {# D31: breadcrumb, headline, meta and the body share one centred column so
+     every left edge in the reading surface is the same line. The related grid
+     below stays outside it and full width. #}
+  <div class="article-column">
+    <nav aria-label="Breadcrumb">
+      <ol class="breadcrumb">
+        <li><a href="/">Beranda</a></li>
+        <li aria-current="page">{{ article.category or '-' }}</li>
+      </ol>
+    </nav>
+    <h1 class="article-headline">{{ article.title or article.nid }}</h1>
+    {# Meta line, PRD v1.1 §10.2 / TEST-AC-222: source and publication date are
+       shown because the corpus really has them. No author, no portal link. #}
+    <div class="meta-row">
+      <span>{{ article.category or '-' }}</span>
+      {% if article.subcategory %}<span>{{ article.subcategory }}</span>{% endif %}
+      {% if article.source_label %}<span>Sumber: {{ article.source_label }}</span>{% endif %}
+      {% if article.published_text %}<span>Tanggal: {{ article.published_text }}</span>{% endif %}
+      <span>{{ article.nid }}</span>
+    </div>
+
+    {# PRD v1.1 §10.3: render the catalogue `content` as-is. No substitute
+       paragraph when it is empty or short (§16) — just the title and meta.
+       Leading dateline residue is stripped in the route, not here, so the
+       template stays a rendering surface. #}
+    {% if article.abstract %}
+      <div class="article-body mt-lg">{{ article.abstract }}</div>
+    {% endif %}
+
+    {# PRD v1.3 §10.3 amendment: a real link to the portal is allowed, because
+       it comes from the corpus (`Link` column, recovered via nid = sha1(Link)).
+       Only rendered when the mapping exists — never a guessed URL. #}
+    {% if article.source_url %}
+    <p class="article-source">
+      Sumber asli:
+      <a href="{{ article.source_url }}" rel="noopener noreferrer nofollow"
+         target="_blank">{{ article.source_label or article.source_url }}</a>
+    </p>
+    {% endif %}
   </div>
-
-  {# PRD v1.1 §10.3: render the catalogue `content` as-is. No substitute
-     paragraph when it is empty or short (§16) — just the title and meta.
-     Leading dateline residue is stripped in the route, not here, so the
-     template stays a rendering surface. #}
-  {% if article.abstract %}
-    <div class="article-body mt-lg">{{ article.abstract }}</div>
-  {% endif %}
-
-  {# PRD v1.3 §10.3 amendment: a real link to the portal is allowed, because it
-     comes from the corpus (`Link` column, recovered via nid = sha1(Link)).
-     Only rendered when the mapping exists — never a guessed URL. #}
-  {% if article.source_url %}
-  <p class="article-source">
-    Sumber asli:
-    <a href="{{ article.source_url }}" rel="noopener noreferrer nofollow"
-       target="_blank">{{ article.source_label or article.source_url }}</a>
-  </p>
-  {% endif %}
 </article>
 
 {% if related %}
