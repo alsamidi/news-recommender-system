@@ -15,22 +15,23 @@ Product/technical documents for the web layer live in `docs/web/` (start with
 An Indonesian-language news recommendation system for a thesis (Tugas Akhir):
 
 - Content-based **TF-IDF** + **implicit ALS** collaborative filtering + **weighted hybrid**.
-- MINDsmall / xMINDsmall datasets (English + Indonesian translation), file-based temporal split.
-- **Fase 2 (2026-10-27, PRD v1.1):** korpus aktif berganti ke korpus portal
-  Indonesia (Detik/Tempo/Kompas; Juli 2024 – Oktober 2025; 80.472 baris mentah →
-  67.381 unik) dengan interaksi simulasi akun dummy (`view` saja) —
-  `data/DATASET_LOCK_INDO.md` + `docs/web/PRD_Web_Rekomendasi_Berita.md` v1.1.
-  Riset v1 (MIND) tetap beku; angkanya tetap sumber kebenaran untuk dokumen lama.
-- Serving layer: FastAPI + `HybridRecommender` over frozen artifacts.
-- The web application layer (auth, feed, history, profile) **sudah diimplementasikan
-  dan melebur ke `develop`** (PRD v1.0; lihat §6.4 koreksi status; **PRD v1.1
-  disetujui 2026-10-27** dan sudah diimplementasikan di `feat/dataset-indo-news`).
+- **Dataset aktif: korpus portal Indonesia** (Detik/Tempo/Kompas; Juli 2024 –
+  Oktober 2025; 80.472 baris mentah → 67.381 unik) dengan interaksi simulasi
+  akun dummy (`view` saja) — `data/DATASET_LOCK_INDO.md` +
+  `docs/web/PRD_Web_Rekomendasi_Berita.md`. File-based temporal split.
+- **MIND/xMINDsmall (riset v1) tidak dipakai lagi**: bukan sumber training,
+  evaluasi, maupun serving. Catatannya tetap tersimpan sebagai arsip akademik
+  (`data/DATASET_LOCK.md`, `docs/metrics_source_of_truth.md`,
+  `docs/RESEARCH_FREEZE.md`) dan tidak boleh dihapus tanpa persetujuan.
+- Serving layer: FastAPI + `IndoHybridRecommender` over korpus indo artifacts;
+  web app melebur ke `develop` (PRD v1.1 disetujui 2026-10-27) — auth, feed,
+  history, profil.
 
 ## 2. Repository Map
 
 | Path | Contents | Status |
 |------|----------|--------|
-| `README.md` | Research summary, results, reproduction steps | Frozen (facts) |
+| `README.md` | Ringkasan sistem aktif (korpus indo), hasil, cara reproduksi | Editable (facts); update with new results |
 | `data/DATASET_LOCK.md` | Official dataset pairs + sha256 + split rules | **Frozen** |
 | `data/DATASET_LOCK_INDO.md` | Phase-2 aktif: korpus portal Indonesia + interaksi simulasi; hash, skema katalog turunan, aturan split | **Terkunci 2026-10-27** (Gate A/B/C + split + evaluasi + serving) |
 | `docs/API_CONTRACT.md` | API contract v1.0.0 | **Frozen** |
