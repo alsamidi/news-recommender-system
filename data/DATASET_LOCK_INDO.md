@@ -196,10 +196,67 @@ versi 1 yang sudah beku.
 - Verifikasi waktu: generated_at_utc instrumen eval ≥ waktu commit cutoff
   (Task 9) — lulus (10:47 vs 10:03 +07).
 
+## Sapuan faktor & alpha — DIPERBAIKI 2026-10-29
+- Artefak `docs/evidence/phase2/factor_sweep.json` dan
+  `alpha_sweep_full.json` **diulang** pada 2026-10-29. Versi commit
+  `81b9245` **tidak sah dan jangan dikutip**: helper `fit_with_factors`
+  mengirim `alpha=40.0` ke konstruktor `implicit.als`, sementara
+  `build_csr` sudah membakar keyakinan `c = 1 + 40·views`. `implicit` 0.7.3
+  melakukan `if self.alpha != 1.0: Cui = self.alpha * Cui` di dalam
+  `fit()`, jadi bobot diterapkan **dua kali** (efektif 40×(1+40·views)).
+  `train_als.fit_als` — jalur `run_eval` dan artefak tersimpan — tidak
+  mengirim alpha (= 1.0), sehingga eval resmi dan serving tidak terpengaruh.
+- Bukti penyebab (probe matriks sintetis, bukan dugaan): selisih faktor
+  item `max|Δ| = 0,0567` antara alpha bawaan dan alpha 40; `use_gpu`
+  tidak berpengaruh (`HAS_CUDA=False`, selisih 0,0).
+- Bukti perbaikan: kurva faktor 128 pada alpha ∈ {0,4; 0,6; 0,8}
+  mereproduksi grid resmi Task 11 persis (0,002558 / 0,002730 / 0,002975),
+  dan alpha 1,0 (= ALS murni) sama dengan angka ALS resmi 0,005755.
+  Regresi dikunci oleh
+  `tests/phase2/test_train_als.py::test_sweep_fit_equals_locked_fit_at_same_factor_count`.
+- Angka sah (mean NDCG@10, 9 titik, n=600/sel):
+
+  | faktor | mean |
+  |---|---|
+  | 16 | 0,005398 |
+  | 32 | 0,005554 |
+  | **64** | **0,006216** |
+  | 128 (dipakai artefak) | 0,005755 |
+
+  | alpha | faktor 64 | faktor 128 |
+  |---|---|---|
+  | 0,4 | 0,002709 | 0,002558 |
+  | 0,6 | 0,002944 | 0,002730 |
+  | **0,8 (dilayani)** | 0,003768 | 0,002975 |
+  | 0,9 | 0,005142 | 0,003552 |
+  | 1,0 (ALS murni) | 0,006216 | 0,005755 |
+
+  Popularity tetap 0,010595 (referensi batas-atas, lihat caveat di atas).
+- **Konsekuensi yang harus dikutip jujur:** konfigurasi yang dilayani
+  (faktor 128, alpha 0,8) **bukan** yang tertinggi terukur; alpha 1,0 pada
+  faktor 64 memberi 0,006216, sekitar 2,09× angka yang dilayani. Kurva
+  monoton naik di alpha, jadi tidak ada optimum interior pada grid ini.
+- **Keputusan alpha yang dilayani: TETAP 0,8 (faktor 128) sampai ada
+  keputusan produk.** Alasan: alpha 1,0 menghapus jalur konten sepenuhnya,
+  sehingga 21,1% item katalog efektif yang tidak berfaktor ALS (3.703 dari
+  17.584, Gate C) hanya bisa muncul di posisi terbawah — NDCG naik, cakupan
+  katalog turun. Mengganti nilai yang dilayani menuntut perbandingan
+  sadar-cakupan plus penyesuaian `configs/indo_serving.yaml`, tes web, dan
+  angka `/health`; itu keputusan terpisah, bukan efek samping sapuan.
+- Metrik seleksi tetap NDCG@10 (sama dengan protokol terkunci).
+  Precision@K dan F1@K ada dan teruji
+  (`notebooks/metrics_ext.py`, K = 5/10/20 di
+  `metric_comparison.json`), tetapi **tidak** dilaporkan di
+  `models/indo_eval.json`; jangan mengutipnya sebagai angka resmi tanpa
+  menyebut sumbernya.
+
 ## Serving web (Task 13–14, 2026-10-27)
 - `configs/indo_serving.yaml` = sumber tunggal alpha dan path artefak untuk
   serving. `cf_weight = 0.8` (pemenang grid Task 11). Web **tidak pernah**
   mengirim atau menimpa alpha (PRD AC-02); nilai tak cocok file ini = bug.
+  Sapuan 2026-10-29 menunjukkan 0,8 bukan yang tertinggi terukur; nilai ini
+  **sengaja dipertahankan** sampai ada keputusan produk (lihat §Sapuan
+  faktor & alpha).
 - `src/phase2/serving.py::IndoHybridRecommender` mereproduksi ranker yang
   dievaluasi: `0.8·minmax(ALS dot) + 0.2·minmax(TF-IDF cosine)`, min-max
   penuh katalog; item tanpa faktor dipaku ke floor −1.0 (bukan faktor

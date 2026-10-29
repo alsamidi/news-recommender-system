@@ -53,3 +53,22 @@ def test_real_als_fit_smoke(train_events):
     model = fit_als(mat)
     assert model.item_factors.shape == (8, ALS_PARAMS["factors"])
     assert model.user_factors.shape == (4, ALS_PARAMS["factors"])
+
+
+def test_sweep_fit_equals_locked_fit_at_same_factor_count(train_events):
+    """sweep_factors.fit_with_factors must reproduce fit_als exactly.
+
+    Regression for the recorded factor/alpha sweeps: implicit rescales the
+    confidence matrix inside ``fit`` when the constructor ``alpha`` differs
+    from 1.0, while ``build_csr`` has already baked ``1 + 40 * views`` into
+    it. Passing ``alpha=40.0`` therefore applied the weight twice and
+    produced a different factorization for the same nominal parameters.
+    """
+    from src.phase2.sweep_factors import fit_with_factors
+    from src.phase2.train_als import fit_als
+
+    mat, _, _ = build_csr(train_events)
+    locked = fit_als(mat)
+    swept = fit_with_factors(mat, ALS_PARAMS["factors"])
+    assert swept.alpha == 1.0
+    np.testing.assert_array_equal(swept.item_factors, locked.item_factors)

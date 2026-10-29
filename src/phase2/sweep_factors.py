@@ -39,11 +39,20 @@ K = 10
 
 
 def fit_with_factors(mat, factors: int):
-    """ALS with the locked params except the factor count."""
+    """ALS with the locked params except the factor count.
+
+    The confidence weight ``c = 1 + alpha * views`` is already baked into the
+    CSR by ``train_als.build_csr``. ``implicit`` additionally rescales the
+    matrix by the constructor's ``alpha`` inside ``fit``
+    (``if self.alpha != 1.0: Cui = self.alpha * Cui``), so passing
+    ``alpha=40.0`` here applies the weight TWICE and silently changes the
+    factorization. Keep the default ``alpha=1.0`` to stay identical to
+    ``train_als.fit_als`` — the earlier sweeps got this wrong.
+    """
     import implicit
 
     model = implicit.als.AlternatingLeastSquares(
-        factors=factors, regularization=0.01, iterations=20, alpha=40.0,
+        factors=factors, regularization=0.01, iterations=20,
         random_state=42, use_gpu=False)
     model.fit(mat)
     return model
