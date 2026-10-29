@@ -3,9 +3,9 @@ import pandas as pd
 import pytest
 
 from src.phase2.evaluate import (ALPHA_GRID, ap_at_k, build_tfidf, cbf_ranker,
-                                 evaluate_point, evaluate_ranking, minmax,
-                                 ndcg_at_k, popularity_ranker, recall_at_k,
-                                 rank_topk)
+                                 evaluate_point, evaluate_ranking, f1_at_k,
+                                 minmax, ndcg_at_k, popularity_ranker,
+                                 precision_at_k, recall_at_k, rank_topk)
 
 
 def test_metric_math_hand_computed():
@@ -35,6 +35,49 @@ def test_metric_edge_cases():
     assert ndcg_at_k([], {"x"}, 10) == 0.0
     assert recall_at_k(["x"], set(), 10) == 0.0
     assert ap_at_k(["x", "y"], {"x", "y"}, 10) == pytest.approx(1.0)
+
+
+def test_precision_and_f1_hand_computed():
+    ranked = ["x1", "x2", "x3", "x4", "x5"]
+    rel = {"x2", "x4"}
+    # two of the five ranked items are relevant
+    assert precision_at_k(ranked, rel, 5) == pytest.approx(0.4)
+    assert f1_at_k(ranked, rel, 5) == pytest.approx(2 * 0.4 * 1.0 / 1.4)
+
+    ranked2 = ["x1", "z1", "z2", "x2", "z3", "z4", "z5", "z6",
+               "z7", "z8"]
+    rel2 = {"x2", "x9"}
+    assert precision_at_k(ranked2, rel2, 10) == pytest.approx(0.1)
+    assert f1_at_k(ranked2, rel2, 10) == pytest.approx(2 * 0.1 * 0.5 / 0.6)
+    # no prediction and no relevant item are both scored as zero
+    assert precision_at_k([], rel2, 10) == 0.0
+    assert precision_at_k(ranked2, set(), 10) == 0.0
+    assert f1_at_k(ranked2, set(), 10) == 0.0
+
+
+def test_f1_is_the_harmonic_mean_and_map_is_ap():
+    for ranked, rel in ((["a", "b", "c"], {"b"}),
+                        (["a", "b", "c"], {"a", "c"}),
+                        (["a", "b"], set())):
+        p = precision_at_k(ranked, rel, 10)
+        r = recall_at_k(ranked, rel, 10)
+        want = 0.0 if p + r == 0 else 2 * p * r / (p + r)
+        assert f1_at_k(ranked, rel, 10) == pytest.approx(want)
+        top = ranked[:10]
+        assert precision_at_k(ranked, rel, 10) * len(top) == pytest.approx(
+            sum(1 for nid in top if nid in rel))
+
+
+def test_evaluate_ranking_reports_five_metrics_at_the_cutoff():
+    ranked = ["x1", "x2", "x3"]
+    rel = {"x2"}
+    row = evaluate_ranking(ranked, rel, 5)
+    assert set(row) == {"ndcg@5", "ap@5", "map@5", "precision@5",
+                        "recall@5", "f1@5", "n_relevant"}
+    assert row["map@5"] == row["ap@5"]
+    assert row["precision@5"] == pytest.approx(1 / 3)
+    assert row["recall@5"] == pytest.approx(1.0)
+    assert row["n_relevant"] == 1
 
 
 def _toy_catalog(n_items=50, n_train=40):

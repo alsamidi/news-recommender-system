@@ -55,11 +55,41 @@ def recall_at_k(ranked_ids, relevant, k=10):
     return hit / len(relevant)
 
 
+def precision_at_k(ranked_ids, relevant, k=10):
+    """Relevant fraction of the top-k list (0.0 for an empty prediction)."""
+    if k <= 0 or not ranked_ids:
+        return 0.0
+    top = ranked_ids[:k]
+    return sum(1 for nid in top if nid in relevant) / len(top)
+
+
+def f1_at_k(ranked_ids, relevant, k=10):
+    """Harmonic mean of Precision@k and Recall@k at the same cutoff.
+
+    Zero when both are zero: the harmonic mean is undefined there, and every
+    other metric scores a hitless ranking as 0.
+    """
+    p = precision_at_k(ranked_ids, relevant, k)
+    r = recall_at_k(ranked_ids, relevant, k)
+    if p + r == 0.0:
+        return 0.0
+    return 2.0 * p * r / (p + r)
+
+
+def map_at_k(ranked_ids, relevant, k=10):
+    """Same quantity as ``ap_at_k`` under the literature name (MAP@K)."""
+    return ap_at_k(ranked_ids, relevant, k)
+
+
 def evaluate_ranking(ranked_ids, relevant, k=10):
+    ap = ap_at_k(ranked_ids, relevant, k)
     return {
-        "ndcg@10": ndcg_at_k(ranked_ids, relevant, k),
-        "ap@10": ap_at_k(ranked_ids, relevant, k),
-        "recall@10": recall_at_k(ranked_ids, relevant, k),
+        f"ndcg@{k}": ndcg_at_k(ranked_ids, relevant, k),
+        f"ap@{k}": ap,
+        f"map@{k}": ap,  # same quantity under the literature name
+        f"precision@{k}": precision_at_k(ranked_ids, relevant, k),
+        f"recall@{k}": recall_at_k(ranked_ids, relevant, k),
+        f"f1@{k}": f1_at_k(ranked_ids, relevant, k),
         "n_relevant": len(relevant),
     }
 
@@ -213,14 +243,14 @@ def evaluate_point(catalog_full, catalog_train, train_events, dev_events,
             rankers[f"hybrid_a{alpha}"] = rank_topk(hyb, dev_items, accounts,
                                                     k)
 
+    metric_keys = [key for key in
+                   evaluate_ranking([], set(), k) if key != "n_relevant"]
     report = {}
     for name, ranking in rankers.items():
         per = [evaluate_ranking(ranking[a], relevant.get(a, set()), k)
                for a in accounts]
-        report[name] = {
-            "ndcg@10_mean": float(np.mean([p["ndcg@10"] for p in per])),
-            "ap@10_mean": float(np.mean([p["ap@10"] for p in per])),
-            "recall@10_mean": float(np.mean([p["recall@10"] for p in per])),
-            "n_accounts": len(accounts),
-        }
+        row = {f"{key}_mean": float(np.mean([p[key] for p in per]))
+               for key in metric_keys}
+        row["n_accounts"] = len(accounts)
+        report[name] = row
     return report

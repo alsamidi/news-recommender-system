@@ -172,13 +172,18 @@ def ground_truth() -> dict:
             ap += hits / (p + 1)
     ap /= min(len(rel), K_EVAL)
     ideal = [1.0] * min(len(rel), K_EVAL)
+    precision = hits / K_EVAL
+    recall = hits / len(rel)
+    f1 = (0.0 if precision + recall == 0
+          else 2 * precision * recall / (precision + recall))
 
     return dict(
         cat=cat, F=F, toks=toks, vocab=vocab, tf=tf, dfc=dfc, idf=idf, w=w,
         norm=norm, wn=wn, prof=prof, pnorm=pnorm, cos_profile=cos_profile,
         pair=pair, aprof=aprof, als_raw=als_raw, m_als=m_als, m_cbf=m_cbf,
         hybrid=hybrid, ranked=ranked, rel=rel,
-        ndcg=dcg(gains) / dcg(ideal), ap=ap, recall=hits / len(rel))
+        ndcg=dcg(gains) / dcg(ideal), ap=ap, map=ap, precision=precision,
+        recall=recall, f1=f1)
 
 
 def build(gt: dict, out: Path) -> None:
@@ -227,11 +232,12 @@ def build(gt: dict, out: Path) -> None:
                      "profil, peringkat", "rumus"),
         ("10_Tampilan", "Baris kartu yang dirender web - tanpa skor (D22)",
          "rumus"),
-        ("11_Evaluasi", "NDCG@5, AP@5, Recall@5 untuk skenario dummy (K diturunkan dari 10 "
-         "karena hanya ada 9 kandidat)",
+        ("11_Evaluasi", "NDCG, AP, MAP, Precision, Recall, F1 pada K - K "
+         "diturunkan ke 5 karena hanya ada 9 kandidat",
          "rumus + 2 flag relevan (biru)"),
-        ("12_Cek_Naskah", "Rata-rata 9 titik evaluasi terkunci vs angka "
-                          "naskah", "models/indo_eval.json"),
+        ("12_Cek_Naskah", "Rata-rata 9 titik evaluasi terkunci untuk enam "
+                          "metrik (NDCG, AP, MAP, Precision, Recall, F1) vs "
+                          "angka naskah", "models/indo_eval.json"),
     ]
     for i, (a, b, c) in enumerate(rows):
         put(ws, f"A{5+i}", a, font=BOLD)
@@ -616,8 +622,15 @@ def build(gt: dict, out: Path) -> None:
          "DCG / IDCG, ideal = min(jumlah relevan, K)"),
         ("AP@K", f"=G{tot}/MIN($C${tot + 1},{kstop})",
          "rata-rata precision pada posisi relevan, dibagi min(relevan, K)"),
+        ("MAP@K", f"=G{tot}/MIN($C${tot + 1},{kstop})",
+         "sama dengan AP@K pada satu daftar peringkat (alias)"),
+        ("Precision@K", f"=H{tot}/{kstop}", "hit dalam K / K"),
         ("Recall@K", f"=H{tot}/$C${tot + 1}",
          "hit relevan dalam K / total relevan"),
+        ("F1@K",
+         f"=IFERROR(2*(H{tot}/{kstop})*(H{tot}/$C${tot + 1})"
+         f"/((H{tot}/{kstop})+(H{tot}/$C${tot + 1})),0)",
+         "harmonik Precision@K dan Recall@K (0 bila tak ada hit)"),
     ]
     for i, (name, formula, how) in enumerate(metrics):
         rr = tot + 4 + i
@@ -649,7 +662,10 @@ def build(gt: dict, out: Path) -> None:
     row = 4
     for metric, key, cmp_key in [("NDCG@10", "ndcg@10", "ndcg"),
                                  ("AP@10", "ap@10", "map"),
-                                 ("Recall@10", "recall@10", "recall")]:
+                                 ("MAP@10", "map@10", "map"),
+                                 ("Precision@10", "precision@10", "precision"),
+                                 ("Recall@10", "recall@10", "recall"),
+                                 ("F1@10", "f1@10", "f1")]:
         put(ws, f"A{row}", metric, font=Font(name="Arial", size=12,
                                              bold=True), border=False)
         row += 1

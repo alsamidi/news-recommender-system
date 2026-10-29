@@ -176,15 +176,34 @@ versi 1 yang sudah beku.
   `docs/evidence/phase2/sensitivity_matrix.json` (9 titik: seed {1,2,3} ×
   s {0.9, 1.1, 1.3}).
 - Protokol: rank FULL katalog DEV (tanpa sampled negatives); relevan = item
-  dev yang di-view akun itu sendiri; NDCG@10, AP@10 (MAP), Recall@10;
-  k = 10. CBF: TF-IDF fit HANYA di katalog train (`processed_text`),
-  transform full catalog; profil akun = mean vektor item train yang
-  di-view. Hybrid: α·minmax(ALS) + (1−α)·minmax(CBF) per akun, α ∈
-  {0.2,0.4,0.6,0.8} — grid di JSON, TIDAK di-hardcode; web tidak pernah
+  dev yang di-view akun itu sendiri; **enam nilai per sistem: NDCG@10,
+  AP@10, MAP@10 (alias AP pada satu daftar peringkat), Precision@10,
+  Recall@10, F1@10**; k = 10. CBF: TF-IDF fit HANYA di katalog train
+  (`processed_text`), transform full catalog; profil akun = mean vektor item
+  train yang di-view. Hybrid: α·minmax(ALS) + (1−α)·minmax(CBF) per akun,
+  α ∈ {0.2,0.4,0.6,0.8} — grid di JSON, TIDAK di-hardcode; web tidak pernah
   mengirim α (PRD AC-02).
 - **Winner α (mean NDCG@10 lintas 9 titik): 0.8** (grid mean: 0.2 → 0.00217,
   0.4 → 0.00256, 0.6 → 0.00273, 0.8 → 0.00297). Per titik winner juga 0.8
   (2 pengecualian: seed 1 s=1.1 → 0.2; seed 3 s∈{1.1,1.3} → 0.6).
+- Angka enam metrik (mean 9 titik, n=600/sel) — sumber
+  `models/indo_eval.json`; verifikasi ulang di workbook sheet
+  `12_Cek_Naskah` (selisih 0):
+
+  | sistem | NDCG@10 | MAP@10 | P@10 | R@10 | F1@10 |
+  |---|---|---|---|---|---|
+  | popularity | 0.010595 | 0.003325 | 0.010093 | 0.004244 | 0.005826 |
+  | als | 0.005755 | 0.001849 | 0.005296 | 0.002279 | 0.003099 |
+  | cbf | 0.001112 | 0.000322 | 0.001130 | 0.000495 | 0.000668 |
+  | hybrid α=0,2 | 0.002172 | 0.000622 | 0.002241 | 0.000962 | 0.001311 |
+  | hybrid α=0,4 | 0.002558 | 0.000719 | 0.002667 | 0.001093 | 0.001518 |
+  | hybrid α=0,6 | 0.002730 | 0.000773 | 0.002833 | 0.001176 | 0.001627 |
+  | hybrid α=0,8 | 0.002975 | 0.000830 | 0.003130 | 0.001316 | 0.001814 |
+
+  AP@10 = MAP@10 pada satu daftar peringkat; keduanya dilaporkan agar nama
+  yang dipakai naskah tersedia langsung. Precision memakai penyebut
+  `len(top-k)`, F1 = harmonik P dan R pada cutoff yang sama (0 bila tak ada
+  hit).
 - Urutan sistem konsisten di semua 9 titik: popularity > ALS > hybrid > CBF.
   **Caveat jujur (wajib dibaca sebelum kutip):** interaksi adalah SIMULASI
   view-only yang popularity-process-nya didefinisikan generator itu sendiri

@@ -48,6 +48,13 @@ def main():
                        for name, sys_ in p["systems"].items()},
              "recall@10": {name: sys_["recall@10_mean"]
                            for name, sys_ in p["systems"].items()},
+             # metrics the locked summary used to omit (map = AP alias)
+             "precision@10": {name: sys_["precision@10_mean"]
+                               for name, sys_ in p["systems"].items()},
+             "f1@10": {name: sys_["f1@10_mean"]
+                        for name, sys_ in p["systems"].items()},
+             "map@10": {name: sys_["map@10_mean"]
+                          for name, sys_ in p["systems"].items()},
              } for p in points],
         "caveats": [
             "Every number is the mean over accounts of one seed/s cell; the "
