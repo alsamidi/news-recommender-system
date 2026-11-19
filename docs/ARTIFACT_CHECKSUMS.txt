@@ -1,0 +1,19 @@
+# Artifact checksums — ta-news-rec
+# Format: <sha256>  <bytes>  <path>
+# Verify with: bash scripts/verify_artifacts.sh
+
+# --- serving ---
+407b8cb84cee980300b9897e60ce2b7f1bc48037236eff94adad764ec53bed0f    30102207  data/processed/news_processed.parquet
+b6a988d586c2491167907363edcd08b55d87ddfdd4ae20dc69997df43acf1ecb     1060424  data/processed/interactions_dev.parquet
+d8318896c3025c1d385638c540fd17671289017c732fab3d7b5fc95ef400ec10     2320665  data/processed/interactions_train.parquet
+1ece29d4d03e60670c8f03feee24cd64748e85d030379510f75f3af70a3a49f2    11902623  models/als_model.pkl
+f258a3f47a3360e3373480ee4204a830c59f161d92fcc1cfc1b227cbbcf00ed7     7991424  models/als_user_factors.npy
+ff1da3f7c1ec29c34080d6ca25a7bf02531acfb618a79bbe6cff9b8bad5fca44     1737856  models/als_item_factors.npy
+31dd82456b6f86340c3d1f549dc3c420cf5b124df6cadeae53fe4c4aa2d5eb7d    23678353  models/tfidf_baseline.pkl
+
+# --- research ---
+1639d78b2dc61f82d2749efc8cf138e3941e6d7c74b698df8f72ae3b0520ec05   287840384  models/indobert_embeddings.npy
+5ed3da018e4c9e772906442fa86270feb4d64fe6dcbc8c186d74a7c19804b2e4    16885107  models/tfidf_embeddings.npz
+cdfc2d8c7e294f5f0cfc35238a024c58604d7a48e8233f816fdbe2f905421673     2018828  models/tfidf_vectorizer.pkl
+c5842cb38ea75cd8ee419511e06af258ff2a04f6883c043c42c35e7f4ebc9bc5         418  models/weighted_hybrid.pkl
+

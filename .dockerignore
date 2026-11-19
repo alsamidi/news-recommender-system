@@ -1,0 +1,47 @@
+# Keep the build context small and the image honest about what it serves.
+venv/
+.git/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.taste-skill/
+docs/evidence/
+notebooks/
+
+# Indo-era artifacts that serving never opens. The four parquet files and the
+# ALS pickle it DOES need are copied explicitly by the Dockerfile.
+data/processed/indo/catalog_dev.parquet
+data/processed/indo/interactions.parquet
+data/processed/indo/corpusindo.zip
+data/processed/indo/indo_als_user_factors.npy
+data/processed/indo/indo_als_item_factors.npy
+models/indo_als_user_factors.npy
+models/indo_als_item_factors.npy
+models/indo_eval.json
+
+# Research-only artifacts: never read by web.app or HybridRecommender.load().
+models/indobert_embeddings.npy
+models/indobert_eval.json
+models/indobert_meta.json
+models/tfidf_embeddings.npz
+models/tfidf_vectorizer.pkl
+models/weighted_hybrid.pkl
+models/alpha_sweep.json
+models/alpha_sweep_curve.png
+models/best_alpha.json
+models/error_coverage.json
+models/standalone_baselines.json
+models/full_catalog_tables.md
+models/stratified_tables.md
+
+# Raw MIND corpora (~1 GB) are a build-time research input, not a serve input.
+MINDsmall_dev/
+MINDsmall_train/
+xMINDsmall_dev/
+xMINDsmall_train/
+xMINDlarge_dev/
+
+# Local state
+data/web.db
+data/raw/
+*.db

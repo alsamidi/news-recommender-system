@@ -1,0 +1,317 @@
+"""Design-token compliance, enforced mechanically.
+
+These back the TEST-AC-2xx criteria: raw hex only in tokens.css, no CDN fonts,
+no thumbnails, no score rendering, correct focus/contrast choices.
+"""
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pytest
+
+STATIC = Path(__file__).resolve().parents[2] / "src" / "web" / "static"
+TEMPLATES = Path(__file__).resolve().parents[2] / "src" / "web" / "templates"
+
+HEX = re.compile(r"#[0-9a-fA-F]{3,8}\b")
+
+
+def read(p: Path) -> str:
+    return p.read_text(encoding="utf-8")
+
+
+def test_hex_only_in_tokens_css():
+    """TEST-AC-201/202: one source of color truth."""
+    offenders = []
+    for path in list(STATIC.glob("*.css")) + list(TEMPLATES.glob("*.html")):
+        if path.name == "tokens.css":
+            continue
+        if HEX.search(read(path)):
+            offenders.append(path.name)
+    assert offenders == []
+
+
+def test_tokens_css_has_no_duplicate_coral():
+    """--color-error must alias coral, not restate the hex (D25)."""
+    css = read(STATIC / "tokens.css")
+    assert css.count("#aa2d00") == 1
+    assert "--color-error: var(--color-signature-coral)" in css
+
+
+def test_no_remote_fonts_or_cdn():
+    """TEST-AC-210: no webfont download, no CDN dependency."""
+    blob = read(STATIC / "tokens.css") + read(STATIC / "app.css")
+    for tmpl in TEMPLATES.glob("*.html"):
+        blob += read(tmpl)
+    assert "fonts.googleapis" not in blob
+    assert "@import url(http" not in blob
+    assert "cdn." not in blob
+    assert "@font-face" not in blob
+
+
+def test_local_font_stack_declared():
+    """TEST-AC-211."""
+    css = read(STATIC / "tokens.css")
+    assert "-apple-system" in css
+    assert "Segoe UI" in css
+    # Haas must not appear in an actual font-family list (comments may name it).
+    for fam in re.findall(r"font-family:\s*([^;]+);", css):
+        assert "Haas" not in fam
+
+
+def test_display_weights_never_bold():
+    """TEST-AC-212: headings stay <= 500."""
+    css = read(STATIC / "app.css")
+    for weight in re.findall(r"font-weight:\s*(\d+)", css):
+        assert int(weight) <= 600, f"unexpected weight {weight}"
+
+
+def test_article_body_override_present():
+    """TEST-AC-213 (D26)."""
+    tokens = read(STATIC / "tokens.css")
+    app = read(STATIC / "app.css")
+    assert "--type-article-size: 16px" in tokens
+    assert "--type-article-leading: 1.6" in tokens
+    assert ".article-body" in app
+
+
+def test_no_thumbnail_or_image_markup():
+    """TEST-AC-220/246: no fake images."""
+    for tmpl in TEMPLATES.glob("*.html"):
+        body = read(tmpl)
+        assert "<img" not in body.lower()
+        assert "background-image" not in body.lower()
+
+
+def test_no_forbidden_components():
+    """TEST-AC-224: no pricing, logo strip, or topic rail.
+
+    Greps for component SELECTORS, not for the bare words: a comment
+    explaining that the topic chips deliberately are *not* a pricing pill
+    would otherwise trip a check about implemented components. The topic
+    chips added by PRD addendum v1.2 are `.topic-chip`, which is a plain
+    selectable control — the forbidden component is the marketing
+    `topic-filter-rail` sidebar, not "any control mentioning topics".
+    """
+    forbidden_selectors = (".pricing-", ".logo-strip", ".topic-filter-rail")
+    for tmpl in TEMPLATES.glob("*.html"):
+        body = read(tmpl).lower()
+        for needle in forbidden_selectors:
+            assert f'class="{needle[1:]}"' not in body
+            assert f"{needle} " not in body
+    css = read(STATIC / "app.css").lower()
+    for needle in forbidden_selectors:
+        assert f"{needle}" not in css
+
+
+def test_no_pill_radius():
+    """TEST-AC-204: 9999px is pricing-only."""
+    css = read(STATIC / "app.css") + read(STATIC / "tokens.css")
+    assert "9999" not in css
+
+
+def test_focus_visible_ring_defined():
+    """TEST-AC-230/231."""
+    css = read(STATIC / "app.css")
+    assert ":focus-visible" in css
+    assert "var(--color-info-border)" in css
+
+
+def test_input_border_is_not_hairline():
+    """TEST-AC-232: hairline is 1.36:1, unusable as a control boundary."""
+    css = read(STATIC / "app.css")
+    inputs = re.search(r'input\[type="text"\][^{]*\{[^}]*\}', css)
+    assert inputs, "input styling block missing"
+    assert "border: 1px solid var(--color-muted)" in inputs.group(0)
+
+
+def test_contrast_pairs_meet_aa():
+    """TEST-AC-235: recompute the documented pairs from tokens.css."""
+    def lum(hex_color: str) -> float:
+        h = hex_color.lstrip("#")
+        r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+        f = lambda c: c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+
+    def ratio(a: str, b: str) -> float:
+        la, lb = lum(a), lum(b)
+        hi, lo = max(la, lb), min(la, lb)
+        return (hi + 0.05) / (lo + 0.05)
+
+    pairs = [("#181d26", "#ffffff"), ("#333840", "#ffffff"),
+             ("#41454d", "#ffffff"), ("#1b61c9", "#ffffff"),
+             ("#ffffff", "#aa2d00"), ("#aa2d00", "#ffffff"),
+             ("#181d26", "#f5e9d4")]
+    for fg, bg in pairs:
+        assert ratio(fg, bg) >= 4.5, f"{fg} on {bg} = {ratio(fg, bg):.2f}"
+
+
+def test_touch_targets_are_44px():
+    """TEST-AC-234."""
+    tokens = read(STATIC / "tokens.css")
+    assert "--touch-min: 44px" in tokens
+
+
+def test_no_score_rendered_in_templates():
+    """TEST-AC-025/027 (D22): scores never appear in the UI."""
+    for tmpl in TEMPLATES.glob("*.html"):
+        body = read(tmpl)
+        assert "score" not in body.lower()
+        assert "toFixed" not in body
+
+
+def test_no_rating_control():
+    """TEST-AC-067: ratings are out of MVP."""
+    for tmpl in TEMPLATES.glob("*.html"):
+        body = read(tmpl).lower()
+        for word in ("beri rating", "stars", "rating"):
+            assert word not in body
+
+
+def test_desktop_nav_is_not_hidden_by_details_content():
+    """Regression: the desktop nav rendered nothing.
+
+    `<details>` exposes its children through a `::details-content` box that is
+    `content-visibility: hidden` while closed. `display: contents` on the
+    parent does not reach inside that box, so `.navmenu > summary {display:
+    none}` hid the toggle while the links stayed unpainted — Beranda, Histori
+    and Keluar were laid out at a 44px height with nothing drawn (measured in
+    Chrome 155). A source test cannot see paint; it guards the override that
+    makes them visible, together with the browser check recorded in the
+    commit that added this rule.
+    """
+    css = read(STATIC / "app.css")
+    assert ".navmenu::details-content" in css, (
+        "desktop nav links will be invisible again: <details> hides its "
+        "content box while closed")
+    rule = re.search(r"\.navmenu::details-content\s*\{([^}]*)\}", css).group(1)
+    assert "content-visibility: visible" in rule
+
+
+def test_nav_collapse_rule_exists():
+    """TEST-AC-242: the nav must collapse below 768px."""
+    css = read(STATIC / "app.css")
+    assert "@media (max-width: 767px)" in css
+    block = css[css.index("@media (max-width: 767px)"):]
+    assert ".navmenu > summary" in block
+    assert "display: flex" in block
+    assert ".navlinks" in block and "display: none" in block
+    assert ".navmenu[open] > .navlinks" in block
+
+
+def test_breakpoint_grid_columns_declared():
+    """TEST-AC-241: 3-up desktop, 2-up tablet, 1-up mobile."""
+    css = read(STATIC / "app.css")
+    assert "repeat(3, minmax(0, 1fr))" in css
+    assert "@media (max-width: 1024px)" in css
+    assert "repeat(2, minmax(0, 1fr))" in css
+    assert "@media (max-width: 768px)" in css
+
+
+def test_base_template_has_accessible_menu():
+    """The collapsed menu must be keyboard reachable and labelled."""
+    html = read(TEMPLATES / "base.html")
+    assert "<details" in html and "<summary" in html
+    assert 'aria-label="Menu navigasi"' in html
+
+
+def test_brand_logo_is_inline_vector():
+    """The wordmark must be inline SVG so it inherits currentColor."""
+    html = read(TEMPLATES / "base.html")
+    assert 'class="brand-mark"' in html
+    assert "<svg" in html
+    assert "<img" not in html            # <img> would block currentColor
+    assert "currentColor" in html
+    css = read(STATIC / "app.css")
+    assert "fill: currentColor" in css
+
+
+def test_logo_asset_exists_and_is_vector():
+    svg = STATIC / "goodnews.svg"
+    assert svg.exists()
+    body = svg.read_text()
+    assert body.lstrip().startswith("<svg")
+    assert "viewBox" in body
+    assert "<image" not in body          # no embedded bitmap
+    assert len(body) < 40_000            # stay reasonable
+
+
+def test_card_category_typography_matches_caption_spec():
+    """TEST-AC-214 & DESIGN.md caption token: 14px."""
+    css = read(STATIC / "app.css")
+    cat = re.search(r'\.card-category\s*\{([^}]+)\}', css)
+    assert cat, "card-category block missing"
+    assert "font-size: 14px" in cat.group(1)
+    assert "letter-spacing: 0.16px" in cat.group(1)
+
+
+def test_skip_link_and_footer_present_in_base():
+    """Accessible skip link and site footer must be present."""
+    html = read(TEMPLATES / "base.html")
+    assert "skip-link" in html
+    assert "site-footer" in html
+
+
+def test_login_uses_indonesian_copy():
+    """PRD requirement: all UI copy in Indonesian (MASUK instead of LOGIN)."""
+    html = read(TEMPLATES / "login.html")
+    assert "MASUK" in html
+    assert "LOGIN" not in html
+
+
+def test_breadcrumb_has_semantic_markup():
+    """Article breadcrumb must use semantic nav and ol elements."""
+    html = read(TEMPLATES / "article.html")
+    assert '<nav aria-label="Breadcrumb"' in html
+    assert '<ol class="breadcrumb"' in html
+
+
+def test_static_files_are_revalidated(client):
+    """A changed stylesheet must not be served from a stale cache.
+
+    Starlette sends ETag and Last-Modified but no Cache-Control, so browsers
+    apply heuristic freshness. A fixed layout kept looking broken until the
+    page was opened in a private window; `no-cache` forces a revalidation,
+    which the existing ETag answers with 304 when nothing changed.
+
+    Uses the shared `client`: building a second app here would load the model
+    again and clear the module-level recommender on teardown, breaking every
+    later test with "recommender not loaded".
+    """
+    r = client.get("/static/app.css")
+    assert r.status_code == 200
+    assert r.headers.get("cache-control") == "no-cache"
+    etag = r.headers.get("etag")
+    assert etag, "no ETag, so revalidation would re-download"
+    assert client.get("/static/app.css", headers={"if-none-match": etag}).status_code == 304
+
+
+def test_reader_counts_are_visually_subordinate():
+    """TEST-AC-258: reader counts sit below 1 opacity, under the title.
+
+    They are reference data, not something to read first; the reduced opacity
+    keeps them available without competing with the headline. Both surfaces
+    (cards and history rows) must agree, or the same number would look like a
+    different kind of information on two pages.
+    """
+    css = read(STATIC / "app.css")
+    for selector in (".card-readers", ".history-readers"):
+        block = re.search(re.escape(selector) + r"\s*\{([^}]*)\}", css)
+        assert block, f"{selector} block missing"
+        opacity = re.search(r"opacity:\s*([\d.]+)", block.group(1))
+        assert opacity, f"{selector} has no opacity"
+        assert float(opacity.group(1)) < 1.0
+
+
+def test_reading_measure_token():
+    """TEST-AC-279 (D31): the detail page's measure is a token, not a magic px.
+
+    576px is the width that puts the 16px body on 72 characters per line,
+    inside the 65–75 the design rules require. Pinned here so a later tweak to
+    the column cannot quietly leave the reading measure behind.
+    """
+    tokens = read(STATIC / "tokens.css")
+    assert "--layout-reading: 576px" in tokens
+    css = read(STATIC / "app.css")
+    assert "var(--layout-reading)" in css, "the token exists but nothing uses it"
+

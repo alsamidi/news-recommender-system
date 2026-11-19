@@ -1,0 +1,77 @@
+{
+  "protocol": {
+    "block": "Berita serupa (article detail related items)",
+    "served_by": "IndoHybridRecommender.similar(nid, top_k)",
+    "method": "TF-IDF cosine over catalog.parquet processed_text; vectoriser fit on catalog_train.parquet, L2-normalised; no ALS, no popularity, no personalisation",
+    "k": 5,
+    "n_queries": 300,
+    "sample_seed": 42,
+    "sample_frame": "numpy.random.default_rng(seed), uniform without replacement over catalog nids present in data/processed/indo/interactions_train.parquet, then sorted (deterministic)",
+    "sample_n_candidates": 13881,
+    "catalog_source": "data/processed/indo/catalog.parquet",
+    "coview_source": "data/processed/indo/interactions_train.parquet",
+    "coview_definition": "candidate and query share >= 2 TRAIN accounts (distinct dummy_user_id); a pair sharing at least one account is necessary but not sufficient",
+    "coview_threshold": 2,
+    "coview_threshold_variant": 1,
+    "coview_threshold_variant_definition": "same but >= 1 shared TRAIN account (sensitivity check on the threshold; not the headline)",
+    "interpretation_limit": "Co-view at this corpus scale is structurally sparse (600 accounts, ~4.1 mean TRAIN views per item), so coview_recall cannot discriminate systems; category_match against the random baseline is the usable signal.",
+    "random_baseline": "k items drawn uniformly without replacement from the full catalog with the same RNG stream; query item excluded",
+    "category_match": "fraction of the k returned items whose catalog `category` equals the query's category",
+    "coview_recall": "fraction of the k returned items that are co-viewed with the query",
+    "not_measured": [
+      "coview_precision (undefined: no per-query relevant pool)",
+      "self-similarity"
+    ]
+  },
+  "metrics": {
+    "category_match@5": 0.6053333333333333,
+    "coview_recall@5": 0.0006666666666666668,
+    "coview_recall@5_threshold_1": 0.019333333333333334,
+    "random_baseline_category_match@5": 0.15666666666666668,
+    "category_match@5_lift_over_random": 0.4486666666666666,
+    "coview_coverage_queries_with_any_coview_candidate": 0.7433333333333333
+  },
+  "by_category": {
+    "Berita": {
+      "n_queries": 65,
+      "category_match@5": 0.643076923076923,
+      "random_baseline_category_match@5": 0.5815384615384614
+    },
+    "Politik": {
+      "n_queries": 44,
+      "category_match@5": 0.4954545454545455,
+      "random_baseline_category_match@5": 0.09090909090909093
+    },
+    "Ekonomi": {
+      "n_queries": 33,
+      "category_match@5": 0.593939393939394,
+      "random_baseline_category_match@5": 0.030303030303030304
+    },
+    "Hukum": {
+      "n_queries": 30,
+      "category_match@5": 0.6866666666666669,
+      "random_baseline_category_match@5": 0.04666666666666666
+    },
+    "Info Tempo": {
+      "n_queries": 28,
+      "category_match@5": 0.4642857142857143,
+      "random_baseline_category_match@5": 0.028571428571428574
+    },
+    "Internasional": {
+      "n_queries": 19,
+      "category_match@5": 0.7684210526315789,
+      "random_baseline_category_match@5": 0.021052631578947368
+    },
+    "Multimedia": {
+      "n_queries": 17,
+      "category_match@5": 0.5058823529411764,
+      "random_baseline_category_match@5": 0.03529411764705883
+    },
+    "Hiburan": {
+      "n_queries": 14,
+      "category_match@5": 0.6,
+      "random_baseline_category_match@5": 0.028571428571428574
+    }
+  },
+  "generated_at_utc": "2026-10-28T17:38:44.067317+00:00"
+}

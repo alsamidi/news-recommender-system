@@ -1,0 +1,697 @@
+/* Layout and components. No raw hex here — tokens only (TEST-AC-201/202). */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-stack);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--color-body);
+  background: var(--color-canvas);
+}
+
+a { color: var(--color-link); text-decoration: none; }
+a:hover { color: var(--color-link-active); }
+
+/* ---- top nav (64px, white, never inverted) ---- */
+.topnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  height: 64px;
+  padding: 0 max(var(--space-lg), calc((100% - var(--layout-max)) / 2 + var(--space-xxl)));
+  border-bottom: 1px solid var(--color-surface-strong);
+  background: var(--color-canvas);
+}
+.brand { display: inline-flex; align-items: center; color: var(--color-ink); }
+.brand-mark { display: block; height: 26px; width: auto; fill: currentColor; }
+.navlinks { display: flex; align-items: center; gap: var(--space-md); }
+.navlinks a { font-size: 14px; color: var(--color-ink); }
+.navlinks a:hover { color: var(--color-muted); }
+.navlinks a[aria-current="page"] { font-weight: 500; border-bottom: 2px solid var(--color-ink); }
+
+/* ---- layout ---- */
+.container {
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-xxl);
+}
+@media (max-width: 1024px) { .container { padding: var(--space-xl) var(--space-lg); } }
+@media (max-width: 768px)  { .container { padding: var(--space-lg) var(--space-md); } }
+
+.page-title { font-size: 32px; font-weight: 400; line-height: 1.2; color: var(--color-ink); margin: 0 0 var(--space-xs); }
+@media (max-width: 768px) { .page-title { font-size: 24px; } }
+.page-sub { font-size: 14px; color: var(--color-muted); margin: 0 0 var(--space-lg); }
+
+/* ---- source label (TEST-AC-051) ---- */
+.source-label {
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.16px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  border: 1px solid var(--color-surface-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xxs) var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+/* ---- article cards: no thumbnails, category + title only ---- */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-lg);
+}
+@media (max-width: 1024px) { .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 768px)  { .card-grid { grid-template-columns: 1fr; } }
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  border: 1px solid var(--color-surface-strong);   /* soft rule: 1.30:1 */
+  border-radius: var(--radius-md);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  min-height: var(--touch-min);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 120ms ease;
+}
+.card:hover { background: var(--color-surface-soft); }
+
+.card-eyebrow {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 0 var(--space-xs);
+  min-width: 0;
+  overflow: hidden;
+}
+.card-category {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.16px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+/* The raw MIND taxonomy value. Displayed because the accepted criterion asks
+   for it, but demoted: it is an identifier, not something a reader parses. */
+.card-sub {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  opacity: 0.75;
+}
+.card-title {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--color-ink);
+  margin: 0;
+  /* No clamp: cutting a news headline mid-phrase is data loss, and half the
+     cards would be truncated at 2 lines. Reserving three lines instead was
+     tried and reverted: it moved the slack between the headline and the
+     abstract, which reads as a mistake, whereas slack above the footer reads
+     as a normal bottom-aligned card. */
+}
+
+/* Source + publication date (PRD v1.1 §10.2). One step below body text and
+   above the reader counts: it is provenance, not decoration, so it stays
+   readable without competing with the headline. Only rendered when the
+   active corpus actually carries the fields. */
+.card-source {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-xs);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--color-muted);
+  margin: 0;
+}
+.card-source > span + span::before {
+  content: "·";
+  margin-right: var(--space-xs);
+  color: var(--color-surface-strong);
+}
+.card-meta {
+  /* Footer sits at the bottom edge, right-aligned: it is reference data, not
+     something to read first. */
+  margin-top: auto;
+  padding-top: var(--space-xs);
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 0 var(--space-xs);
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--color-muted);
+}
+.card-meta > span { white-space: nowrap; }
+/* Counts run one step below body text. At 12px they read as a footnote and
+   stop competing with the headline and the abstract; the extra opacity drop
+   keeps the numbers available but visually quiet (user request, 2026-10-22). */
+.card-readers {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0 var(--space-xs);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--color-muted);
+  opacity: 0.65;
+}
+.card-readers > span { white-space: nowrap; }
+
+/* ---- persona picker ----
+   A scrollable list of dataset users for the passwordless demo login. The
+   list scrolls inside a fixed height so the submit button stays reachable
+   with 50 rows on a laptop screen. */
+.picker-card {
+  max-width: 560px;
+  margin: var(--space-xxl) auto;
+  padding: var(--space-xl);
+  border: 1px solid var(--color-surface-strong);
+  border-radius: var(--radius-lg);
+}
+.picker-note { font-size: 16px; color: var(--color-muted); margin: 0 0 var(--space-md); }
+.picker-list {
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid var(--color-surface-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  /* Overlay scrollbars on Linux/Chrome are ~2px and read as "the list is cut
+     off" rather than "the list scrolls". Ask for a visible, thin one. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-muted) transparent;
+  overscroll-behavior: contain;
+}
+.picker-list::-webkit-scrollbar { width: 10px; }
+.picker-list::-webkit-scrollbar-track { background: var(--color-surface-soft); }
+.picker-list::-webkit-scrollbar-thumb {
+  background: var(--color-muted);
+  border-radius: 5px;
+  border: 2px solid var(--color-surface-soft);
+}
+.picker-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-surface-strong);
+  cursor: pointer;
+  margin: 0;
+  font-weight: 400;
+}
+.picker-row:last-child { border-bottom: 0; }
+.picker-row:hover { background: var(--color-surface-soft); }
+.picker-row input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+.picker-row:has(input:checked) { background: var(--color-surface-soft); }
+.picker-row:focus-within { outline: 2px solid var(--color-info-border); outline-offset: -2px; }
+.picker-id {
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+.picker-meta { font-size: 14px; color: var(--color-muted); }
+
+/* ---- history list ----
+   A record of what was read, not a feed to browse: one line per article, the
+   title carrying the row, so nothing is stretched to a neighbour's height
+   (which left blank bands and forced the abstract out). */
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--color-surface-strong);
+}
+.history-row {
+  display: grid;
+  /* Title takes the slack; metadata columns are fixed so a row with only
+     "1× via web" does not shrink the last column and shift category/time
+     leftwards relative to rows that carry both counts. 220px fits
+     "4257× via MIND · 8× via web" at 14px with room to spare.
+
+     The category cell also carries the catalogue source and publication date
+     (one cell, not extra columns — TEST-AC-257). Measured in-browser at this
+     type size: the whole meta on ONE line needs 316px, while
+     "MULTIMEDIA · Sumber: Tempo" needs 196px. 240px therefore renders a
+     uniform two lines (category+source, then date) and leaves the title the
+     rest of the slack; 120px — the MIND-era value, when the cell held only a
+     category — wrapped it to three. Widening to 316px would not save row
+     height (long headlines wrap regardless), only steal it from the title. */
+  grid-template-columns: minmax(0, 1fr) 240px 210px 220px;
+  /* Centre, not baseline: with a two-line meta cell a baseline-aligned title
+     sat against the first meta line and the row looked top-heavy. */
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  /* One row height for every entry. The tallest cell is the title, clamped to
+     two lines at 16px/1.4 = 44.8px, so reserving that plus the vertical
+     padding makes every row exactly the same height. Reserving only the meta
+     cell's height left short-title rows 5px shorter, which is what made the
+     list look ragged. */
+  min-height: calc(var(--space-sm) * 2 + 45px + 1px);
+  border-bottom: 1px solid var(--color-surface-strong);
+}
+.history-row a {
+  color: var(--color-ink);
+  text-decoration: none;
+  font-size: 16px;
+  line-height: 1.4;
+  /* Two lines is the height the row reserves. p99 of catalogue titles is 105
+     characters (~2 lines at this width), so this trims the tail of 1% of rows
+     instead of letting one long headline stretch the whole list out of
+     alignment; the full title is always on the detail page. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.history-row a:hover { color: var(--color-link-active); }  /* D27: token-only */
+.history-cat {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.16px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  /* One grid cell holds category + source + date, as two deliberate lines
+     instead of free wrapping (TEST-AC-257 keeps the geometry fixed). Free
+     wrapping put the "·" separator at the start of the second line, which is
+     what made the date look misplaced. */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.history-meta-line {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-xs);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-sub {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  opacity: 0.85;
+}
+.history-sub + .history-sub::before { content: "·"; margin-right: var(--space-xs); color: var(--color-surface-strong); }
+.history-time { font-size: 14px; color: var(--color-muted); text-align: right; white-space: nowrap; }
+.history-readers { font-size: 14px; color: var(--color-muted); text-align: right; white-space: nowrap; opacity: 0.65; }
+.history-readers > span { white-space: nowrap; }
+@media (max-width: 768px) {
+  .history-row { grid-template-columns: minmax(0, 1fr); gap: var(--space-xxs); }
+  .history-time { text-align: left; }
+}
+
+/* ---- article detail: one centred reading column (D31) ----
+   Headline, meta line, body and the portal link share one column, centred on
+   the page, all left-aligned to the same edge. The article text is a reading
+   surface, not a full-width band: at 1184px the body measured 78 characters
+   per line, above the 65–75 the design rules allow. The column carries the
+   measure (`--layout-reading`) and the body fills it, so the headline wraps in
+   the same width the reader's eye runs down instead of starting a line 600px
+   away from the paragraph under it. The related grid stays full width: it is a
+   browsing surface, not reading. */
+.article-column {
+  max-width: var(--layout-reading);
+  margin: 0 auto;
+}
+
+/* ---- article body (D26) ---- */
+.article-body {
+  font-size: var(--type-article-size);
+  line-height: var(--type-article-leading);
+  color: var(--color-body);
+  /* The measure lives on .article-column (D31); a second cap here would make
+     the body narrower than the headline's column. */
+  max-width: none;
+  /* Ragged right edges made the long single-paragraph bodies read as blocks of
+     noise; justified text with a first-line indent reads like prose. The
+     corpus stores one flattened paragraph per article (measured: 0% of rows
+     contain a newline), so there is exactly one indent per body — splitting it
+     into paragraphs here would be inventing structure. */
+  text-align: justify;
+  text-indent: 1.5em;
+  hyphens: auto;
+}
+
+/* Original-portal attribution, after the body (PRD v1.3 §10.3). Quiet: it is
+   provenance, not a call to action, and it must never compete with the body. */
+.article-source {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-muted);
+  margin-top: var(--space-lg);
+}
+.article-headline {
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-sm);
+}
+@media (max-width: 768px) { .article-headline { font-size: 32px; } }
+
+/* ---- forms ---- */
+.form-card {
+  max-width: 420px;
+  margin: var(--space-xxl) auto;
+  padding: var(--space-xl);
+  border: 1px solid var(--color-muted);
+  border-radius: var(--radius-lg);
+}
+label { display: block; font-size: 14px; font-weight: 500; color: var(--color-ink); margin: var(--space-md) 0 var(--space-xs); }
+
+input[type="text"], input[type="email"], input[type="password"] {
+  width: 100%;
+  height: var(--touch-min);
+  padding: var(--space-sm) var(--space-md);
+  font-family: var(--font-stack);
+  font-size: 14px;
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-muted);
+  border-radius: var(--radius-sm);
+}
+input:focus-visible {
+  outline: 2px solid var(--color-info-border);
+  outline-offset: 2px;
+  border-color: var(--color-info-border);
+}
+
+/* ---- buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: var(--space-md) var(--space-lg);
+  font-family: var(--font-stack);
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: var(--radius-lg);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.btn-primary { background: var(--color-primary); color: var(--color-on-primary); }
+.btn-primary:hover { background: var(--color-primary-active); }
+.btn-secondary { background: var(--color-canvas); color: var(--color-ink); border-color: var(--color-muted); }
+.btn-secondary:hover { background: var(--color-surface-soft); }
+.btn:focus-visible { outline: 2px solid var(--color-info-border); outline-offset: 2px; }
+
+/* ---- states ---- */
+.error-text { color: var(--color-error); font-size: 14px; margin: var(--space-xs) 0; }
+.field-error { border-color: var(--color-error) !important; }
+.callout {
+  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  background: var(--color-signature-cream);
+  color: var(--color-ink);
+}
+.callout-error {
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: var(--color-signature-coral);
+  color: var(--color-on-primary);
+}
+.callout-error a { color: var(--color-on-primary); text-decoration: underline; }
+
+.skeleton {
+  height: 96px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-soft);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+.meta-row {
+  font-size: 14px;
+  line-height: 1.25;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+.meta-row > span + span::before {
+  content: "·";
+  margin-right: var(--space-sm);
+  color: var(--color-surface-strong);
+}
+.section-title { font-size: 24px; font-weight: 400; color: var(--color-ink); margin: var(--space-xxl) 0 var(--space-md); }
+
+/* error page heading sits on the coral surface */
+.error-headline { color: var(--color-on-primary); }
+
+/* ---- disabled states (TEST-AC-233, TEST-AC-243) ---- */
+input:disabled, button:disabled, .btn:disabled {
+  border-color: var(--color-border-strong); /* disabled */
+  color: var(--color-muted);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* ---- breadcrumbs ---- */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-sm);
+  font-size: 14px;
+  color: var(--color-muted);
+}
+.breadcrumb li + li::before {
+  content: "/";
+  margin-right: var(--space-xs);
+  color: var(--color-surface-strong);
+}
+.breadcrumb a { color: var(--color-link); }
+.breadcrumb a:hover { color: var(--color-link-active); }
+
+/* ---- skip link ---- */
+.skip-link {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.skip-link:focus-visible {
+  position: fixed;
+  top: var(--space-md);
+  left: var(--space-md);
+  width: auto;
+  height: auto;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: var(--radius-sm);
+  z-index: 1000;
+  clip: auto;
+  white-space: normal;
+  outline: 2px solid var(--color-info-border);
+  outline-offset: 2px;
+}
+
+/* ---- spacing utilities ---- */
+.mt-xs { margin-top: var(--space-xs); }
+.mt-sm { margin-top: var(--space-sm); }
+.mt-md { margin-top: var(--space-md); }
+.mt-lg { margin-top: var(--space-lg); }
+.mt-xl { margin-top: var(--space-xl); }
+.mb-xs { margin-bottom: var(--space-xs); }
+.mb-sm { margin-bottom: var(--space-sm); }
+.mb-md { margin-bottom: var(--space-md); }
+.mb-lg { margin-bottom: var(--space-lg); }
+.w-full { width: 100%; }
+.m-0 { margin: 0; }
+
+/* ---- site footer ---- */
+.site-footer {
+  border-top: 1px solid var(--color-surface-strong);
+  background: var(--color-canvas);
+  padding: var(--space-xxl) max(var(--space-lg), calc((100% - var(--layout-max)) / 2 + var(--space-xxl)));
+  margin-top: var(--space-section);
+}
+.footer-content {
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  font-size: 14px;
+  color: var(--color-muted);
+  flex-wrap: wrap;
+}
+
+/* ---- landing hero section ---- */
+.hero-section {
+  text-align: center;
+  padding: var(--space-section) var(--space-lg);
+  max-width: 680px;
+  margin: 0 auto;
+}
+.hero-headline {
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-md);
+}
+@media (max-width: 768px) {
+  .hero-headline { font-size: 32px; }
+  .hero-section { padding: var(--space-xl) var(--space-md); }
+}
+.hero-sub {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-muted);
+  margin: 0 0 var(--space-xl);
+}
+.hero-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+/* ---- collapsible nav (TEST-AC-242: collapses below 768px) ---- */
+.navmenu { display: contents; }
+.navmenu > summary { display: none; }
+.navmenu > summary::-webkit-details-marker { display: none; }
+
+/* Chrome renders a closed <details> through a ::details-content box that is
+   content-visibility:hidden by default. display:contents on the parent does
+   not reach inside it, so the desktop links stayed invisible until here
+   (measured: links laid out at 44px tall, zero paint, Chrome 155). */
+.navmenu::details-content { content-visibility: visible; display: contents; }
+
+.navburger, .navburger::before, .navburger::after {
+  display: block; width: 20px; height: 2px;
+  background: var(--color-ink); content: "";
+}
+.navburger { position: relative; }
+.navburger::before { position: absolute; top: -6px; }
+.navburger::after  { position: absolute; top: 6px; }
+
+.btn-compact { min-height: 44px; padding: var(--space-xs) var(--space-md); }
+
+@media (max-width: 767px) {
+  .navmenu { display: block; position: relative; }
+  .navmenu > summary {
+    display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; cursor: pointer;
+    border: 1px solid var(--color-muted); border-radius: var(--radius-sm);
+  }
+  .navmenu > summary:focus-visible {
+    outline: 2px solid var(--color-info-border); outline-offset: 2px;
+  }
+  .navlinks {
+    display: none;
+    position: absolute; right: 0; top: calc(100% + var(--space-xs));
+    min-width: 200px; padding: var(--space-md);
+    flex-direction: column; align-items: stretch; gap: var(--space-sm);
+    background: var(--color-canvas);
+    border: 1px solid var(--color-muted);
+    border-radius: var(--radius-md);
+    z-index: 10;
+  }
+  .navmenu[open] > .navlinks { display: flex; }
+  .navlinks a { padding: var(--space-xs) 0; }
+}
+
+/* ---- topic onboarding (PRD addendum v1.2) ----
+   A chip is a selectable form control. Its border is `--color-muted`
+   (14.6:1), never `--color-hairline` (1.36:1, WCAG 1.4.11 failure). Selected
+   state uses `--color-surface-soft` plus an inset ink ring — token colours
+   only, no new hue and no coral (that token means error, D25). The checkbox
+   stays in the DOM (focusable, keyboard operable, works with JS disabled)
+   and is visually hidden only, with the focus ring drawn on its label. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.topic-fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--space-xl);
+}
+.topic-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-muted);
+  /* DESIGN.md has no chip token. `{rounded.pill}` is pricing-only and
+     `{rounded.full}` belongs to icon buttons, so the chip uses the input
+     radius (`{rounded.sm}`) — the family a selectable form control belongs
+     to. Do not use a raw 999px value here (TEST-AC-204). */
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  line-height: 1.25;
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.topic-chip:hover { background: var(--color-surface-soft); }  /* D27: token-only */
+.topic-chip input:focus-visible + span {
+  /* Ring sits on the visible label; the checkbox itself is sr-only, so focus
+     must not be invisible to a keyboard user (TEST-AC-230/231). */
+  outline: 2px solid var(--color-info-border);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.topic-chip:has(input:checked) {
+  background: var(--color-surface-soft);
+  border-color: var(--color-ink);
+  box-shadow: inset 0 0 0 1px var(--color-ink);  /* selected = thicker border, no new hue */
+}
+.onboarding-actions { display: flex; flex-wrap: wrap; gap: var(--space-md); }

@@ -1,0 +1,179 @@
+{
+  "protocol": {
+    "points": 9,
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "s_grid": [
+      0.9,
+      1.1,
+      1.3
+    ],
+    "metric": "NDCG@10",
+    "ranking": "full dev-catalog per account, no sampled negatives, k=10; relevant = account's dev views",
+    "n_accounts": [
+      600
+    ],
+    "alpha": 0.8,
+    "alpha_source": "configs/indo_serving.yaml model.cf_weight",
+    "window": 50,
+    "window_source": "src/web/config.py WEB_HISTORY_LIMIT default",
+    "frozen_shape": {
+      "n_accounts": 600,
+      "reads_per_account": [
+        60,
+        180
+      ],
+      "recency_days": 180,
+      "category_drift": 0.2
+    },
+    "als_params": {
+      "factors": 128,
+      "regularization": 0.01,
+      "iterations": 20,
+      "alpha": 40.0,
+      "seed": 42
+    },
+    "effective_catalog_since": "2025-09-01",
+    "warm_reference": "models/indo_eval.json per_point ndcg@10.als (asserted at 1e-09)",
+    "note": "warm_user is recommend_user (ALS user vector); session_hybrid is the served recommend_session path (cold profile from the last window nids); session_als_only is the same profile at alpha=1.0"
+  },
+  "means": {
+    "warm_user": 0.005755178205542236,
+    "session_hybrid": 0.0016971357628818389,
+    "session_als_only": 0.006139670624247327,
+    "popularity": 0.010594596215689865
+  },
+  "mean_ratio_session_hybrid_over_warm_user": 0.29488848168897663,
+  "per_point": [
+    {
+      "seed": 1,
+      "s": 0.9,
+      "cutoff_draft": "2025-09-18 03:04:55.218008051+00:00",
+      "train_events": 57908,
+      "dev_events": 14477,
+      "n_accounts": 600,
+      "n_als_items": 12765,
+      "warm_user": 0.007856460587958965,
+      "session_hybrid": 0.0019051180128609436,
+      "session_als_only": 0.007784110904708554,
+      "popularity": 0.016815986640139405,
+      "ratio_session_hybrid_over_warm_user": 0.24249062176685282
+    },
+    {
+      "seed": 1,
+      "s": 1.1,
+      "cutoff_draft": "2025-09-18 03:04:55.218008051+00:00",
+      "train_events": 57908,
+      "dev_events": 14477,
+      "n_accounts": 600,
+      "n_als_items": 13955,
+      "warm_user": 0.004644143422378956,
+      "session_hybrid": 0.002863414571962146,
+      "session_als_only": 0.006584500515959678,
+      "popularity": 0.008692559950183082,
+      "ratio_session_hybrid_over_warm_user": 0.6165646302317178
+    },
+    {
+      "seed": 1,
+      "s": 1.3,
+      "cutoff_draft": "2025-09-18 03:04:55.218008051+00:00",
+      "train_events": 57908,
+      "dev_events": 14477,
+      "n_accounts": 600,
+      "n_als_items": 14707,
+      "warm_user": 0.004160532045752963,
+      "session_hybrid": 0.0013499521046772577,
+      "session_als_only": 0.004719831567355341,
+      "popularity": 0.005891280765638916,
+      "ratio_session_hybrid_over_warm_user": 0.324466219664208
+    },
+    {
+      "seed": 2,
+      "s": 0.9,
+      "cutoff_draft": "2025-09-18 04:44:09.366436382+00:00",
+      "train_events": 57212,
+      "dev_events": 14303,
+      "n_accounts": 600,
+      "n_als_items": 12698,
+      "warm_user": 0.007384982362836706,
+      "session_hybrid": 0.001501660859430856,
+      "session_als_only": 0.006339733195550961,
+      "popularity": 0.014035358671423302,
+      "ratio_session_hybrid_over_warm_user": 0.20333980308302874
+    },
+    {
+      "seed": 2,
+      "s": 1.1,
+      "cutoff_draft": "2025-09-18 04:44:09.366436382+00:00",
+      "train_events": 57212,
+      "dev_events": 14303,
+      "n_accounts": 600,
+      "n_als_items": 13827,
+      "warm_user": 0.005293535655597505,
+      "session_hybrid": 0.0015351512718781754,
+      "session_als_only": 0.00647788060296979,
+      "popularity": 0.010392217746414417,
+      "ratio_session_hybrid_over_warm_user": 0.2900048987588988
+    },
+    {
+      "seed": 2,
+      "s": 1.3,
+      "cutoff_draft": "2025-09-18 04:44:09.366436382+00:00",
+      "train_events": 57212,
+      "dev_events": 14303,
+      "n_accounts": 600,
+      "n_als_items": 14627,
+      "warm_user": 0.003950127713739362,
+      "session_hybrid": 0.0015735454608539912,
+      "session_als_only": 0.0069919519889777015,
+      "popularity": 0.009566853822219595,
+      "ratio_session_hybrid_over_warm_user": 0.39835305966965934
+    },
+    {
+      "seed": 3,
+      "s": 0.9,
+      "cutoff_draft": "2025-09-18 01:43:22.481486843+00:00",
+      "train_events": 57428,
+      "dev_events": 14357,
+      "n_accounts": 600,
+      "n_als_items": 12717,
+      "warm_user": 0.008288725873973153,
+      "session_hybrid": 0.0011677550863204787,
+      "session_als_only": 0.007414239476266109,
+      "popularity": 0.015288241779035528,
+      "ratio_session_hybrid_over_warm_user": 0.14088475165854678
+    },
+    {
+      "seed": 3,
+      "s": 1.1,
+      "cutoff_draft": "2025-09-18 01:43:22.481486843+00:00",
+      "train_events": 57428,
+      "dev_events": 14357,
+      "n_accounts": 600,
+      "n_als_items": 13901,
+      "warm_user": 0.006524139945265939,
+      "session_hybrid": 0.001703633573250642,
+      "session_als_only": 0.0047706634573427345,
+      "popularity": 0.009189909019661288,
+      "ratio_session_hybrid_over_warm_user": 0.26112768695080435
+    },
+    {
+      "seed": 3,
+      "s": 1.3,
+      "cutoff_draft": "2025-09-18 01:43:22.481486843+00:00",
+      "train_events": 57428,
+      "dev_events": 14357,
+      "n_accounts": 600,
+      "n_als_items": 14531,
+      "warm_user": 0.0036939562423765697,
+      "session_hybrid": 0.001673990924702059,
+      "session_als_only": 0.004174123909095074,
+      "popularity": 0.005478957546493263,
+      "ratio_session_hybrid_over_warm_user": 0.4531702096246458
+    }
+  ],
+  "generated_at_utc": "2026-10-28T17:50:06.055617+00:00"
+}

@@ -1,130 +1,297 @@
 # TA News Recommendation System
 
-Sistem Rekomendasi Berita Bahasa Indonesia berbasis **Content-Based (TF-IDF) + Collaborative Filtering (ALS) + Hybrid terbobot** untuk Tugas Akhir.
-Snapshot reprodusibel Day 5: dataset terkunci, preprocessing Indonesia, kedua model terlatih, evaluasi full-catalog + stratifikasi warm/cold selesai.
+Sistem rekomendasi berita berbahasa Indonesia: content-based TF-IDF, collaborative
+filtering ALS, dan hybrid terbobot, dengan aplikasi web di atasnya.
 
-## Dataset
+Dataset yang dipakai **korpus portal Indonesia**: Detik, Tempo, dan Kompas,
+Juli 2024 - Oktober 2025. Interaksinya simulasi `view` dari 600 akun dummy.
+Dataset MIND/xMINDsmall dari riset v1 **tidak dipakai lagi** — tidak untuk
+training, tidak untuk evaluasi, tidak untuk serving. Catatan riset v1 tetap
+tersimpan sebagai arsip akademik di `docs/` dan `data/DATASET_LOCK.md`, tetapi
+bukan bagian dari sistem yang berjalan.
 
-Pasangan resmi terkunci, lihat `data/DATASET_LOCK.md` (jangan dicampur dengan split/size lain):
+| | Korpus indo (aktif) |
+|---|---|
+| Sumber | Detik, Tempo, Kompas (Juli 2024 - Oktober 2025) |
+| Ukuran katalog | 67.381 artikel unik |
+| Interaksi | simulasi, 600 akun dummy, 72.034 view |
+| Alpha serving | 0,8 (`configs/indo_serving.yaml`) |
+| Angka | `models/indo_eval.json` |
+| Lock | `data/DATASET_LOCK_INDO.md` |
 
-| Split | Folder (sejajar repo root) | Isi |
-|-------|----------------------------|-----|
-| train | `MINDsmall_train/` | news.tsv EN + behaviors.tsv (156.965 impressions, 50.000 users) |
-| train | `xMINDsmall_train/` | news.tsv terjemahan Indonesia (51.282 news), join via `nid` |
-| dev (eval) | `MINDsmall_dev/` | news.tsv + behaviors.tsv (73.152 impressions, 50.000 users) |
-| dev (eval) | `xMINDsmall_dev/` | news.tsv terjemahan Indonesia (42.416 news) |
+Tidak ada era korpus kedua yang dilayani. Seluruh rute web, API, evaluasi, dan
+artefak model membaca korpus indo.
 
-Aturan split: **file-based temporal**, train = file `*_train`, eval = file `*_dev`, cutoff `2019-11-15`. Dilarang random split (leakage).
-Overlap NID MIND↔xMIND 100%; coverage teks Indonesia untuk behavior 100%.
-Konteks tambahan: 62,7% item relevan dev tidak pernah muncul di interaksi train; 88,1% user dev tidak punya train history (`models/error_coverage.json`).
+---
 
-## Preprocessing
+## Menjalankan
 
-Pipeline Indonesia (`configs/preprocessing.yaml`, `src/preprocessing/build_locked.py`):
-
-- Stemmer Sastrawi (per kata-unik), stopwords `configs/stopwords_id.txt`, normalisasi alay opsional.
-- Token: min 2 / max 50 karakter, buang angka dan tanda baca.
-- Input teks: `title + abstract` xMIND (ID); `category/entities` di-join dari MIND via `nid`.
-- Output: `data/processed/news_processed.parquet`, `data/processed/interactions_{train,dev}.parquet`.
-- Leakage guard: vectorizer TF-IDF hanya di-fit di train; dev/full catalog hanya `transform()`.
-
-## Models
-
-| Komponen | Konfigurasi | Artifact |
-|----------|-------------|----------|
-| Content-Based TF-IDF | ngram 1–2, max 50.000 fitur, min_df 2, max_df 0.95, sublinear_tf, cosine (`configs/tfidf_baseline.yaml`) | `models/tfidf_baseline.pkl`, `tfidf_embeddings.npz`, `tfidf_vectorizer.pkl` |
-| CF ALS implicit | factors 128, reg 0.01, alpha 40, 20 iterasi, min 5 interaksi/user, min 3/item (`configs/als.yaml`) | `models/als_model.pkl`, `als_user/item_factors.npy` (ruang ALS: 3.394 item) |
-| Hybrid terbobot | skor = α·content + (1−α)·CF, min-max per user (`configs/hybrid.yaml`) | `models/weighted_hybrid.pkl` |
-
-Catatan alpha: `configs/hybrid.yaml` final `content_weight: 0.4` — pemenang
-protokol full-catalog Day 4/5 (Katalog 93.698 item, NDCG@10 0,00208; lihat
-Evaluation). Nilai 0,8 dari sweep lama (ruang ALS saja) tersisa hanya sebagai
-catatan historis di `models/best_alpha.json` / `weighted_hybrid.pkl` dan tidak
-dipakai serving maupun angka laporan.
-
-## Evaluation
-
-Semua evaluasi memakai formula metrik frozen yang sama (`_metrics_at_ks`, min-max per user, top-k terurut), seed 42.
-Skor dinormalisasi min-max per user sebelum digabung; kandidat train/session selalu di-mask (`-inf`).
-
-### Restricted Catalog (Table A)
-
-- Kandidat = ruang item ALS saja (3.394 item). Warm users, profil = mean TF-IDF item train.
-- Efek: item di luar ruang CF tidak pernah bisa direkomendasikan — relevan untuk perbandingan, tetapi menyembunyikan cold-start item.
-- Hasil (`models/full_catalog_tables.md`): condong ke content; α=1,0 (pure content) NDCG@10 tertinggi (0,00928; n=1.139).
-
-### Full Catalog (Table B)
-
-- Kandidat = seluruh katalog (93.698 item). TF-IDF `transform`-only (frozen). Pure CF (α=0) mengisi slot unknown dengan `-inf`; α>0 memberi slot unknown nilai 0 sehingga content tetap bisa me-ranking item non-ALS.
-- Protokol: warm users, mask train history, sampel 2.000/2.858 eligible, K=5/10/20, sweep α 0,0–1,0.
-- Hasil: **α=0,4 menghasilkan NDCG@10 tertinggi pada protokol full-catalog yang diuji** (0,00208; MAP@10 0,00120; hit@10 0,0090; n=2.000). Pure content (α=1,0) jatuh ke 0,00007 — bukti item cold-start butuh sinyal CF.
-
-### Warm/Cold Stratified Evaluation (Table C / Table D)
-
-Pertanyaan Bab IV: bagaimana perilaku sistem saat informasi user tersedia vs tidak tersedia.
-
-**Warm (Table C): train history tersedia → ALS personalisasi dapat digunakan.**
-
-- Protokol identik Table B: full catalog, mask train, profil mean TF-IDF train. Sampel 2.000/2.858 eligible.
-- Hasil: **α=0,4 menghasilkan NDCG@10 tertinggi (0,00208)**, tetapi **selisih terhadap pure CF (α=0; 0,00200) relatif kecil**. Artinya: pada user bersejarah, komponen collaborative filtering memberikan kontribusi penting; content hanya memberi koreksi kecil di atasnya.
-
-**Cold (Table D): train history tidak tersedia → user-factor ALS tidak tersedia → session history dev digunakan → pseudo-user dibuat dari item ALS yang muncul pada session.**
-
-- Protokol: user tanpa interaksi train. Session-based leave-last-out dalam dev (klik diurut waktu; history = semua kecuali terakhir; relevant = klik terakhir). Profil TF-IDF dari history session; CF diproksi pseudo-user factor = mean ALS item-factors dari item session yang ada di ALS; fallback non-personalized = popularity train; full catalog, mask session. Sampel 2.000/22.703 session usable.
-- Hasil: **α=0,4 menghasilkan NDCG@10 tertinggi (0,00921; MAP@10 0,00706; hit@10 0,0163) pada subset yang memiliki setidaknya satu item session di ruang ALS (n=1.164)**. Pure content pada n=2.000 penuh hanya 0,00139; popularity 0,00000.
-- **Keterbatasan eksplisit: 836/2.000 session cold tidak memiliki item ALS, sehingga CF tidak dapat dibentuk untuk subset itu.** Baris `hybrid_pseudo_cf` (α=0/0,4/0,8/1,0) hanya dievaluasi pada n=1.164 yang memiliki pseudo-CF; baris `content` dan `popularity` dievaluasi pada n=2.000 penuh. Perbandingan antar-baris Table D karena itu **tidak dapat dibandingkan secara langsung** tanpa memperhatikan kolom n.
-
-## Reproducibility
+Butuh Python 3.12 dan artefak yang tidak ikut git: parquet katalog sekitar
+257 MB, parquet interaksi di bawah 1 MB, dan model ALS 7,1 MB. Artefak
+dibangun ulang lewat pipeline di bagian berikut.
 
 ```bash
-source venv/bin/activate
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt        # riset + web
+# atau, kalau hanya ingin menjalankan situs:
+pip install -r requirements-serve.txt  # 13 paket
 
-# 0. Dataset sejajar repo root (MINDsmall_train/dev, xMINDsmall_train/dev),
-#    verifikasi sha256 terhadap data/DATASET_LOCK.md
-# 1. Preprocessing
-python -m src.preprocessing.build_locked
-# 2. Train (urutan wajib)
-python -m src.models.content_based.train --config configs/tfidf_baseline.yaml
-python -m src.models.collaborative.train --config configs/als.yaml
-python -m src.models.hybrid.train --config configs/hybrid.yaml
-# 3. Evaluasi Day 4 (Table A + Table B)
-python src/evaluation/full_catalog_eval.py
-#    -> models/full_catalog_eval.json + models/full_catalog_tables.md
-# 4. Evaluasi Day 5 (Table C + Table D)
-python src/evaluation/stratified_eval.py
-#    -> models/stratified_eval.json + models/stratified_tables.md
-# 5. Tes (termasuk paritas inference vs evaluator)
-pytest
-# 6. Serve full-catalog hybrid (α=0,4 dari configs/hybrid.yaml, Day 6)
-uvicorn src.api.main:app --port 8000
-#    POST /recommend {"user_id": ...} (warm) atau {"history": [nid,...]} (cold)
-#    GET /article/{nid}, GET /similar/{nid}, GET /health
-# 6b. Bukti serve satu command (pytest + API live: warm/cold/fallback/similar + UI)
-bash scripts/smoke_demo.sh
-# Kontrak API frozen: docs/API_CONTRACT.md (+ docs/openapi.json)
-# Demo UI (viewer atas /recommend): buka http://localhost:8000/ saat API jalan
+uvicorn web.app:app --app-dir src --port 8000
 ```
 
-## Current Results
+Buka <http://localhost:8000>. Startup sekitar 20 detik karena memuat TF-IDF
+67.381 dokumen dan faktor ALS. Cek kesiapan:
 
-NDCG@10 (seed 42):
+```bash
+curl localhost:8000/health
+# {"status":"ok","alpha":0.8,"catalog_size":67381,"als_items":13881}
+```
 
-| Tabel | Setting | Terbaik | Angka |
-|-------|---------|---------|-------|
-| B | Full catalog, warm (n=2.000) | hybrid α=0,4 | 0,00208 (CF 0,00200; content 0,00007) |
-| C | Warm stratified = protokol B (n=2.000) | hybrid α=0,4 | 0,00208 (CF 0,00200; content 0,00007) |
-| D | Cold session LLO, pseudo-CF subset (n=1.164) | hybrid α=0,4 | 0,00921 (CF-proxy α=0: 0,00645; content n=2.000: 0,00139; popularity: 0,00000) |
+`--app-dir src` wajib. Tanpa itu `web.*`, `api.*`, dan `models.*` tidak
+terselesaikan.
 
-Keterbatasan yang dibawa ke Bab IV: (1) skor absolut kecil — task ranking 93.698 item dengan relevan tipis (median 1/user); (2) 836/2.000 session cold tanpa item ALS tidak mendapat skor CF; (3) sweep α Day 5 pada Tabel C/D hanya di titik 0,0/0,4/0,8/1,0 (sweep rapat 0,0–1,0 hanya ada di Tabel A/B).
+### Verifikasi
+
+```bash
+python -m pytest -q                 # 318 passed
+bash scripts/audit_freeze.sh        # RESEARCH FREEZE AUDIT PASSED
+bash scripts/verify_artifacts.sh    # checksum artefak arsip v1
+bash scripts/smoke_web.sh           # ALL WEB SMOKE CHECKS PASSED
+```
+
+`smoke_web.sh` memakai database sekali pakai di `/tmp`, jadi `data/web.db`
+tidak tersentuh.
+
+---
+
+## Pipeline korpus indo (fase 2)
+
+Kode ada di `src/phase2/`, sengaja terpisah dari paket riset v1 yang beku
+(`src/preprocessing`, `src/models`, `src/evaluation`).
+
+| Tahap | Perintah | Luaran |
+|---|---|---|
+| Katalog | `python -m src.phase2.build_corpus_indo --workers 10` | `data/processed/indo/catalog.parquet` |
+| Peta tautan | `python -m src.phase2.build_links` | `data/processed/indo/source_links.parquet` (3,2 MB) |
+| Interaksi simulasi | `python -m src.phase2.run_generator` | `interactions.parquet` + laporan Gate B |
+| Split temporal | `python -m src.phase2.split` | `*_train` / `*_dev` + cutoff |
+| ALS | `python -m src.phase2.train_als` | `models/indo_als_model.pkl` |
+| Evaluasi | `python -m src.phase2.run_eval` | `docs/evidence/phase2/sensitivity_matrix.json` |
+| Ringkasan | `python -m src.phase2.write_eval` | `models/indo_eval.json` |
+
+Waktu terukur: build katalog didominasi stemming, sekitar 3.396 detik dengan 10
+worker (total 3.422 detik). Satu titik evaluasi sekitar 80 detik; sembilan titik
+sekitar 12 menit. Generator dan pelatihan ALS masing-masing di bawah 10 detik.
+
+Angka yang dipakai:
+
+| Tahap | Hasil |
+|---|---|
+| Baris mentah → artikel unik | 80.472 → 67.381 (dedup per URL, duplikat 100% identik) |
+| Kategori | 19 label, diturunkan dari seksi URL, cakupan 100% |
+| Kosakata | 150.424 kata unik → 149.771 setelah stemming |
+| Interaksi simulasi | 600 akun, 72.034 event view, seed 42 |
+| Gate B | 82,7% item ≥ 1 view; 54,0% ≥ 3 view; 100% akun ≥ 10 bacaan |
+| Katalog efektif | 17.584 item (terbit ≥ 2025-09-01) |
+| Split | cutoff q80 `2025-09-18 06:05:20 UTC`; train 57.627 / dev 14.407 event |
+| ALS | 600 × 13.881, nnz 57.292; cakupan faktor item 78,9% |
+
+Detail lengkap beserta sha256 tiap artefak ada di
+[`data/DATASET_LOCK_INDO.md`](data/DATASET_LOCK_INDO.md).
+
+---
+
+## Evaluasi
+
+Protokol: peringkat penuh katalog dev per akun, tanpa sampled negatives;
+relevan = item dev yang benar-benar dibaca akun itu; **enam metrik per
+sistem** — NDCG@10, AP@10, MAP@10 (nama lain AP pada satu daftar
+peringkat), Precision@10, Recall@10, F1@10. Sensitivitas diuji di 9 titik
+(seed 1-3 x eksponen power-law 0,9/1,1/1,3), masing-masing 600 akun.
+
+Rata-rata atas 9 titik (`models/indo_eval.json`):
+
+| Sistem | NDCG@10 | MAP@10 | P@10 | R@10 | F1@10 |
+|---|---|---|---|---|---|
+| Popularity | 0,010595 | 0,003325 | 0,010093 | 0,004244 | 0,005826 |
+| ALS | 0,005755 | 0,001849 | 0,005296 | 0,002279 | 0,003099 |
+| Hybrid α=0,8 | 0,002975 | 0,000830 | 0,003130 | 0,001316 | 0,001814 |
+| CBF | 0,001112 | 0,000322 | 0,001130 | 0,000495 | 0,000668 |
+
+AP@10 = MAP@10; keduanya dilaporkan agar nama yang dipakai naskah
+tersedia langsung. Precision memakai penyebut `len(top-k)`; F1 adalah
+harmonik Precision dan Recall pada cutoff yang sama (0 bila tak ada hit).
+
+Alpha 0,8 menang di grid resmi (α ∈ {0,2; 0,4; 0,6; 0,8}) menurut rata-rata
+NDCG@10 dan dipakai untuk serving lewat `configs/indo_serving.yaml`. Lapisan
+web tidak pernah mengirim atau menimpa alpha.
+
+**Sapuan lanjutan (2026-10-29, lihat `data/DATASET_LOCK_INDO.md`):** grid 0,8
+bukan konfigurasi tertinggi terukur — ALS murni (α=1,0) pada 64 faktor
+mencapai 0,006216, dan 64 faktor mengalahkan 128 faktor (0,006216 vs
+0,005755). Nilai yang dilayani **sengaja tidak diubah**: α=1,0 mematikan jalur
+konten sehingga 21,1% item efektif tanpa faktor ALS kehilangan panggung;
+menggantinya menuntut keputusan produk berbasis cakupan katalog, bukan
+sekadar NDCG.
+
+Caveat yang harus dibaca bersama angka ini:
+
+1. Interaksi adalah simulasi view-only. Generator mendefinisikan proses
+   popularitas, jadi popularity berperan sebagai batas atas, bukan bukti bahwa
+   sistem lain kalah.
+2. Skala absolut kecil karena katalog dev berisi puluhan ribu item dengan
+   sekitar 24 item relevan per akun. Yang bermakna adalah perbandingan antar
+   sistem pada protokol yang sama.
+3. Sisa 21,1% item efektif tidak punya faktor ALS dan hanya dilayani lewat
+   jalur content-based.
+
+### Notebook perbandingan metrik
+
+`notebooks/eval_metrik.ipynb` membandingkan empat sistem dengan lima metrik
+(Precision@K, Recall@K, F1@K, MAP@K, NDCG@K) pada K ∈ {5, 10, 20}.
+
+```bash
+jupyter nbconvert --to notebook --execute notebooks/eval_metrik.ipynb --inplace
+```
+
+Sekitar 11 menit. Metriknya diimpor dari `src/phase2/evaluate.py` — satu
+implementasi untuk notebook dan angka resmi, jadi keduanya tidak bisa
+menyimpang. Notebook memvalidasi silang 189 nilai terhadap
+`models/indo_eval.json` pada toleransi 1e-9. Hasilnya tersimpan di
+`docs/evidence/phase2/metric_comparison.json` dan `metric_comparison.png`.
+
+Varian sempit: `notebooks/eval_metrik_fokus.ipynb` (NDCG@10 + F1@10 saja).
+
+### Workbook perhitungan manual
+
+`docs/evidence/phase2/Perhitungan_Manual_Rekomendasi_Hybrid_CBF_ALS.xlsx`
+menurunkan jalur yang dilayani sel demi sel: token → TF → IDF → TF-IDF →
+kosinus → peringkat CBF → skor ALS → min-max → blend alpha → kartu yang
+dirender → enam metrik. Dibangun ulang oleh
+`scripts/build_manual_workbook.py`. 13 sheet, 10.589 sel formula, tanpa angka
+hasil yang ditulis tangan.
+
+Sheet `12_Cek_Naskah` menghitung ulang rata-rata 9 titik untuk enam metrik x
+tujuh sistem (42 blok) dan membandingkannya dengan `metric_comparison.json`;
+seluruh blok melaporkan "cocok". Bukti verifikasi: berkas di-recalc dengan
+LibreOffice headless, 0 sel error dan 0 selisih pada 8.825 sel numerik.
+
+Batas yang tertulis di sheet `Petunjuk`: TF-IDF di-fit pada 12 dokumen sampel
+(produksi 67.381), min-max atas 12 kandidat (produksi 17.584 per akun), dan K
+evaluasi diturunkan ke 5 karena hanya ada 9 kandidat.
+
+---
+
+## Aplikasi web
+
+`src/web/`, FastAPI dengan Jinja2 server-side dan SQLite. Satu proses, satu
+worker.
+
+| Rute | Isi |
+|---|---|
+| `/` | feed 12 kartu |
+| `/berita/{nid}` | detail, satu event `view` per halaman tampil |
+| `/histori` | riwayat bacaan, waktu dalam WIB |
+| `/onboarding/topik` | pilih topik, sekali per akun, maksimal 5 |
+| `/register`, `/login` | akun |
+
+Urutan keputusan feed: riwayat → topik → popularitas. Pilihan topik hanya
+menyaring daftar popularitas beku; tidak ada panggilan model di jalur itu.
+Fitur persona dihapus pada v1.3, jadi `/login/persona` dan perintah
+`seed_persona` sudah tidak ada.
+
+Lapisan web tidak menghitung skor dan tidak mengurutkan ulang hasil. Semua
+permintaan rekomendasi lewat `POST /recommend` pada API yang sama, dijalankan
+in-process lewat `httpx.ASGITransport`.
+
+Kontrak API beku: [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md) dan
+[`docs/openapi.json`](docs/openapi.json).
+
+---
+
+## Konfigurasi
+
+Variabel dibaca dari environment. `.env` tidak dimuat otomatis, karena tidak
+ada `load_dotenv` di repo ini, jadi variabel harus diekspor di shell.
+
+| Variabel | Default | Fungsi |
+|---|---|---|
+| `WEB_DB_PATH` | `data/web.db` | Lokasi SQLite |
+| `WEB_SESSION_TTL_DAYS` | `7` | Umur sesi |
+| `WEB_HISTORY_LIMIT` | `50` | Riwayat yang dikirim ke API |
+| `WEB_FEED_LIMIT` | `12` | Kartu yang dirender |
+| `WEB_REC_TOP_K` | `30` | `top_k` yang diminta ke API |
+| `WEB_SECURE_COOKIES` | `0` | Set `1` di belakang HTTPS |
+| `WEB_CSRF_SECRET` | acak per proses | Set nilai tetap untuk multi-worker |
+
+`WEB_REC_TOP_K` harus ≥ `WEB_FEED_LIMIT`; kombinasi yang tidak masuk akal
+membuat aplikasi gagal start dengan pesan jelas.
+
+---
+
+## Artefak
+
+Yang tidak masuk git: parquet katalog dan interaksi, model ALS, serta CSV
+mentah. Yang masuk git hanya sha256-nya, tercatat di dokumen lock.
+
+| Artefak | Ukuran | Checksum |
+|---|---|---|
+| `data/processed/indo/catalog.parquet` | 128 MB | `DATASET_LOCK_INDO.md` |
+| `data/processed/indo/catalog_{train,dev}.parquet` | 103 / 26 MB | idem |
+| `data/processed/indo/interactions*.parquet` | < 1 MB | idem |
+| `models/indo_als_model.pkl` | 7,1 MB | idem |
+| `data/processed/indo/source_links.parquet` | 3,2 MB | turunan, tidak dikunci |
+| `data/raw/final_merge_dataset.csv` | 216 MB | idem |
+
+`data/processed/indo/source_links.parquet` adalah turunan 3,2 MB dari kolom
+`Link` CSV mentah (nid → URL). File inilah yang dibaca halaman detail dan ikut
+ke dalam image Docker. CSV mentah 207 MB tidak diperlukan saat runtime; tanpa
+keduanya aplikasi tetap jalan, hanya tautan portal yang tidak muncul.
+
+---
+
+## Dokumentasi
+
+| Dokumen | Isi |
+|---|---|
+| [`data/DATASET_LOCK_INDO.md`](data/DATASET_LOCK_INDO.md) | Korpus aktif: angka, aturan, sha256, gate |
+| [`docs/web/PRD_Web_Rekomendasi_Berita.md`](docs/web/PRD_Web_Rekomendasi_Berita.md) | PRD aktif |
+| [`docs/web/ACCEPTANCE_CRITERIA.md`](docs/web/ACCEPTANCE_CRITERIA.md) | Kriteria penerimaan + ID tes |
+| [`docs/web/ARCHITECTURE.md`](docs/web/ARCHITECTURE.md) | Struktur web layer |
+| [`docs/web/DATA_MODEL.md`](docs/web/DATA_MODEL.md) | Skema SQLite |
+| [`docs/web/DESIGN.md`](docs/web/DESIGN.md) | Token desain |
+| [`docs/web/SECURITY_NOTES.md`](docs/web/SECURITY_NOTES.md) | Kontrol keamanan |
+| [`docs/web/DEPLOYMENT.md`](docs/web/DEPLOYMENT.md) | Docker dan opsi hosting |
+
+`docs/web/RUNBOOK.md` masih menyebut `seed_persona` dan pembacaan `.env`; dua
+hal itu tidak berlaku lagi. Angka resource Docker di `docs/web/DEPLOYMENT.md`
+diukur sebelum korpus indo dilayani.
+
+### Docker
+
+Image memuat artefak korpus indo (katalog, interaksi train/dev, model ALS, dan
+peta tautan sumber 3,2 MB) dan melayani alpha 0,8.
+
+```bash
+docker build -t goodnews:latest .
+docker run -d --name goodnews-app -p 8000:8000 -v goodnews-data:/data goodnews:latest
+curl localhost:8000/health
+# {"status":"ok","alpha":0.8,"catalog_size":67381,"als_items":13881}
+```
+
+Tanpa `-v`, database SQLite hilang setiap container di-restart.
+
+---
 
 ## Status
 
-- [x] Dataset audit and lock
-- [x] Indonesian preprocessing
-- [x] TF-IDF content model
-- [x] ALS collaborative filtering
-- [x] Hybrid evaluation
-- [x] Full-catalog evaluation
-- [x] Warm/cold stratified evaluation
-- [x] Final system/application layer (API v1.0.0 frozen + demo UI, bukti: `docs/evidence/`)
+- [x] Web layer: akun, feed, artikel, histori
+- [x] Korpus indo: katalog, generator interaksi, split, ALS, evaluasi
+- [x] Enam metrik evaluasi resmi (NDCG, AP/MAP, Precision, Recall, F1 @10)
+- [x] Sapuan faktor & alpha diperbaiki; temuan konfigurasi belum optimal tercatat
+- [x] Workbook perhitungan manual 13 sheet, terverifikasi recalc
+- [x] Serving korpus indo (alpha 0,8)
+- [x] Onboarding topik untuk pengguna tanpa riwayat (maksimal 5 topik)
+- [x] Notebook perbandingan lima metrik (K = 5/10/20)
+- [ ] Keputusan produk: ganti konfigurasi yang dilayani (faktor/alpha) atau tetap
 - [ ] Final thesis documentation

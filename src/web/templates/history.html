@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Histori{% endblock %}
+{% block content %}
+<h1 class="page-title">Histori bacaan</h1>
+<p class="page-sub">Daftar artikel yang pernah kamu baca.</p>
+{% if articles %}
+  <ol class="history-list">
+  {% for a in articles %}
+    {# One grid row = exactly four children, matching
+       `.history-row`'s four fixed columns (app.css). Category, catalogue
+       source, and publication date share ONE cell: adding more children
+       would spill into an implicit second row and shift the columns between
+       rows (TEST-AC-257). #}
+    <li class="history-row">
+      <a href="/berita/{{ a.nid }}?from=history">
+        <span class="history-title">{{ a.title or a.nid }}</span>
+      </a>
+      {# Two deliberate lines: category, then source + date. Free wrapping put
+         the separator at the start of the second line and the date looked
+         misplaced (TEST-AC-257: four grid children, geometry identical). #}
+      <span class="history-cat">
+        <span class="history-meta-line">{{ a.category or 'umum' }}</span>
+        {% if a.source_label or a.published_text %}
+        <span class="history-meta-line">
+          {% if a.source_label %}<span class="history-sub">Sumber: {{ a.source_label }}</span>{% endif %}
+          {% if a.published_text %}<span class="history-sub">{{ a.published_text }}</span>{% endif %}
+        </span>
+        {% endif %}
+      </span>
+      <time class="history-time">Dibaca {{ a.viewed_at }}</time>
+      <span class="history-readers">
+        {% if a.dataset_readers %}<span title="{{ request.app.state.dataset_readers_title }}">{{ a.dataset_readers }}{{ request.app.state.dataset_readers_label }}</span>{% endif %}
+        {% if a.dataset_readers and a.app_readers %}<span aria-hidden="true">·</span>{% endif %}
+        {% if a.app_readers %}<span title="Akun unik yang membuka berita ini di web ini">{{ a.app_readers }}× via web</span>{% endif %}
+      </span>
+    </li>
+  {% endfor %}
+  </ol>
+{% else %}
+  <div class="callout">Kamu belum membuka berita. Pilih berita dari beranda untuk mulai membangun riwayat bacaan.</div>
+{% endif %}
+{% endblock %}

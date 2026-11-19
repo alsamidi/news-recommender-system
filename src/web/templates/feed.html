@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Beranda{% endblock %}
+{% block content %}
+<h1 class="page-title">Halo, {{ user.name }}.</h1>
+<p class="page-sub">Rekomendasi bacaan untukmu hari ini.</p>
+
+<span class="source-label">{{ label }}</span>
+
+{% if notice %}<div class="callout mb-lg">{{ notice }}</div>{% endif %}
+
+{% if articles %}
+  <div class="card-grid">
+  {% for a in articles %}
+    {% with from_source = 'feed' %}{% include "_card.html" %}{% endwith %}
+  {% endfor %}
+  </div>
+{% else %}
+  <div class="callout">
+    Belum ada berita untuk ditampilkan.
+    <a href="/">Muat ulang</a>
+  </div>
+{% endif %}
+{% endblock %}
